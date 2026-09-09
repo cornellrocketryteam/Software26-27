@@ -3,7 +3,7 @@
 Create focused pull requests with a linked issue, meeting decision, or design-review context. Run `sh tests/test_repository_layout.sh` before requesting review.
 
 For Hybrid/Liquid work, label the change `Hybrid`, `Liquid`, or `both` in the pull request description. This applies to both FSW and Fill Station software. The two systems may use different separation mechanisms, but the pull request must identify the boundary and include validation for every affected variant.
-+## Branch workflow
+## Branch workflow
 
 `main` is the integration branch. Do not develop directly on `main` or push directly to it. Every person or project group works on a short-lived branch and opens a pull request when ready.
 
