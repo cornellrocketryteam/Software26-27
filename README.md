@@ -24,7 +24,7 @@ See the [documentation index](docs/README.md) for the contributor starting point
 | `ground-station/` | Ground Station UI and platform software |
 | `shared/proto/` | Versioned Ground Station/Fill Station contracts |
 | `airbrakes/` | Air-brake controller and simulation |
-| `rats/` | Radio Antenna Tracking System |
+| `rats/` | Rotational Antenna Tracking System |
 | `blims/` | BLiMS software |
 | `payload/` | Payload integration software |
 | `nix/` | Reproducible development and deployment infrastructure |
