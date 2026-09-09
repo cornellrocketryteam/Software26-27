@@ -13,7 +13,7 @@ This requirement applies to **both Flight Software and Fill Station software**:
 - A change is complete only when its owner records which vehicle(s) it affects, keeps the other vehicle's build or deployment valid, and adds the appropriate variant-specific test or validation evidence.
 - Do not create permanent `hybrid` and `liquid` branches. Keep shared behavior together and make vehicle differences explicit at the code, configuration, and interface boundaries.
 
-See [system boundaries](docs/architecture/system-boundaries.md) for the responsibility split and [interface governance](docs/interfaces/README.md) for cross-system changes.
+See the [documentation index](docs/README.md) for the contributor starting point, [system boundaries](docs/architecture/system-boundaries.md) for the responsibility split, and [interface governance](docs/interfaces/README.md) for cross-system changes.
 
 ## Project map
 
