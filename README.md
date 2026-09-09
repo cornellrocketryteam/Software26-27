@@ -11,9 +11,9 @@ This requirement applies to **both Flight Software and Fill Station software**:
 - Hybrid and Liquid must be able to evolve in the same repository without accidentally using the other vehicle's hardware, commands, sensors, sequencing, or safety behavior.
 - The two systems may solve that separation differently. FSW will normally use compile-time vehicle configuration; Fill Station may use a separate service, device, or deployment configuration when that better matches its Linux and pad hardware.
 - A change is complete only when its owner records which vehicle(s) it affects, keeps the other vehicle's build or deployment valid, and adds the appropriate variant-specific test or validation evidence.
-- Do not create permanent `hybrid` and `liquid` branches. Keep shared behavior together and make vehicle differences explicit at the code, configuration, and interface boundaries.
+- Do not create permanent `hybrid` and `liquid` branches. Keep shared behavior together and make vehicle differences explicit in code and configuration.
 
-See the [documentation index](docs/README.md) for the contributor starting point, [system boundaries](docs/architecture/system-boundaries.md) for the responsibility split, and [interface governance](docs/interfaces/README.md) for cross-system changes.
+See the [documentation index](docs/README.md) for the contributor starting point and the documentation for each subsystem.
 
 ## Project map
 

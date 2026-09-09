@@ -6,16 +6,13 @@ This page is the starting point for software documentation in the repository.
 
 1. Read the root [README](../README.md) for the project map and operational boundary.
 2. Read [CONTRIBUTING](../CONTRIBUTING.md) for branches, pull requests, reviews, and testing.
-3. Read [system boundaries](architecture/system-boundaries.md) before choosing where code belongs.
-4. Open the README for the subsystem you are joining.
-5. Check current scope, owners, and dates in the [Confluence Software 2026–2027 page](https://confluence.cornell.edu/spaces/crt/pages/763265299/Software+2026-2027).
+3. Open the README for the subsystem you are joining.
+4. Check current scope, owners, and dates in the [Confluence Software 2026–2027 page](https://confluence.cornell.edu/spaces/crt/pages/763265299/Software+2026-2027).
 
 ## Repository documents
 
 | Document | Use it for |
 | --- | --- |
-| [System boundaries](architecture/system-boundaries.md) | Which system owns a behavior and where responsibilities stop |
-| [Interface governance](interfaces/README.md) | Protocols, schemas, compatibility, and interface-change evidence |
 | [Development readiness](operations/development-readiness.md) | Evidence and signoff required before operational use |
 | [FSW](../fsw/README.md) | Shared Hybrid/Liquid flight-software home |
 | [Fill Station](../fill-station/README.md) | Pad-side fill, vent, purge, and safing software |
@@ -29,5 +26,5 @@ This page is the starting point for software documentation in the repository.
 ## Where information belongs
 
 - **Confluence** records team scope, project owners, milestones, design-review material, and evolving planning decisions.
-- **This repository** records implementation, versioned interfaces, contribution rules, test evidence, and operational-readiness records tied to a revision.
+- **This repository** records implementation, contribution rules, test evidence, and operational-readiness records tied to a revision.
 - When a code or interface decision changes planned scope, update both locations and link the decision from the pull request.
