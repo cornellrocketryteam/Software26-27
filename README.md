@@ -32,7 +32,7 @@ See the [documentation index](docs/README.md) for the contributor starting point
 
 ## Start here
 
-Read [system boundaries](docs/architecture/system-boundaries.md), then the README for the subsystem you are changing.
+Read the README for the subsystem you are changing, then check the current project scope in Confluence.
 
 Run the repository check before opening a pull request:
 
