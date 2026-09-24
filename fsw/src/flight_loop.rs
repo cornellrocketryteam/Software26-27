@@ -37,6 +37,10 @@ pub struct FlightLoop {
     alt_buffer: [f32; 10],
     alt_index: usize,
     filtered_alt: [f32; 3],
+    // Standby launch-detect moving average of accel_y (10 samples)
+    accel_buffer: [f32; 10],
+    accel_sum: f32,
+    accel_index: usize,
     drogue_entry_time: Option<Instant>,
     main_entry_time: Option<Instant>,
     airbrakes_logged: bool,
@@ -186,6 +190,9 @@ impl FlightLoop {
             alt_buffer: [0.0; 10],
             alt_index: 0,
             filtered_alt: [-1.0; 3],
+            accel_buffer: [0.0; 10],
+            accel_sum: 0.0,
+            accel_index: 0,
             drogue_entry_time: None,
             main_entry_time: None,
             airbrakes_logged: false,
@@ -236,7 +243,7 @@ impl FlightLoop {
 
     pub async fn execute(&mut self) {
         // 1. Check for commands (GSE, Umbilical, etc.)
-        self.check_umbilical_commands().await;
+        //self.check_umbilical_commands().await;
         self.check_ground_commands().await;
 
         // 2. Read sensor data
@@ -670,7 +677,7 @@ impl FlightLoop {
         // Retrieve current values for easier access
         let _packet = &self.flight_state.packet;
         let _mode = self.flight_state.flight_mode;
-
+        /*
         // One-shot vent: open SV on first entry to any recovery/fault mode.
         if !self.recovery_vent_sent
             && matches!(
@@ -683,7 +690,8 @@ impl FlightLoop {
             self.sv_open = true;
             self.recovery_vent_sent = true;
         }
-
+        */
+        /*
         // Key rising edge: acknowledge arming, or reject if no wipe was done.
         let key_now = self.flight_state.key_armed;
         if key_now && !self.key_prev {
@@ -697,6 +705,7 @@ impl FlightLoop {
             }
         }
         self.key_prev = key_now;
+        */
 
         // Transition logic
         match self.flight_state.flight_mode {
@@ -710,6 +719,7 @@ impl FlightLoop {
                     );
                 }
                 //self.flight_state.umbilical_connected = true;
+                /*
                 if self.flight_state.umbilical_connected {
                     log::info!("Umbilical connected");
                     self.umbilical_disconnect_time = None;
@@ -744,6 +754,7 @@ impl FlightLoop {
                     }
                     self.last_startup_buzz = Some(Instant::now());
                 }
+                */
                 if self.flight_state.altimeter_state == crate::state::SensorState::INVALID {
                     self.alt_armed = false;
                     self.flight_state.flight_mode = FlightMode::Fault;
@@ -751,11 +762,9 @@ impl FlightLoop {
                     log::error!("Altimeter invalid at Startup; transitioning to Fault");
                     return;
                 }
-                // LV: arming is driven by key arm command, umbilical connection, and flash wipe
-                if self.flight_state.key_armed
-                    && self.flight_state.umbilical_connected
-                    && self.flash_wiped
-                {
+
+                // L3: arming is driven solely by GPIO 41 (CFC_ARM). High = armed.
+                if self.flight_state.cfc_arm_active {
                     if self.flight_state.altimeter_state == crate::state::SensorState::VALID {
                         // Record arming altitude (TODO: implement into storage)
                         self.alt_armed = true;
@@ -764,6 +773,11 @@ impl FlightLoop {
                             "Arming altitude set to {}",
                             self.flight_state.arming_altitude
                         );
+
+                        // L3: arm payload on Standby entry — send N1 (camera deploy).
+                        let _ = self.flight_state.payload_uart.write(b"N1\n").await;
+                        self.flight_state.packet.cmd_n1 = 1;
+                        log::info!("PAYLOAD: Sent N1 (arm) on Standby entry");
 
                         self.flight_state.flight_mode = FlightMode::Standby;
                         self.flight_state.write_packet_to_fram().await;
@@ -781,6 +795,12 @@ impl FlightLoop {
                     log::error!("Altimeter invalid at Standby; transitioning to Fault");
                     return;
                 }
+
+                // L3: arm payload on Standby entry — send N1 (camera deploy).
+                let _ = self.flight_state.payload_uart.write(b"N1\n").await;
+                self.flight_state.packet.cmd_n1 = 1;
+                log::info!("PAYLOAD: Sent N1 (arm) on Standby entry");
+                /*
                 //self.flight_state.umbilical_connected = true;
                 if self.flight_state.umbilical_connected {
                     log::info!("Umbilical connected");
@@ -811,16 +831,6 @@ impl FlightLoop {
                     }
                 }
                 self.umbilical_prev = self.flight_state.umbilical_connected;
-                // LV: if key goes low while in Standby, drop back to Startup
-                if !self.flight_state.key_armed {
-                    self.flash_wiped = false;
-                    self.flight_state.flight_mode = FlightMode::Startup;
-                    self.flight_state.arming_altitude = 0.0;
-                    self.alt_armed = false;
-                    self.flight_state.write_packet_to_fram().await;
-                    log::info!("Key low in Standby; transitioning back to Startup");
-                    return;
-                }
                 // Check altimeter for launch with umbilical
                 if self.umbilical_launch && self.flight_state.umbilical_connected {
                     // START LAUNCH SEQUENCE
@@ -833,21 +843,58 @@ impl FlightLoop {
                         "Reference pressure set to {}",
                         self.flight_state.reference_pressure
                     );
-
                     // Stage 1: SV Open (2s vent)
                     self.flight_state.open_sv(0).await;
                     self.sv_open = true;
-   
-                    self.alt_armed = true;
-                    self.flight_state.flight_mode = FlightMode::Ascent;
-                    self.flight_state.write_packet_to_fram().await;
-                    log::info!("Transitioning to Ascent");
-                } else if !self.flight_state.key_armed{
+                */
+
+                // L3: if GPIO 41 (CFC_ARM) goes low while in Standby, drop back to Startup.
+                if !self.flight_state.cfc_arm_active {
                     self.flight_state.flight_mode = FlightMode::Startup;
                     self.flight_state.arming_altitude = 0.0;
                     self.alt_armed = false;
                     self.flight_state.write_packet_to_fram().await;
-                    log::info!("Key not armed; Transitioning to Startup");
+                    self.launch_sequence_stage = LaunchStage::PreVent;
+                    self.launch_stage_start_time = Some(Instant::now());
+                    self.flight_state.reference_pressure = self.flight_state.read_barometer();
+                    log::info!(
+                        "Reference pressure set to {}",
+                        self.flight_state.reference_pressure
+                    );
+                    log::info!("CFC_ARM low in Standby; transitioning back to Startup");
+                    return;
+                }
+
+                // L3 launch detect: 10-sample moving avg of thrust-axis accel > 4 g.
+                // IMU calibration puts gravity to -Y, so boost drives accel_y
+                // negative; negate the average to compare against a positive constant
+                let ay = self.flight_state.packet.accel_y;
+                self.accel_sum -= self.accel_buffer[self.accel_index];
+                self.accel_buffer[self.accel_index] = ay;
+                self.accel_sum += ay;
+                self.accel_index = (self.accel_index + 1) % 10;
+                let thrust_ms2 = -(self.accel_sum / 10.0);
+                let threshold_ms2 =
+                    constants::LAUNCH_ACCEL_Y_THRESHOLD_G * constants::G_TO_MS2;
+
+                if thrust_ms2 > threshold_ms2 {
+                    log::warn!(
+                        "LAUNCH DETECTED: thrust={:.2} m/s² > {:.2} m/s²",
+                        thrust_ms2, threshold_ms2
+                    );
+                    self.launch_sequence_stage = LaunchStage::MavOpen;
+                    self.launch_stage_start_time = Some(Instant::now());
+
+                    self.flight_state.reference_pressure = self.flight_state.read_barometer();
+                    log::info!(
+                        "Reference pressure set to {}",
+                        self.flight_state.reference_pressure
+                    );
+
+                    self.alt_armed = true;
+                    self.flight_state.flight_mode = FlightMode::Ascent;
+                    self.flight_state.write_packet_to_fram().await;
+                    log::info!("Transitioning to Ascent");
                 }
             }
             FlightMode::Ascent => {
@@ -860,7 +907,7 @@ impl FlightLoop {
                     return;
                 }
 
-                // Look at scenario where not above armed altitude and MAV is closed
+                // Look at scenario where not above armed altitude
                 if self.flight_state.altimeter_state == SensorState::VALID
                     && !self.alt_armed
                     && self.flight_state.read_altimeter() >= 0.0
@@ -932,6 +979,7 @@ impl FlightLoop {
                         && self.filtered_alt[2] > self.filtered_alt[1]
                         && self.filtered_alt[1] > self.filtered_alt[0]
                     {
+                        /*
                         // Safety: by apogee the umbilical must be physically gone.
                         // If it still reads connected the flight state is untrustworthy
                         // (rocket never left the pad, or a comms fault) — fault instead of
@@ -944,6 +992,7 @@ impl FlightLoop {
                             self.flight_state.write_packet_to_fram().await;
                             return;
                         }
+                        */
                         self.camera_deployed = true;
                         log::info!("Cameras deployed");
                         log::info!("Apogee reached at {:.2} m", self.filtered_alt[1]);
@@ -995,7 +1044,7 @@ impl FlightLoop {
                 } else if self.flight_state.packet.altitude >= 76.2 {
                     self.low_alt_time = None;
                 }
-
+                /*
                 // Open SV 5s after drogue deploy
                 if !self.sv_open {
                     if let Some(entry_time) = self.drogue_entry_time {
@@ -1006,13 +1055,14 @@ impl FlightLoop {
                         }
                     }
                 }
-
+                */
                 // Get time since entry
                 if let Some(entry_time) = self.drogue_entry_time {
                     if entry_time.elapsed().as_millis() >= constants::MAIN_DEPLOY_DELAY_MS {
                         // LV: deploy main below 610 m AGL. Altimeter is in meters.
                         let alt_m = self.flight_state.packet.altitude;
                         if alt_m < constants::MAIN_DEPLOY_ALTITUDE && alt_m > 76.2 {
+                            /*
                             // Safety: by main-deploy altitude the umbilical must be
                             // physically gone. If it still reads connected the flight
                             // state is untrustworthy — fault instead of deploying main.
@@ -1024,6 +1074,7 @@ impl FlightLoop {
                                 self.flight_state.write_packet_to_fram().await;
                                 return;
                             }
+                            */
                             // Deploy Main
                             self.flight_state.trigger_main().await;
                             self.flight_state.packet.ssa_main_deployed = 1;
@@ -1047,11 +1098,11 @@ impl FlightLoop {
                     log::error!("Altimeter invalid at MainDeployed; transitioning to Fault");
                     return;
                 }
-
+                /*
                 // SV stays open for the remainder of the flight.
                 self.flight_state.open_sv(0).await;
                 self.sv_open = true;
-
+                */
                 // N3: altitude < 76.2m (250ft) for 1s
                 if self.flight_state.packet.altitude < 76.2 && !self.n3_sent {
                     if self.low_alt_time.is_none() {

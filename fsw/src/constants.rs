@@ -157,10 +157,11 @@ pub const STARTUP_BUZZ_PERIOD_MS: u64 = 5_000; // periodic status buzz in Startu
 /// Maximum age of the most recent umbilical heartbeat (`<H>`) before the link
 /// is considered down. Independent of `UMBILICAL_TIMEOUT_MS`, which gates the
 /// vent-on-disconnect action.
-pub const HEARTBEAT_TIMEOUT_MS: u64 = 5_000; // 5 s â€” 3 s was too tight for USB CDC jitter
-pub const MAV_OPEN_DURATION_MS: u64 =  6000; // 6.00 for LV 
+pub const HEARTBEAT_TIMEOUT_MS: u64 = 5_000; // 5 s, 3 s was too tight for USB CDC jitter
+pub const MAV_OPEN_DURATION_MS: u64 =  4000; // 4.00 for L3
 pub const LAUNCH_SV_PREVENT_MS: u64 = 2_000;  // 2 s SV open before closing
 pub const SSA_THRESHOLD_MS: u64 = 1000; // Duration to fire ematch
+pub const LAUNCH_ACCEL_Y_THRESHOLD_G: f32 = 4.0; // 4 g threshold for launch detection
 
 // ADS1015 ADC Configuration
 pub const ADS1015_I2C_ADDR: u8 = 0x48;
