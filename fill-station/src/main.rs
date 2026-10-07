@@ -20,6 +20,10 @@ use tracing_subscriber::fmt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tungstenite::Message;
 
+//To get the flags of cargo run
+use std::env;
+
+
 use crate::command::{ActuatorState, AdcReadings, Command, CommandResponse, UmbilicalReadings};
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::command::ChannelReading;
@@ -46,8 +50,6 @@ const ADC_DATA_RATE: DataRate = DataRate::Sps3300; // Maximum speed
 
 /// Maximum retry attempts for failed ADC reads before logging error
 const ADC_MAX_RETRIES: u32 = 5;
-
-
 
 /// Delay between retry attempts (milliseconds)
 const ADC_RETRY_DELAY_MS: u64 = 10;
@@ -96,6 +98,8 @@ const TELEM_FRESHNESS_MS: u64 = 3_000;
 
 
 fn main() -> Result<()> {
+    // get the args
+    let args: Vec<String> = env::args().collect();
     // Create a log layer for file output
     #[cfg(target_os = "linux")]
     let log_dir = "/tmp/fill-station/logs";
@@ -114,6 +118,18 @@ fn main() -> Result<()> {
         .with(file_layer)
         .with(stdout_layer)
         .init();
+
+    //IF --liquid detected print here?????
+    if args.iter().any(|a| a == "--liquid") {
+        println!("~~~~~~~~~~~~~~~~~~~~~~~~");
+        println!("~~  LIQUID MODE ON  ~~");
+        println!("~~~~~~~~~~~~~~~~~~~~~~~~");
+    }
+    else if args.iter().any(|a| a == "--hybrid") {
+        println!("~~~~~~~~~~~~~~~~~~~~~~~~");
+        println!("~~  HYBRID MODE ON  ~~");
+        println!("~~~~~~~~~~~~~~~~~~~~~~~~");
+    }
 
     smol::block_on(async {
         info!("Initializing fill station...");

@@ -35,7 +35,7 @@ const CLIENT_ID: &str = "fill-station";
 /// JSON payload published to the EMQX broker.
 /// Field names must match the EMQX rule SQL (`payload.field_name`).
 #[derive(Serialize)]
-struct TelemetryPayload {
+struct TelemetryPayload { // Send Nanopb package here
     // Top-level radio (not available on fill station — no RFD900x)
     sync_word: u32,
 
