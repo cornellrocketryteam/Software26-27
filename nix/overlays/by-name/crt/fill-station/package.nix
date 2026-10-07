@@ -5,6 +5,8 @@
   # Also build the ADC CLI tools from src/bin/ (adc_monitor, adc_test, ...).
   # Off by default to keep the production image small.
   withHelpers ? false,
+  # Build mode: "none", "liquid", or "hybrid"
+  mode ? "none",
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fill-station";
@@ -17,6 +19,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
   cargoBuildFlags = lib.optionals (!withHelpers) [
     "--bin"
     "fill-station"
+  ] ++ lib.optionals (mode != "none") [
+    "--features"
+    mode
   ];
 
   # Skip tests (since we don't have any)

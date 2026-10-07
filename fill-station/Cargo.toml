@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
+liquid = []
+hybrid = []
 default = [
     "tracing/max_level_debug", "tracing/release_max_level_info",
     "log/max_level_debug", "log/release_max_level_info",

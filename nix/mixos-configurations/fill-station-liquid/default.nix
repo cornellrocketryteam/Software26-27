@@ -3,6 +3,12 @@
 {
   imports = [ ../fill-station ];
 
-  # Override the process to specifically run in liquid mode
-  init.fill-station.process = lib.mkForce "${lib.getExe pkgs.crt.fill-station} --liquid";
+  # Override the fill-station package to compile with the liquid feature
+  nixpkgs.overlays = [
+    (final: prev: {
+      crt = prev.crt // {
+        fill-station = prev.crt.fill-station.override { mode = "liquid"; };
+      };
+    })
+  ];
 }

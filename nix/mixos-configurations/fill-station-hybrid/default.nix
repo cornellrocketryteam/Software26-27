@@ -3,6 +3,12 @@
 {
   imports = [ ../fill-station ];
 
-  # Override the process to specifically run in hybrid mode
-  init.fill-station.process = lib.mkForce "${lib.getExe pkgs.crt.fill-station} --hybrid";
+  # Override the fill-station package to compile with the hybrid feature
+  nixpkgs.overlays = [
+    (final: prev: {
+      crt = prev.crt // {
+        fill-station = prev.crt.fill-station.override { mode = "hybrid"; };
+      };
+    })
+  ];
 }

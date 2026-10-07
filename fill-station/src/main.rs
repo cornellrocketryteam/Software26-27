@@ -20,8 +20,6 @@ use tracing_subscriber::fmt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tungstenite::Message;
 
-//To get the flags of cargo run
-use std::env;
 
 
 use crate::command::{ActuatorState, AdcReadings, Command, CommandResponse, UmbilicalReadings};
@@ -98,8 +96,7 @@ const TELEM_FRESHNESS_MS: u64 = 3_000;
 
 
 fn main() -> Result<()> {
-    // get the args
-    let args: Vec<String> = env::args().collect();
+
     // Create a log layer for file output
     #[cfg(target_os = "linux")]
     let log_dir = "/tmp/fill-station/logs";
@@ -113,22 +110,21 @@ fn main() -> Result<()> {
     // Create a log layer for stdout
     let stdout_layer = fmt::layer().with_writer(std::io::stdout);
 
-    let _liquid_fill_mode_check = args.iter().any(|a| a == "--liquid");
-    let _hybrid_fill_mode_check = args.iter().any(|a| a == "--hybrid");
-
     // Combine both layers and enable logging
     tracing_subscriber::registry()
         .with(file_layer)
         .with(stdout_layer)
         .init();
 
-    //IF --liquid detected print here?????
-    if _liquid_fill_mode_check {
+    #[cfg(feature = "liquid")]
+    {
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
         println!("~~  LIQUID MODE ON  ~~");
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
     }
-    else if _hybrid_fill_mode_check {
+    
+    #[cfg(feature = "hybrid")]
+    {
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
         println!("~~  HYBRID MODE ON  ~~");
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
