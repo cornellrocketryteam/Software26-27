@@ -14,6 +14,7 @@ cargo run --release
 # Build the entire system image including fill-station
 cd /path/to/Software25-26
 nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
+nix build .#mixosConfigurations.fill-station.config.system.build.sdImage --liquid
 ```
 
 The server listens on `ws://0.0.0.0:9000` for WebSocket connections. The service starts **automatically on boot**.
