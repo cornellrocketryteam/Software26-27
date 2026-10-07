@@ -1,0 +1,194 @@
+# Failsafe & Safety Mechanism Reference
+
+> Living document — update whenever thresholds, timeouts, or safety logic changes.
+> Last updated: 2026-10-02
+
+---
+
+## FSW (Flight Software)
+
+### Hardware
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Hardware watchdog | 120 ms | `execute()` hangs without feeding watchdog | Hardware chip reset | `watchdog.rs`, `constants.rs:74` |
+
+### Sensors
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Sensor init timeout | 500 ms per sensor | BMP390 / GPS / IMU / ADC fails to init | Mark sensor unavailable, boot continues | `state.rs:196–245`, `constants.rs:92` |
+| Sensor read timeout | 30 ms per cycle | Per-cycle sensor read hangs | Mark reading INVALID, flight loop continues | `state.rs:357–435`, `constants.rs:85` |
+| BMP390 disconnect detection | CHIP_ID ≠ 0x60 | Every altimeter read verifies CHIP_ID (0x00); a disconnected/floating SPI bus reads 0xFF or 0x00 | Reject reading (`NotConnected`) — deterministic disconnect detector, replaces relying on the pressure range | `bmp390.rs` (`read_into_packet`) |
+| Pressure bounds check | 1,000 – 120,000 Pa | Altimeter pressure outside range | Reject reading entirely — **loose sanity backstop only**; floor (1 kPa ≈ 82,000 ft AGL) sits far above any reachable altitude so real flight pressure is never rejected. Disconnect is handled by the CHIP_ID check above, not this range. | `bmp390.rs`, `constants.rs:125–126` |
+| Altimeter failure debounce | 3 consecutive failed reads | Read errors / timeouts / CHIP_ID mismatch | Altimeter held VALID (last good data) until 3 failures in a row, then declared INVALID — one SPI glitch can't fault the flight | `state.rs` (`read_sensors`), `constants.rs:ALTIMETER_FAIL_THRESHOLD` |
+| Altimeter validity guard (Startup) | Any | Altimeter = INVALID at Startup (after debounce) | Force transition to Fault immediately | `flight_loop.rs` (Startup arm) |
+| Altimeter validity guard (Standby) | Any | Altimeter becomes INVALID while armed (after debounce) | Force transition to Fault immediately | `flight_loop.rs` (Standby arm) |
+
+### Pressure / Overpressure
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Overpressure latch | 1000 PSI, **3 consecutive samples** | PT3 tank pressure exceeds threshold | Open SV, force Fault mode, log to FRAM — one-shot | `flight_loop.rs:441–473`, `constants.rs:140` |
+
+### Umbilical / Ground Connection
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Heartbeat timeout | 5000 ms | No `<H>` received from ground | Mark umbilical as disconnected | `umbilical.rs:33–40`, `constants.rs:143` |
+| Umbilical disconnect safety | 15 s after disconnect | Umbilical reads disconnected | Open SV — one-shot, resets on reconnect | `flight_loop.rs:521–534`, `constants.rs:119` |
+
+### State Machine Guards
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Arming gate | — | Startup → Standby attempted | Blocked unless: CFC_ARM high AND umbilical connected AND successful flash wipe (see below) AND altimeter VALID. Driven by the physical CFC_ARM signal (GPIO 41); the `<KA>`/`key_armed` flag is not part of this gate. | `flight_loop.rs:704–706` |
+| Flash-wipe arming interlock | — | CFC_ARM raised to arm (Startup → Standby) without a prior successful wipe | Transition blocked; FSW emits 5-beep buzz pattern and prints `Arming blocked: wipe flash first` over umbilical. Permission is cleared on every boot and whenever CFC_ARM drops (Standby → Startup); a fresh successful `<W>` is required before each arming. | `flight_loop.rs` |
+| Recovery vent | — | Entry to DrogueDeployed / MainDeployed / Fault | Opens SV once — one-shot flag prevents repeats | `flight_loop.rs:631–640` |
+| Umbilical-connected flight guard | — | Ascent→Coast, Coast→DrogueDeployed, DrogueDeployed→MainDeployed transition reached while `umbilical_connected` is still true | Force Fault instead of the normal transition. The umbilical must physically detach at liftoff, so a still-connected reading at these points means the flight state is untrustworthy (never left pad / comms fault). At the Drogue and Main points this means the chute is **not** deployed — the transition is replaced by Fault. | `flight_loop.rs` (Coast→Drogue, Drogue→Main in `check_transitions`; Ascent→Coast in `handle_launch_sequence`, both normal and recovery paths) |
+| Invalid flight mode recovery | mode > Fault | Boot with corrupted FRAM | Defaults to Fault | `state.rs:179–184` |
+
+### Actuators
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| MAV auto-close | 7.88 s | After MAV opens | Force-closes MAV regardless of command state | `actuator.rs:220–239`, `constants.rs:144` |
+| SSA auto-off | Fixed pulse duration | After ematch fires | Forces pin LOW — prevents continuous current through ematch | `actuator.rs:14–65` |
+| Launch sequence gate | State machine | Launch command | Enforces: SV open 2 s → close → 1 s gap → MAV open 7.88 s → close | `flight_loop.rs`, `constants.rs:125–127` |
+
+### Flash Operations
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Flash operation timeout | 200 ms | QSPI read/write/erase hangs | Log timeout, watchdog fed during long ops | `state.rs:516–620`, `constants.rs:87` |
+| Flash wipe timeout | 300,000 ms (5 min) | Full-flash erase hangs | Log timeout | `state.rs:664`, `constants.rs:90` |
+
+### Payload
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| **N1 flight-mode gate** | Startup or Standby only | N1 command received in any other mode | Command silently dropped — N1 (camera deploy) blocked mid-flight | `flight_loop.rs:254–263`, `flight_loop.rs:367–375` |
+| **N3 auto-send (low altitude)** | altitude < 76.2 m (250 ft) **for 1 continuous second** | DrogueDeployed or MainDeployed phase, altitude holds below threshold | Sends `N3\n` to payload UART — one-shot (`n3_sent` flag) | `flight_loop.rs:769–779`, `flight_loop.rs:811–822` |
+| **N4 auto-send (hard landing)** | Any accel axis > 50 m/s² | MainDeployed phase | Sends `N4\n` to payload UART — one-shot (`n4_sent` flag) | `flight_loop.rs:825–834` |
+| **Main chute auto-deploy** | altitude < 610 m AND elapsed > 1000 ms since drogue | DrogueDeployed phase | Fires main chute, transitions to MainDeployed, writes to FRAM | `flight_loop.rs:783–798`, `constants.rs:109–111` |
+| **Payload heartbeat** | 1 Hz | Every second during flight loop | Sends `A\n` to payload UART to keep payload board alive | `flight_loop.rs:216–222` |
+| **Payload UART loopback timeout** | 5 s | Ground test: no data received back from payload | Logs warning — confirms payload link integrity | `main.rs:767–777` |
+| **N2 arm altitude gate** | 500 m AGL | N2 velocity-derived signal | N2 only armed above this altitude | `constants.rs:117` |
+
+### Airbrake (Core 1)
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Airbrake phase guard | — | Entry to DrogueDeployed / MainDeployed / Fault | Signals Core 1 to stop and retract airbrakes | `flight_loop.rs:179–196` |
+
+---
+
+## Fill-Station (Embedded Server)
+
+### Client / WebSocket
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Client disconnect emergency shutdown | 15 s | Zero WebSocket clients connected | Closes SV1–SV5, closes ball valve, closes fill-station MAV, sends `<S>` (Open SV) to FSW | `main.rs:826–850` |
+| Client heartbeat watchdog | 15 s | No valid message from a connected client | Disconnect that client | `main.rs:230–234` |
+| `umb_ever_connected` guard | Boot | FSW never connected yet | Umbilical safety timer will not arm until first FSW connection | `main.rs:828–832` |
+
+### Umbilical / FSW Link
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Telemetry freshness | 3000 ms | No `$TELEM` lines received | Mark umbilical as disconnected | `main.rs:90`, `main.rs:858` |
+| Umbilical disconnect safety | 15 s after freshness expires | FSW telemetry stale (catches hung FSW with USB still up) | Closes ball valve, opens SV1 | `main.rs:852–904` |
+| Serial read timeout | 200 ms | UART read blocks | Timeout, triggers reconnect loop | `main.rs:85`, `main.rs:1101` |
+| Line buffer overflow | 8 KB | Hung FSW sends partial line | Clears buffer, restarts line parsing | `main.rs:1127`, `main.rs:1183–1187` |
+
+### ADC / Sensors
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| ADC read retry | 5 attempts, 10 ms apart | I2C read failure | After all retries fail: mark readings invalid | `main.rs:48–53` |
+| ADC validity marking | — | All retries exhausted | CSV and MQTT write `N/A` instead of garbage values | `main.rs:957–975` |
+
+### Hardware / Actuators
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Solenoid valve default-safe init | Boot | Power-on | All SVs start CLOSED (NC=LOW de-energized, NO=HIGH energized shut) | `solenoid_valve.rs:31–37` |
+| Ball valve signal interlock | — | Signal line change attempted while ON_OFF is HIGH | Returns error, blocks state change | `ball_valve.rs:87–92` |
+| Ball valve settling delay | 100 ms | Before any open/close signal change | Ensures actuator is in stable state before switching | `ball_valve.rs:61`, `ball_valve.rs:77` |
+| Ignition forced OFF | 3 s | After ignition fires | Hard timeout forces both igniters OFF | `main.rs:367` |
+
+### Input Validation
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| GPS coordinate validation | lat ∈ [-90,90], lon ∈ [-180,180] | `fsw_set_blims_target` command | Rejects out-of-range coordinates | `main.rs:758–763` |
+| Igniter ID validation | Only 1 or 2 accepted | `get_igniter_continuity` command | Returns error on invalid ID | `main.rs:393–408` |
+| JSON parse guard | — | Malformed WebSocket message | Returns `CommandResponse::Error`, does not crash | `main.rs:323–335` |
+
+### System / OS (MixOS image)
+
+| Failsafe | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| Process respawn | Immediate | `fill-station` process exits or crashes | busybox init restarts it (`action = "respawn"`). Actuator state on restart follows the default-safe init above | `nix/mixos-configurations/fill-station/default.nix` |
+| Kernel panic reboot | Immediate | Kernel panic | Board reboots (`panic=-1` in bootargs) | `nix/mixos-configurations/fill-station/fit/build-fit-image.nix` |
+| ~~Hardware watchdog (RTI)~~ | — | — | **NOT ENABLED — deferred decision, see below** | — |
+
+> **Deferred: hardware watchdog (decided 2026-10-02).**
+> The image used to run a `watchdog` service (`/bin/watchdog -F /dev/watchdog`),
+> but it **never actually worked**: the AM64x RTI watchdog driver
+> (`CONFIG_K3_RTI_WATCHDOG`) was a kernel module that nothing loaded, so
+> `/dev/watchdog` didn't exist and the service just respawned in a loop.
+> When modules were removed from the kernel (to fit the OSPI flash), the driver
+> became built-in, which would have made the watchdog live for the first time.
+> We chose to **remove the service** rather than enable a board reset that could
+> fire mid-fill without being evaluated first.
+>
+> Current state: the driver is still built in (`kernel.config`) but idle. The RTI
+> timer only starts once something opens `/dev/watchdog`, so nothing resets the
+> board.
+>
+> **To revisit:**
+> - Should a userspace hang reset the board during a fill?
+> - What do valves/igniters do across a reset?
+> - Should the app itself pet the watchdog (so a hung `fill-station` resets the
+>   board), rather than a separate daemon (which only catches a fully hung
+>   system)?
+> - The RTI is windowed and **cannot be stopped once started**.
+>
+> Re-enable by adding the `watchdog` init entry back in `default.nix`.
+
+---
+
+## Dashboard (dashboard_v2.py)
+
+> The dashboard has no independent safety enforcement. All safety is server/FSW-side.
+> The dashboard's role is to maintain connection and display state.
+
+| Mechanism | Threshold | Trigger | Action | File |
+|---|---|---|---|---|
+| WebSocket auto-reconnect | 2 s backoff | Disconnect / exception | Automatically retries connection | `dashboard_v2.py:143–152` |
+| Heartbeat sender | Every 5 s | Connection alive | Sends `heartbeat` command to prevent fill-station 15s client timeout | `dashboard_v2.py:69–76` |
+
+---
+
+## Cross-System Timeout Summary
+
+| System | Mechanism | Timeout |
+|---|---|---|
+| FSW | Hardware watchdog | 120 ms |
+| FSW | Sensor init | 500 ms |
+| FSW | Sensor read | 30 ms |
+| FSW | Heartbeat freshness | 5000 ms |
+| FSW | Umbilical safety vent | 15 s |
+| FSW | MAV auto-close | 7.88 s |
+| FSW | Flash timeout | 200 ms |
+| FSW | Flash wipe timeout | 300 s |
+| Fill-Station | Telemetry freshness | 3000 ms |
+| Fill-Station | Umbilical safety | 15 s |
+| Fill-Station | Client disconnect safety | 15 s |
+| Fill-Station | Client heartbeat | 15 s |
+| Fill-Station | Serial read | 200 ms |
+| Fill-Station | Ignition forced OFF | 3 s |
+| Dashboard | Heartbeat send interval | 5 s |
+| Dashboard | Reconnect backoff | 2 s |

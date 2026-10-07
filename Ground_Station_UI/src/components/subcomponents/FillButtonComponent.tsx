@@ -1,0 +1,198 @@
+import { useEffect, useRef } from "react";
+import { usePropulsion } from "../../PropulsionPage";
+
+export default function FillButtonComponent() {
+    const {
+        manualVentRef,
+        fillUIActive,
+        ventUIActive,
+        setFillUIActive,
+        setVentUIActive,
+        isFillingRef,
+        isVentingRef,
+        fillState,
+        confirmedVentSecondsRef,
+        handleButtonClickRef,
+        valveDataRef,
+        telemetryDataRef,
+        canInteractRef,
+        ventTimeoutRef,
+        setButtonInteractionState
+    } = usePropulsion();
+
+    console.log("Rendering FillButtonComponent with fillState: ", fillState);
+
+    //Checks to see if we already hit the vent threshold
+    const hasAutoVentedRef = useRef(false);
+    
+    //  Click handler: only responsible for pre-checks and setting the  
+    //  fillUIActive flag. The actual loop is managed in the useEffect below.
+    const handleInitiate = () => {
+        // Safety: close any open valves before starting to ensure a known state.
+        if (valveDataRef.current.SV1.actuated) handleButtonClickRef.current("Solenoid Valve 1", 'CLOSE');
+        if (valveDataRef.current.SV2.actuated) handleButtonClickRef.current("Solenoid Valve 2", 'CLOSE');
+
+        const startingPressure = telemetryDataRef.current.at(-1)?.telemetry.pt3 ?? 0;
+        console.log("Fill initiated. Starting pressure:", startingPressure);
+
+        // Reset one-time vent flags and locks in case of re-initiation without page refresh.
+        hasAutoVentedRef.current = false;
+
+        isFillingRef.current = true;
+        setFillUIActive(true);
+    };
+
+    useEffect(() => {
+        if (!fillUIActive) return;
+
+        if (canInteractRef.current === 'ENABLED') {
+            setButtonInteractionState('DISABLED');
+            canInteractRef.current = 'DISABLED';
+        }
+
+        if (valveDataRef.current.SV1.actuated) handleButtonClickRef.current("Solenoid Valve 1", 'CLOSE');
+        if (valveDataRef.current.SV2.actuated) handleButtonClickRef.current("Solenoid Valve 2", 'CLOSE');
+
+        // Track every timer this fill starts so teardown can cancel them. Without this,
+        // a vent/BV-open timer left pending when the fill stops (STOP FILL, SAFE PROCEDURE,
+        // unmount) fires afterward and re-opens the Ball Valve — re-pressurizing the tank.
+        const pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
+
+        // Delay BV open to give SV close commands + server response time to settle
+        pendingTimeouts.push(setTimeout(() => {
+            if (!valveDataRef.current.SV1.actuated && !valveDataRef.current.SV2.actuated) {
+                handleButtonClickRef.current("Ball Valve", 'OPEN');
+            }
+        }, 600));
+
+        const fillLoop = setInterval(() => {
+            const psi = telemetryDataRef.current.at(-1)?.telemetry.pt3 ?? 0;
+
+            if (!isFillingRef.current) { clearInterval(fillLoop); return; }
+            if (isVentingRef.current) return; // DO NOT STACK VENTS
+
+            // Stop condition: target pressure reached 
+            if (psi >= 900) { //<-Actual condition will change if we are running through the mock server as the CSV stops at 950
+                if(valveDataRef.current.BV.actuated) handleButtonClickRef.current("Ball Valve", 'CLOSE'); // Close BV
+                clearInterval(fillLoop);
+                isFillingRef.current = false;
+                isVentingRef.current = false;
+                setFillUIActive(false);
+                setVentUIActive(false);
+                console.log("Fill complete. Final pressure:", psi);
+                return;
+            }
+
+            // Auto-vent condition: one single 1-second vent once PT3 hits 800 PSI
+            if (psi >= 800 && !hasAutoVentedRef.current) {
+                hasAutoVentedRef.current = true; // Prevent re-triggering
+                isVentingRef.current = true;
+                setVentUIActive(true);
+                //handleButtonClickRef.current("Ball Valve", 'CLOSE'); // <- Do not necessarily need to send over the command to close ball valve
+                handleButtonClickRef.current("Solenoid Valve 2", 'OPEN');
+                console.log("🔴 Auto Vent START:", new Date().toISOString(), "PSI:", psi);
+
+                pendingTimeouts.push(setTimeout(() => {
+                    console.log("🟢 Auto Vent END:", new Date().toISOString());
+                    handleButtonClickRef.current("Solenoid Valve 2", 'CLOSE');
+                    handleButtonClickRef.current("Ball Valve", 'OPEN');
+                    isVentingRef.current = false;
+                    setVentUIActive(false);
+                }, 1000));
+                return;
+            }
+
+            // Manual vent: operator-triggered via the Vent Button
+            if (manualVentRef.current) {
+                manualVentRef.current = false;
+                isVentingRef.current = true;
+                setVentUIActive(true);
+                //handleButtonClickRef.current("Ball Valve", 'CLOSE'); // <- Do not necessarily need to send over the command to close ball valve
+                handleButtonClickRef.current("Solenoid Valve 2", 'OPEN');
+                console.log("🔴 Manual Vent START:", new Date().toISOString(), "PSI:", psi, `Duration: ${confirmedVentSecondsRef.current}s`);
+
+                ventTimeoutRef.current = setTimeout(() => {
+                    console.log("🟢 Manual Vent END:", new Date().toISOString());
+                    handleButtonClickRef.current("Solenoid Valve 2", 'CLOSE');
+                    handleButtonClickRef.current("Ball Valve", 'OPEN');
+                    isVentingRef.current = false;
+                    setVentUIActive(false);
+                }, confirmedVentSecondsRef.current * 1000);
+                pendingTimeouts.push(ventTimeoutRef.current);
+            }
+        }, 200);
+
+        return () => {
+            clearInterval(fillLoop);
+            pendingTimeouts.forEach(clearTimeout); // cancel any vent/BV-open timer still pending at teardown
+        };
+
+    }, [fillUIActive]);
+
+    return (
+        <>
+            <h2 className="font-inter font-bold text-[60px] text-center mb-12">
+                {fillUIActive ? "FILL IN PROGRESS": "INITIATE AUTOMATED FILL"}
+            </h2>
+            <div className="flex flex-col gap-4 justify-center">
+                <button
+                    onClick={handleInitiate}
+                    // Disable the button while a fill is already in progress
+                    // to prevent double-initiating the loop. 
+                    // Also disable if we are already at or above the target pressure to prevent unnecessary fill attempts.
+                    disabled={fillUIActive || (telemetryDataRef.current.at(-1)?.telemetry.pt3 ?? 0) >= 900}
+                    className="bg-[#5A87FF] border-[6px] border-black rounded-3xl px-24 py-8 font-inter font-bold text-[69px] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {fillUIActive ? (ventUIActive ? "Venting..." : "Filling...") : "Initiate"}
+                </button>
+                {fillUIActive && <div className="flex flex-row items-center gap-2">
+                    <button
+                        onClick={() => {
+                            // Stop the fill loop
+                            isFillingRef.current = false;
+                            setFillUIActive(false);
+                            // Close BV, then open SV2 to vent indefinitely
+                            // Operator must manually close SV2 via the valve grid when ready
+                            handleButtonClickRef.current("Ball Valve", 'CLOSE');
+                            handleButtonClickRef.current("Solenoid Valve 2", 'OPEN');
+                            isVentingRef.current = false;
+                            setVentUIActive(false);
+                            // Re-enable button interaction so operator can close SV2
+                            setButtonInteractionState('ENABLED');
+                            canInteractRef.current = 'ENABLED';
+                        }}
+                        className="bg-[#2D4556] border-[6px] border-black rounded-3xl px-8 py-2 font-inter font-bold text-[36px] text-white hover:opacity-90 flex-1"
+                    >
+                        <div className="flex flex-col items-center leading-tight">
+                            <span>INITIATE SAFE</span>
+                            <span>PROCEDURE</span>
+                        </div>
+                    </button>
+                    <button 
+                        onClick={() => {  //close BV1. Do NOT vent SV2, leave both SVs closed and BV closed
+                            // Close SV2 first if a vent is mid-cycle
+                            if (isVentingRef.current) handleButtonClickRef.current("Solenoid Valve 2", 'CLOSE');
+                            handleButtonClickRef.current("Ball Valve", 'CLOSE');
+                            isFillingRef.current = false;
+                            isVentingRef.current = false;
+                            isFillingRef.current = false;
+                            isVentingRef.current = false;
+                            setFillUIActive(false);
+                            setVentUIActive(false);
+                            setVentUIActive(false);
+                            // Re-enable button interaction so operator can open SVs as needed to safely release pressure
+                            setButtonInteractionState('ENABLED');
+                            canInteractRef.current = 'ENABLED';
+                        }}
+                        className="bg-[#1A1A1A] border-[6px] border-black rounded-3xl px-8 py-2 font-inter font-bold text-[36px] text-white hover:opacity-90 flex-1"
+                    >
+                        <div className="flex flex-col items-center leading-tight">
+                            <span>INITIATE</span>
+                            <span>STOP FILL</span>
+                        </div>
+                    </button>
+                </div>}
+            </div>
+        </>
+    );
+}

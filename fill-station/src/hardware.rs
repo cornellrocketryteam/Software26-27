@@ -1,0 +1,125 @@
+use anyhow::Result;
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use async_gpiod::Chip;
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use crate::components::igniter::Igniter;
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use crate::components::solenoid_valve::{SolenoidValve, LinePull};
+
+use crate::components::ads1015::Ads1015;
+use crate::components::ball_valve::BallValve;
+use crate::components::mav::Mav;
+use crate::components::qd_stepper::QdStepper;
+
+const GPIO_CHIP0: &str = "gpiochip1";
+const GPIO_CHIP1: &str = "gpiochip2";
+const I2C_BUS: &str = "/dev/i2c-2";
+const ADC1_ADDRESS: u16 = 0x48;
+const ADC2_ADDRESS: u16 = 0x49;
+/// epwm4 platform device (EHRPWM4_B on pad T21 = channel 1)
+const MAV_PWM_DEVICE: &str = "23040000.pwm";
+const MAV_PWM_CHANNEL: u32 = 1;
+
+pub struct Hardware {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub ig1: Igniter,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub ig2: Igniter,
+    pub adc1: Ads1015,
+    pub adc2: Ads1015,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub sv1: SolenoidValve,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub sv2: SolenoidValve,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub sv3: SolenoidValve,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub sv4: SolenoidValve,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub sv5: SolenoidValve,
+    pub mav: Mav,
+    pub ball_valve: BallValve,
+    pub qd_stepper: QdStepper,
+}
+
+impl Hardware {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub async fn new() -> Result<Self> {
+        let chip0 = Chip::new(GPIO_CHIP0).await?;
+        let chip1 = Chip::new(GPIO_CHIP1).await?;
+        let ig1 = Igniter::new(&chip0, 39, &chip0, 38).await?; // 38 is signal, 39 is continuity
+        let ig2 = Igniter::new(&chip1, 42, &chip0, 40).await?; // 42 is continuity on chip 1, 40 is signal on chip 0
+        
+        let adc1 = Ads1015::new(I2C_BUS, ADC1_ADDRESS)?;
+        let adc2 = Ads1015::new(I2C_BUS, ADC2_ADDRESS)?;
+
+        // SV1 (Normally Closed)
+        let sv1 = SolenoidValve::new(
+            &chip0, 42, // pin to actuate
+            &chip1, 51, // pin to sense
+            LinePull::NormallyClosed
+        ).await?;
+
+        // SV2 (Normally Closed)
+        let sv2 = SolenoidValve::new(
+            &chip0, 32, // GPIO0_32 (P16)
+            &chip0, 35, // GPIO0_35 (P17)
+            LinePull::NormallyClosed
+        ).await?;
+
+        // SV3 (Normally Closed)
+        let sv3 = SolenoidValve::new(
+            &chip1, 44, // GPIO1_44 (D13)
+            &chip0, 37, // GPIO0_37 (W19)
+            LinePull::NormallyClosed
+        ).await?;
+
+        // SV4 (Normally Closed)
+        let sv4 = SolenoidValve::new(
+            &chip0, 41, // GPIO0_41 (R19)
+            &chip0, 36, // GPIO0_36 (T19)
+            LinePull::NormallyClosed
+        ).await?;
+
+        // SV5 (Normally Closed)
+        let sv5 = SolenoidValve::new(
+            &chip1, 48, // GPIO1_48 (D14)
+            &chip1, 46, // GPIO1_46 (A14)
+            LinePull::NormallyClosed
+        ).await?;
+
+        // MAV servo (boots closed)
+        let mav = Mav::new(MAV_PWM_DEVICE, MAV_PWM_CHANNEL, "MAV").await?;
+
+        // Ball Valve
+        // Signal: Chip 1, Line 62
+        // ON_OFF: Chip 1, Line 63
+        let ball_valve = BallValve::new(
+            &chip1, 63, // ON_OFF Pin
+            &chip1, 62, // Signal Pin
+            "BallValve"
+        ).await?;
+
+        // QD Stepper (STEP via GPIO bit-bang, DIR/ENA via GPIO)
+        let qd_stepper = QdStepper::new(
+            &chip1, 58,   // STEP: gpiochip2, line 58 (GPIO1_58, Pull Down)
+            &chip1, 43,   // DIR:  gpiochip2, line 43 (GPIO1_43, Pull Down)
+            &chip1, 64,   // ENA:  gpiochip2, line 64 (GPIO1_64, No Pull)
+            "QD"
+        ).await?;
+
+        Ok(Self { ig1, ig2, adc1, adc2, sv1, sv2, sv3, sv4, sv5, mav, ball_valve, qd_stepper })
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    pub async fn new() -> Result<Self> {
+        let adc1 = Ads1015::new(I2C_BUS, ADC1_ADDRESS)?;
+        let adc2 = Ads1015::new(I2C_BUS, ADC2_ADDRESS)?;
+        let mav = Mav::new(MAV_PWM_DEVICE, MAV_PWM_CHANNEL, "MAV").await?;
+        let ball_valve = BallValve::new(&(), 0, &(), 0, "BallValve").await?;
+        let qd_stepper = QdStepper::new(&(), 0, &(), 0, &(), 0, "QD").await?;
+
+        Ok(Self { adc1, adc2, mav, ball_valve, qd_stepper })
+    }
+}
