@@ -16,8 +16,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # Only build the main binary unless the helpers are wanted
   cargoBuildFlags = lib.optionals (!withHelpers) [
     "--bin"
-    "--liquid"
-    "--hybrid"
     "fill-station"
   ];
 
