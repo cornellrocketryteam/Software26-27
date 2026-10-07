@@ -38,7 +38,7 @@ in
 
     fill-station = {
       action = "respawn";
-      process = lib.getExe pkgs.crt.fill-station;
+      process = "${lib.getExe pkgs.crt.fill-station} --liquid --hybrid";
     };
 
     wpa_supplicant = {

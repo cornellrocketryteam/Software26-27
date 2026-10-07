@@ -113,6 +113,9 @@ fn main() -> Result<()> {
     // Create a log layer for stdout
     let stdout_layer = fmt::layer().with_writer(std::io::stdout);
 
+    let _liquid_fill_mode_check = args.iter().any(|a| a == "--liquid");
+    let _hybrid_fill_mode_check = args.iter().any(|a| a == "--hybrid");
+
     // Combine both layers and enable logging
     tracing_subscriber::registry()
         .with(file_layer)
@@ -120,12 +123,12 @@ fn main() -> Result<()> {
         .init();
 
     //IF --liquid detected print here?????
-    if args.iter().any(|a| a == "--liquid") {
+    if _liquid_fill_mode_check {
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
         println!("~~  LIQUID MODE ON  ~~");
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
     }
-    else if args.iter().any(|a| a == "--hybrid") {
+    else if _hybrid_fill_mode_check {
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
         println!("~~  HYBRID MODE ON  ~~");
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
