@@ -1,0 +1,8 @@
+# Changes applied on top of kernel.config to slim it down to the AM64x.
+#
+# kernel.config is generated, not hand-edited. To apply this fragment:
+#   nix build .#mixosConfigurations.fill-station.config.boot.kernel.resolvedConfig
+#   cp result/config nix/overlays/by-name/crt/fill-station-linux/kernel.config
+# and review result/diffconfig.txt. Options listed in required.config must
+# stay =y. Lines use the usual Kconfig syntax: CONFIG_X=y or
+# "# CONFIG_X is not set".
