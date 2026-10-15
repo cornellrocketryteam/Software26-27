@@ -27,7 +27,6 @@ in
 
   boot.kernel = pkgs.crt.fill-station-linux;
 
-  etc."dropbear".source = pkgs.emptyDirectory;
   etc."hosts".source = pkgs.writeText "etc-hosts" ''
     127.0.0.1      localhost
     ::1            localhost
@@ -41,7 +40,11 @@ in
     };
     sshd = {
       action = "respawn";
-      process = "${lib.getExe' pkgs.crt.dropbear-minimal "dropbear"} -F -R";
+      # -R writes the host key under /etc/dropbear, which must be a real
+      # directory in the writable /etc overlay (an etc."dropbear" entry would
+      # be a symlink into the read-only store). The key is regenerated each boot.
+      # -D reads ./authorized_keys from there too; root's home (/) is read-only.
+      process = "sh -c 'mkdir -p /etc/dropbear && ln -sf ${./authorized_keys} /etc/dropbear/authorized_keys && exec ${lib.getExe' pkgs.crt.dropbear-minimal "dropbear"} -F -R -D /etc/dropbear'";
     };
 
     fill-station = {
