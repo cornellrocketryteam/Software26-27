@@ -13,9 +13,9 @@ cargo run --release
 ```bash
 # Build the entire system image including fill-station
 cd /path/to/Software25-26
-nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
-nix build .#mixosConfigurations.fill-station.config.system.build.sdImage --liquid # This is the command for liquid
-nix build .#mixosConfigurations.fill-station.config.system.build.sdImage --hybrid
+nix build .#mixosConfigurations.fill-station.config.system.build.sdImage # <-- this should just run hybrid stuff by default
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage # hybrid conditional command
+nix build .#mixosConfigurations.fill-station-hybird.config.system.build.sdImage # liquid conditional command
 ```
 
 The server listens on `ws://0.0.0.0:9000` for WebSocket connections. The service starts **automatically on boot**.

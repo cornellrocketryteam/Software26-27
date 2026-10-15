@@ -121,6 +121,8 @@ struct TelemetryPayload { // Send Nanopb package here
 // MQTT PUBLISHER TASK
 // ============================================================================
 
+// This is on a seperate core, build data and then send out via nanopb
+
 pub async fn start_mqtt_publisher(
     _hardware: Arc<Mutex<Hardware>>,
     adc_readings: Arc<Mutex<AdcReadings>>,
@@ -338,7 +340,8 @@ pub async fn start_mqtt_publisher(
         };
 
         // 5. Serialize and publish
-        match serde_json::to_string(&payload) {
+        // Serialize into nanopb binary instead
+        match serde_json::to_string(&payload) { //Sends it as JSON serialize with Nanopb
             Ok(json) => {
                 if let Err(e) = client.try_publish(MQTT_TOPIC, QoS::AtMostOnce, false, json.as_bytes()) {
                     warn!("MQTT publish failed (broker may be offline): {}", e);

@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+message TelemetryPayload {
+    fixed32 sync_word = 1;
+
+    // Shared telemetry
+    uint32 flight_mode = 2;
+    double pressure = 3;
+    double temp = 4;
+    double altitude = 5;
+    double latitude = 6;
+    double longitude = 7;
+    uint32 num_satellites = 8;
+    double gps_time = 9;
+    double mag_x = 10;
+    double mag_y = 11;
+    double mag_z = 12;
+    double accel_x = 13;
+    double accel_y = 14;
+    double accel_z = 15;
+    double gyro_x = 16;
+    double gyro_y = 17;
+    double gyro_z = 18;
+    double pt3 = 19;
+    double pt4 = 20;
+    double rtd = 21;
+    bool sv_2_open = 22;
+    bool mav_open = 23;
+    uint32 ms_since_boot_cfc = 24;
+
+    // Event flags
+    uint32 ssa_drogue_deployed = 25;
+    uint32 ssa_main_deployed = 26;
+    uint32 cmd_n1 = 27;
+    uint32 cmd_n2 = 28;
+    uint32 cmd_n3 = 29;
+    uint32 cmd_n4 = 30;
+    uint32 cmd_a1 = 31;
+    uint32 cmd_a2 = 32;
+    uint32 cmd_a3 = 33;
+
+    // Airbrake & control
+    double airbrake_deployment = 34;
+    double predicted_apogee = 35;
+
+    // Advanced GPS / u-blox
+    uint32 h_acc = 36;
+    uint32 v_acc = 37;
+    double vel_n = 38;
+    double vel_e = 39;
+    double vel_d = 40;
+    double g_speed = 41;
+    uint32 s_acc = 42;
+    uint32 head_acc = 43;
+    uint32 fix_type = 44;
+    int32 head_mot = 45;
+
+    // BLiMS outputs
+    double blims_brakeline_diff = 46;
+    int32 blims_phase_id = 47;
+    double blims_pid_p = 48;
+    double blims_pid_i = 49;
+    double blims_bearing = 50;
+
+    // BLiMS config
+    double blims_upwind_lat = 51;
+    double blims_upwind_lon = 52;
+    double blims_downwind_lat = 53;
+    double blims_downwind_lon = 54;
+    double blims_wind_from_deg = 55;
+
+    // Fill station specific
+    double pt_1_pressure = 56;
+    double pt_2_pressure = 57;
+    bool ball_valve_open = 58;
+    bool sv_1_open = 59;
+    double load_cell = 60;
+    bool ignition = 61;
+    int32 qd_state = 62;
+    uint64 ms_since_boot_fill = 63;
+}
