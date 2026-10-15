@@ -12,11 +12,17 @@ cargo run --release
 ### Production (Nix Build)
 ```bash
 # Build the entire system image including fill-station
-cd /path/to/Software25-26
-nix build .#mixosConfigurations.fill-station.config.system.build.sdImage # <-- this should just run hybrid stuff by default
-nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage # hybrid conditional command
-nix build .#mixosConfigurations.fill-station-hybird.config.system.build.sdImage # liquid conditional command
+cd /path/to/Software26-27
+nix build .#mixosConfigurations.fill-station.config.system.build.sdImage        # `hybrid` feature (default)
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage # `liquid` feature
+nix build .#mixosConfigurations.fill-station-hybrid.config.system.build.sdImage # `hybrid` feature
 ```
+
+The mode is compiled in (Cargo features `liquid` / `hybrid`), not passed as a
+runtime flag. Each `-liquid` / `-hybrid` configuration just sets
+`fillStation.mode` (see `nix/mixos-configurations/fill-station/mode.nix`).
+Locally: `cargo run --release --features liquid`. The two features are
+mutually exclusive; enabling both is a compile error.
 
 The server listens on `ws://0.0.0.0:9000` for WebSocket connections. The service starts **automatically on boot**.
 

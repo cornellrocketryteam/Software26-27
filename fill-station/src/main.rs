@@ -104,6 +104,9 @@ const TELEM_FRESHNESS_MS: u64 = 3_000;
 // ============================================================================
 
 
+// The liquid and hybrid fill procedures are mutually exclusive
+#[cfg(all(feature = "liquid", feature = "hybrid"))]
+compile_error!("features `liquid` and `hybrid` are mutually exclusive; enable at most one");
 
 fn main() -> Result<()> {
 

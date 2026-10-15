@@ -7,10 +7,18 @@
 let
   # Debug builds add tools that are too big for the production (OSPI) image.
   debug = false;
+
+  # The one fill-station build used by both init and /bin, compiled with the
+  # feature selected by fillStation.mode (see ./mode.nix)
+  fill-station = pkgs.crt.fill-station.override {
+    withHelpers = debug; # ADC CLI tools only in debug
+    inherit (config.fillStation) mode;
+  };
 in
 {
   imports = [
     ./fit
+    ./mode.nix
     ./sd-image
   ];
 
@@ -38,7 +46,7 @@ in
 
     fill-station = {
       action = "respawn";
-      process = "${lib.getExe pkgs.crt.fill-station} --liquid --hybrid";
+      process = lib.getExe fill-station;
     };
 
     wpa_supplicant = {
@@ -61,7 +69,7 @@ in
   bin = [
     pkgs.crt.dropbear-minimal
     pkgs.libgpiod
-    (pkgs.crt.fill-station.override { withHelpers = debug; }) # ADC CLI tools only in debug
+    fill-station
     pkgs.iw
     pkgs.wpa_supplicant
   ]
