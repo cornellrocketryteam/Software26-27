@@ -6,6 +6,8 @@ edition = "2024"
 [features]
 liquid = []
 hybrid = []
+# Also publish the payload as JSON on a debug topic (readable in an MQTT client)
+debug-json = []
 default = [
     "tracing/max_level_debug", "tracing/release_max_level_info",
     "log/max_level_debug", "log/release_max_level_info",
@@ -23,7 +25,10 @@ log = "*" # Only here so that I can set the max logging levels
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
-nanopub = "0.2.0"
+
+[build-dependencies]
+bindgen = "0.73"
+cc = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 async-gpiod = "0.3.0"
