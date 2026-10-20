@@ -1,7 +1,9 @@
 {
   lib,
   rustPlatform,
+  buildPackages,
   crt-software-root,
+  nanopb-src,
   # Also build the ADC CLI tools from src/bin/ (adc_monitor, adc_test, ...).
   # Off by default to keep the production image small.
   withHelpers ? false,
@@ -23,6 +25,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--features"
     mode
   ];
+
+  # build.rs generates the telemetry protobuf code with nanopb (Python + protoc,
+  # both run on the build machine) and binds it with bindgen (needs libclang).
+  nativeBuildInputs = [
+    (buildPackages.python3.withPackages (ps: [ ps.protobuf ]))
+    buildPackages.protobuf
+    rustPlatform.bindgenHook
+  ];
+  env = {
+    NANOPB_DIR = "${nanopb-src}";
+    NANOPB_PYTHON = "${buildPackages.python3.withPackages (ps: [ ps.protobuf ])}/bin/python3";
+  };
 
   # Skip tests (since we don't have any)
   doCheck = false;

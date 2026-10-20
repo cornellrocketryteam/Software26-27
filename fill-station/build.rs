@@ -21,7 +21,23 @@ impl bindgen::callbacks::ParseCallbacks for SerializeDerive {
     }
 }
 
-/// Python used to run the nanopb generator (needs protobuf + grpcio-tools).
+/// nanopb source tree (runtime C files + generator). Nix provides it through
+/// $NANOPB_DIR (crt.nanopb-src); otherwise fall back to a local ./vendor/nanopb.
+fn nanopb_dir(manifest_dir: &Path) -> PathBuf {
+    let dir = env::var_os("NANOPB_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| manifest_dir.join("vendor/nanopb"));
+    assert!(
+        dir.join("pb.h").exists(),
+        "nanopb not found at {} (set NANOPB_DIR, e.g. by using `nix develop`, \
+         or clone nanopb 0.4.9.2 into fill-station/vendor/nanopb)",
+        dir.display()
+    );
+    dir
+}
+
+/// Python used to run the nanopb generator. It needs the `protobuf` package, plus
+/// either grpcio-tools or a matching `protoc` on PATH (Nix provides the latter).
 /// Order: $NANOPB_PYTHON, then ./.venv/bin/python, then python3 on PATH.
 fn python(manifest_dir: &Path) -> PathBuf {
     if let Some(p) = env::var_os("NANOPB_PYTHON") {
@@ -37,7 +53,7 @@ fn python(manifest_dir: &Path) -> PathBuf {
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let nanopb = manifest_dir.join("vendor/nanopb");
+    let nanopb = nanopb_dir(&manifest_dir);
     let proto_dir = manifest_dir.join("proto");
     let proto = proto_dir.join("telemetry.proto");
     let csrc = manifest_dir.join("csrc");
@@ -47,6 +63,7 @@ fn main() {
     println!("cargo:rerun-if-changed={}", csrc.join("telemetry_codec.c").display());
     println!("cargo:rerun-if-changed={}", nanopb.join("pb.h").display());
     println!("cargo:rerun-if-env-changed=NANOPB_PYTHON");
+    println!("cargo:rerun-if-env-changed=NANOPB_DIR");
 
     // 1. Generate telemetry.pb.c / telemetry.pb.h into OUT_DIR
     let python = python(&manifest_dir);
@@ -61,7 +78,7 @@ fn main() {
         .unwrap_or_else(|e| panic!("failed to run nanopb generator with {}: {e}", python.display()));
     assert!(
         status.success(),
-        "nanopb generator failed (does {} have protobuf + grpcio-tools installed?)",
+        "nanopb generator failed (does {} have protobuf installed, and grpcio-tools or protoc available?)",
         python.display()
     );
 
