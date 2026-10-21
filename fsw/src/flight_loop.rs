@@ -9,6 +9,13 @@ use crate::umbilical::{self, UmbilicalCommand};
 // TODO: Add //CHALLENGE_# to each fault with its solution
 // TODO: Remove some bools and edit FlightLoop to be able to trigger events with methods
 // ex: a function to say that the umbilical is connected, or umbilical launch, etc.
+//
+// RATE INDEPENDENCE (Phase 4): the loop rate is constants::LOOP_HZ. Behaviour that
+// used to be expressed as "N cycles" is now expressed in real time:
+//   * altitude moving average  -> ALT_WINDOW_S, sized by ALT_BUF_LEN
+//   * apogee filter cadence    -> APOGEE_SAMPLE_PERIOD_MS (time-gated)
+//   * overpressure / N2 debounce -> OVERPRESSURE_CONFIRM_CYCLES / N2_CONFIRM_CYCLES,
+//     chosen to match the time windows validated at 20 Hz
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum LaunchStage {
     None,
@@ -34,9 +41,14 @@ pub struct FlightLoop {
     pub log_armed: bool,
 
     // Internal state tracking
-    alt_buffer: [f32; 10],
+    /// Moving-average history: ALT_BUF_LEN samples covering ALT_WINDOW_S seconds.
+    alt_buffer: [f32; constants::ALT_BUF_LEN],
     alt_index: usize,
     filtered_alt: [f32; 3],
+    /// Deadline for the next apogee-filter sample. None => sample on the next cycle.
+    /// Time-gated so the 3-sample falling check always spans the same real time
+    /// (about 3 x APOGEE_SAMPLE_PERIOD_MS) no matter what LOOP_HZ is.
+    next_apogee_sample: Option<Instant>,
     drogue_entry_time: Option<Instant>,
     main_entry_time: Option<Instant>,
     airbrakes_logged: bool,
@@ -74,9 +86,9 @@ pub struct FlightLoop {
     fault_signal_sent: bool,
     last_alt: f32,
 
-    // Overpressure latch — once PT3 has been above the threshold for 3
-    // consecutive cycles we open SV and fault. Single-sample noise spikes
-    // won't trigger.
+    // Overpressure latch — once PT3 has been above the threshold for
+    // OVERPRESSURE_CONFIRM_CYCLES consecutive cycles (about 150 ms) we open SV and
+    // fault. Single-sample noise spikes won't trigger.
     overpressure_triggered: bool,
     overpressure_count: u8,
 
@@ -183,9 +195,10 @@ impl FlightLoop {
             log_armed: false,
 
             // Initialize internal state
-            alt_buffer: [0.0; 10],
+            alt_buffer: [0.0; constants::ALT_BUF_LEN],
             alt_index: 0,
             filtered_alt: [-1.0; 3],
+            next_apogee_sample: None,
             drogue_entry_time: None,
             main_entry_time: None,
             airbrakes_logged: false,
@@ -222,10 +235,11 @@ impl FlightLoop {
 
     // Resets the internal moving average filters and state.
     pub fn reset_filter_buffers(&mut self) {
-        self.alt_buffer = [self.flight_state.packet.altitude; 10];
-        self.alt_sum = self.flight_state.packet.altitude * 10.0;
+        self.alt_buffer = [self.flight_state.packet.altitude; constants::ALT_BUF_LEN];
+        self.alt_sum = self.flight_state.packet.altitude * constants::ALT_BUF_LEN as f32;
         self.alt_index = 0;
         self.filtered_alt = [-1.0; 3];
+        self.next_apogee_sample = None;
         self.drogue_deployed = false;
         // self.flight_state.flight_mode = FlightMode::Startup;
     }
@@ -360,10 +374,10 @@ impl FlightLoop {
         }
 
         // 5. Transmit telemetry (radio + USB umbilical binary frames)
-        self.flight_state.transmit().await;
+        self.flight_state.transmit().await;  //TODO: can remove from fast flight loop? 
 
         // Save packet to QSPI Flash
-        let now = Instant::now();
+        let now = Instant::now();  //TODO: do we need to save packet every cycle? 
 
         // 6. Payload Heartbeat (1 Hz)
         let should_heartbeat = match self.last_heartbeat {
@@ -388,7 +402,7 @@ impl FlightLoop {
                     now.duration_since(last).as_millis() >= constants::FULL_LOGGING_PERIOD_MS
                 }
             };
-            self.flight_state.save_packet_to_flash(write_full).await;
+            self.flight_state.save_packet_to_flash(write_full).await;  //TODO: do we need? 
             self.last_flash_log = Some(now);
             if write_full {
                 self.last_full_log = Some(now);
@@ -632,10 +646,10 @@ impl FlightLoop {
         }
     }
 
-    /// If PT3 (scaled PSI) exceeds `PT3_OVERPRESSURE_THRESHOLD` for 3
-    /// consecutive cycles, latch SV open and force Fault. One-shot: once
-    /// fired, further calls are a no-op so sensor noise can't re-issue
-    /// commands or overwrite mode decisions.
+    /// If PT3 (scaled PSI) exceeds `PT3_OVERPRESSURE_THRESHOLD` for
+    /// `OVERPRESSURE_CONFIRM_CYCLES` consecutive cycles (about 150 ms), latch SV
+    /// open and force Fault. One-shot: once fired, further calls are a no-op so
+    /// sensor noise can't re-issue commands or overwrite mode decisions.
     pub async fn check_overpressure(&mut self) {
         if self.overpressure_triggered {
             return;
@@ -644,12 +658,13 @@ impl FlightLoop {
         if pt3 > constants::PT3_OVERPRESSURE_THRESHOLD {
             self.overpressure_count = self.overpressure_count.saturating_add(1);
             log::warn!(
-                "OVERPRESSURE: PT3 = {:.1} > {:.1} (count {}/3)",
+                "OVERPRESSURE: PT3 = {:.1} > {:.1} (count {}/{})",
                 pt3,
                 constants::PT3_OVERPRESSURE_THRESHOLD,
                 self.overpressure_count,
+                constants::OVERPRESSURE_CONFIRM_CYCLES,
             );
-            if self.overpressure_count >= 3 {
+            if self.overpressure_count >= constants::OVERPRESSURE_CONFIRM_CYCLES {
                 log::error!(
                     "OVERPRESSURE LATCHED: opening SV and transitioning to Fault"
                 );
@@ -661,7 +676,7 @@ impl FlightLoop {
                 self.overpressure_triggered = true;
             }
         } else {
-            // Reset on any in-range sample so the three spikes must be consecutive.
+            // Reset on any in-range sample so the spikes must be consecutive.
             self.overpressure_count = 0;
         }
     }
@@ -887,10 +902,10 @@ impl FlightLoop {
 
 
                 if self.flight_state.altimeter_state == SensorState::VALID && self.alt_armed {
-                    // Capture oldest value (≈0.5 s ago at 20 Hz) before overwrite
-                    let alt_half_sec_ago = self.alt_buffer[self.alt_index];
+                    // Capture oldest value (ALT_WINDOW_S ago: ALT_BUF_LEN samples back) before overwrite
+                    let alt_window_ago = self.alt_buffer[self.alt_index];
                     // Remove old value from sum
-                    self.alt_sum -= alt_half_sec_ago;
+                    self.alt_sum -= alt_window_ago;
                     // Read new value
                     let current_alt = self.flight_state.packet.altitude;
                     self.alt_buffer[self.alt_index] = current_alt;
@@ -898,18 +913,20 @@ impl FlightLoop {
                     self.alt_sum += current_alt;
 
                     self.alt_index += 1;
-                    if self.alt_index >= 10 {
+                    if self.alt_index >= constants::ALT_BUF_LEN {
                         self.alt_index = 0;
                     }
-                    let avg_alt = self.alt_sum / 10.0;
+                    let avg_alt = self.alt_sum / constants::ALT_BUF_LEN as f32;
 
-                    // N2: vertical speed < 50 ft/s for 5 consecutive loops, only above arming altitude
-                    // Slope over 0.5 s (10 loops) smooths altimeter noise vs. frame-to-frame diff
-                    let vert_speed_ft_s = (current_alt - alt_half_sec_ago) * 2.0 * 3.28084;
+                    // N2: vertical speed < 50 ft/s for N2_CONFIRM_CYCLES consecutive loops
+                    // (about 250 ms), only above arming altitude.
+                    // Slope over ALT_WINDOW_S smooths altimeter noise vs. frame-to-frame diff.
+                    let vert_speed_ft_s =
+                        (current_alt - alt_window_ago) / constants::ALT_WINDOW_S * 3.28084;
                     if current_alt > constants::N2_ARM_ALTITUDE_M && !self.n2_sent {
                         if vert_speed_ft_s < 50.0 {
                             self.n2_low_speed_count += 1;
-                            if self.n2_low_speed_count >= 5 {
+                            if self.n2_low_speed_count >= constants::N2_CONFIRM_CYCLES {
                                 let _ = self.flight_state.payload_uart.write(b"N2\n").await;
                                 log::info!("PAYLOAD: Sent N2 (vert={:.1} ft/s)", vert_speed_ft_s);
                                 self.n2_sent = true;
@@ -920,12 +937,30 @@ impl FlightLoop {
                         }
                     }
 
-                    // Apogee detection
-                    self.filtered_alt[2] = self.filtered_alt[1];
-                    self.filtered_alt[1] = self.filtered_alt[0];
-                    self.filtered_alt[0] = avg_alt;
+                    // Apogee filter: shift in a new sample every APOGEE_SAMPLE_PERIOD_MS
+                    // of real time (not every cycle), so the 3-sample falling check below
+                    // spans the same time window at any loop rate. The deadline advances
+                    // from the previous deadline, so the average cadence stays exact even
+                    // though samples land on loop ticks. If we've fallen more than one
+                    // period behind, re-anchor to now.
+                    let now = Instant::now();
+                    let sample_due = match self.next_apogee_sample {
+                        None => true,
+                        Some(t) => now >= t,
+                    };
+                    if sample_due {
+                        let period = Duration::from_millis(constants::APOGEE_SAMPLE_PERIOD_MS);
+                        self.next_apogee_sample = Some(match self.next_apogee_sample {
+                            Some(t) if t + period > now => t + period,
+                            _ => now + period,
+                        });
+                        self.filtered_alt[2] = self.filtered_alt[1];
+                        self.filtered_alt[1] = self.filtered_alt[0];
+                        self.filtered_alt[0] = avg_alt;
+                    }
 
-                    // Apogee detection logic
+                    // Apogee detection logic (re-evaluated every cycle; filtered_alt only
+                    // changes when a new sample is shifted in above)
                     if self.filtered_alt[2] != -1.0 && self.flight_state.packet.altitude > 76.2
                         && self.filtered_alt[1] != -1.0
                         && self.filtered_alt[0] != -1.0
@@ -1094,7 +1129,8 @@ impl FlightLoop {
                         }
                     } else {
                         let alt = self.flight_state.packet.altitude;
-                        let vel = (alt - self.last_alt) * 20.0;
+                        // One-cycle slope: altitude change per loop tick x loops per second.
+                        let vel = (alt - self.last_alt) * constants::LOOP_HZ as f32;
                         let mut buf = heapless::String::<32>::new();
                         let _ = core::fmt::write(&mut buf, format_args!("A2,{:.1},{:.1}\n", alt, vel));
                         match self.flight_state.payload_uart.write(buf.as_bytes()).await {
