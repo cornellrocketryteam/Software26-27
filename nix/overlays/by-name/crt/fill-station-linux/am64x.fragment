@@ -224,3 +224,48 @@ CONFIG_DEBUG_INFO_NONE=y
 # CONFIG_WLAN_VENDOR_QUANTENNA is not set
 CONFIG_NET_VENDOR_TI=y
 CONFIG_WLAN_VENDOR_TI=y
+
+# --- Pass 3: size tuning ---
+# Optimize for size (CC_OPTIMIZE_FOR_* is a choice; unset the current member)
+CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+# CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE is not set
+# EXPERT exposes the switches below; on its own it changes no defaults
+CONFIG_EXPERT=y
+# No virtual terminal: the console is ttyS2 (serial)
+# CONFIG_VT is not set
+# CONFIG_VT_CONSOLE is not set
+# Debug options (keep KALLSYMS for readable oopses, DEBUG_FS since MixOS mounts it)
+# (DEBUG_KERNEL stays: EXPERT selects it; it only unhides the debug options below)
+# CONFIG_KALLSYMS_ALL is not set
+# CONFIG_SLUB_DEBUG is not set
+# CONFIG_DEBUG_BUGVERBOSE is not set
+# CONFIG_PROFILING is not set
+# CONFIG_RUNTIME_TESTING_MENU is not set
+# Cortex-A53 is ARMv8.0: no SVE, SME, MTE or pointer auth; userspace is 64-bit only
+# CONFIG_ARM64_SVE is not set
+# CONFIG_ARM64_SME is not set
+# CONFIG_ARM64_MTE is not set
+# CONFIG_ARM64_PTR_AUTH is not set
+# CONFIG_COMPAT is not set
+# Kernel features nothing on the image uses
+# CONFIG_KEXEC is not set
+# CONFIG_KEXEC_FILE is not set
+# CONFIG_CRASH_DUMP is not set
+# CONFIG_AUDIT is not set
+# CONFIG_SECURITY is not set
+# CONFIG_BPF_SYSCALL is not set
+# CONFIG_BPF_JIT is not set
+# CONFIG_SWAP is not set
+# CONFIG_HUGETLBFS is not set
+# CONFIG_TRANSPARENT_HUGEPAGE is not set
+# CONFIG_KSM is not set
+# CONFIG_MEMORY_HOTPLUG is not set
+# CONFIG_NAMESPACES is not set
+# CONFIG_MEMCG is not set
+# CONFIG_BLK_CGROUP is not set
+# cpufreq: keep schedutil (default) and performance
+# CONFIG_CPU_FREQ_GOV_USERSPACE is not set
+# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set
+# CONFIG_CPU_FREQ_STAT is not set
+# NXP ISP1760 USB controller (not on this board)
+# CONFIG_USB_ISP1760 is not set
