@@ -171,6 +171,7 @@ pub const SSA_THRESHOLD_MS: u64 = 1000; // Duration to fire ematch
 
 // ADS1015 ADC Configuration
 pub const ADS1015_I2C_ADDR: u8 = 0x48;
+pub const ADS7128_I2C_ADDR: u8 = 0x10;
 
 // Linear scaling coefficients: scaled = m * raw + b
 // PT3 (channel 3)

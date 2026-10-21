@@ -2,12 +2,12 @@
 
 #![no_std]
 #![no_main]
-
+#[cfg(feature = "test_ads7128")] //only for testing purposes -- can remove after 
 use embassy_executor::{Executor, Spawner};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::multicore::{spawn_core1, Stack};
 use embassy_rp::uart::{Async, UartRx};
-use embassy_time::{Duration, Instant, Time, Ticker};
+use embassy_time::{Duration, Instant, Timer};
 use embassy_rp::watchdog::Watchdog;
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -16,6 +16,7 @@ pub mod actuator;
 pub mod airbrake_task;
 mod constants;
 mod driver;
+mod ads7128_test; 
 mod flight_loop;
 #[cfg(any(
     feature = "sim_simple",
@@ -57,6 +58,9 @@ async fn main(spawner: Spawner) {
     log::info!("INIT [1/8]: Starting I2C bus...");
     let i2c_bus = module::init_shared_i2c(p.I2C0, p.PIN_0, p.PIN_1);
     log::info!("INIT [1/8]: I2C bus ready");
+    //only for testing purposes -- uncomment to test the ads7128
+    #[cfg(feature = "test_ads7128")]
+    ads7128_test::run(i2c_bus).await;
 
     // Perform an I2C scan
     /*
@@ -330,15 +334,15 @@ async fn main(spawner: Spawner) {
             // Loop calling update_actuators repeatedly to allow the buzzer state machine to process buzzes
             for _ in 0..20 {
                 flight_state.update_actuators().await;
-                ticker.next().await
-                
+                Timer::after_millis(50).await;
+            }
             log::info!("Wait 2 seconds...");
             Timer::after_millis(2000).await;
             log::info!("Actuating Buzzer 2 times");
             flight_state.buzz(2);
             for _ in 0..15 {
                 flight_state.update_actuators().await;
-                ticker.next().await
+                Timer::after_millis(50).await;
             }
             log::info!("Wait 5 seconds...");
             Timer::after_millis(5000).await;
@@ -514,14 +518,14 @@ async fn main(spawner: Spawner) {
             flight_state.buzz(3);
             for _ in 0..20 {
                 flight_state.update_actuators().await;
-                ticker.next().await
+                Timer::after_millis(50).await;
             }
             Timer::after_millis(2000).await;
             log::info!("Actuating Buzzer 2 times");
             flight_state.buzz(2);
             for _ in 0..15 {
                 flight_state.update_actuators().await;
-                ticker.next().await
+                Timer::after_millis(50).await;
             }
 
             test_cycle += 1;
@@ -737,7 +741,7 @@ async fn main(spawner: Spawner) {
                 if elapsed > constants::LOOP_BUDGET_MS { "OVERRUN" } else { "OK" },
             );
             led.toggle();
-            Timer::after_millis(constants::LOOP_PERIOD_MS).await;
+            Timer::after_millis(constants::MAIN_LOOP_DELAY_MS).await;
         }
 
         // Part 2: deliberate stall — watchdog MUST fire and reset the chip
@@ -790,34 +794,16 @@ async fn main(spawner: Spawner) {
         crate::watchdog::init(Watchdog::new(p.WATCHDOG));
         log::info!("FLIGHT LOOP: Watchdog started ({} ms timeout). Loop running.", constants::WATCHDOG_TIMEOUT_MS);
 
-        // measuring flight loop
-        let mut last_start: Option<Instant> = None; 
-        let mut period_samples: u32 = 0; 
-        let mut period_sum_us: u64 = 0; 
-        let mut period_min_us: u64 = u64::MAX;
-        let mut period_max_us: u64 = 0;          
-
-        let mut ticker = Ticker::every(Duration::from_millis(constants::LOOP_PERIOD_MS));
-
         loop {
             flight_loop.flight_state.cycle_count += 1;
             if flight_loop.flight_state.cycle_count <= 3 {
                 log::info!("FLIGHT LOOP: Cycle {} starting...", flight_loop.flight_state.cycle_count);
             }
 
-            // Feed again immediately after execute() before sleep
-            // This prevents the 50 ms Timer delay from counting toward the timeout
+            // feed before execute() and starts the countdown
+            // If execute() hangs for > WATCHDOG_TIMEOUT_MS, chip resets
             crate::watchdog::feed();
-
-            //measuring flight loop: time since prev iteration begin 
-            if let Some(prev) = last_start {
-                let period_us = start.duration_since(prev).as_micros(); 
-                period_sum_us = period_us;
-                period_min_us = period_min_us.min(period_us); 
-                period_max_us = period_max_us.max(period_us); 
-                period_sample += 1; 
-            }
-
+            let start = Instant::now();
 
             flight_loop.execute().await;
 
@@ -838,21 +824,12 @@ async fn main(spawner: Spawner) {
                 );
             }
 
-            // Toggle LED once per second (every LOOP_HZ cycle)
-            if flight_loop.flight_state.cycle_count % (constants::LOOP_HZ as _) == 0 {
+            // Toggle LED for heartbeat (every 20 cycles = 1 Hz blink at 20 Hz loop)
+            if flight_loop.flight_state.cycle_count % 20 == 0 {
                 led.toggle();
             }
-            // measuring flight loop frequency
-            if period_samples >= 200 {
-                let avg_us = period_sum_us / period_samples as u64; 
-                log::info!("LOOP Period us: avg={} min={} max={} => Hz", avg_us, period_min_us, period_max_us, 1_000_000/avg_us.max(1));
-                period_samples = 0; 
-                period_sum_us = 0; 
-                period_min_us = u64::MAX;
-                period_max_us = 0; 
-            }
 
-            ticker.next().await; 
+            Timer::after_millis(constants::MAIN_LOOP_DELAY_MS).await;
         }
     }
 }
