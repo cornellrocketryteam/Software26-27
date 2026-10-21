@@ -44,7 +44,8 @@ in
       # directory in the writable /etc overlay (an etc."dropbear" entry would
       # be a symlink into the read-only store). The key is regenerated each boot.
       # -D reads ./authorized_keys from there too; root's home (/) is read-only.
-      process = "sh -c 'mkdir -p /etc/dropbear && ln -sf ${./authorized_keys} /etc/dropbear/authorized_keys && exec ${lib.getExe' pkgs.crt.dropbear-minimal "dropbear"} -F -R -D /etc/dropbear'";
+      # -s: key login only (password login never worked here; serial is the fallback).
+      process = "sh -c 'mkdir -p /etc/dropbear && ln -sf ${./authorized_keys} /etc/dropbear/authorized_keys && exec ${lib.getExe' pkgs.crt.dropbear-minimal "dropbear"} -F -R -s -D /etc/dropbear'";
     };
 
     fill-station = {
