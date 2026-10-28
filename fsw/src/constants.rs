@@ -196,3 +196,8 @@ pub const TEST_ACCS_LST: [f64;1057] = [1.056000, 0.969000, 0.999000, 0.969000, 0
 pub const SIM_DATA_PERIOD_MS: u64 = 50; // recorded at 20 Hz
 
 pub const APOGEE_SAMPLE_PERIOD_MS: u64 = 50; 
+
+/// Consecutive over-threshold cycles to latch overpressure (about 150 ms; was 3 at 20 Hz).
+pub const OVERPRESSURE_CONFIRM_CYCLES: u8 = 8;
+/// Consecutive low-speed cycles before sending N2 (about 250 ms; was 5 at 20 Hz).
+pub const N2_CONFIRM_CYCLES: u8 = 13;

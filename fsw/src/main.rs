@@ -7,7 +7,7 @@ use embassy_executor::{Executor, Spawner};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::multicore::{spawn_core1, Stack};
 use embassy_rp::uart::{Async, UartRx};
-use embassy_time::{Duration, Instant, Time, Ticker};
+use embassy_time::{Duration, Instant, Timer, Ticker};
 use embassy_rp::watchdog::Watchdog;
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -330,20 +330,22 @@ async fn main(spawner: Spawner) {
             // Loop calling update_actuators repeatedly to allow the buzzer state machine to process buzzes
             for _ in 0..20 {
                 flight_state.update_actuators().await;
-                ticker.next().await
-                
+                Timer::after_millis(50).await;  
+            } 
             log::info!("Wait 2 seconds...");
             Timer::after_millis(2000).await;
             log::info!("Actuating Buzzer 2 times");
             flight_state.buzz(2);
             for _ in 0..15 {
                 flight_state.update_actuators().await;
-                ticker.next().await
+                Timer::after_millis(50).await;  
             }
+            
             log::info!("Wait 5 seconds...");
             Timer::after_millis(5000).await;
         }
     }
+
 
     #[cfg(feature = "test_sensors")]
     {
@@ -452,7 +454,7 @@ async fn main(spawner: Spawner) {
                 loop_handler.flight_state.packet.pressure = 101325.0 - (test_counter as f32 * 10.0);
                 loop_handler.flight_state.packet.flight_mode = (i % 7) as u32;
 
-                loop_handler.flight_state.save_packet_to_flash().await;
+                loop_handler.flight_state.save_packet_to_flash(true).await;
             }
 
             // Report status
@@ -514,14 +516,14 @@ async fn main(spawner: Spawner) {
             flight_state.buzz(3);
             for _ in 0..20 {
                 flight_state.update_actuators().await;
-                ticker.next().await
+                Timer::after_millis(50).await;  
             }
             Timer::after_millis(2000).await;
             log::info!("Actuating Buzzer 2 times");
             flight_state.buzz(2);
             for _ in 0..15 {
                 flight_state.update_actuators().await;
-                ticker.next().await
+                Timer::after_millis(50).await;  
             }
 
             test_cycle += 1;
@@ -805,18 +807,22 @@ async fn main(spawner: Spawner) {
                 log::info!("FLIGHT LOOP: Cycle {} starting...", flight_loop.flight_state.cycle_count);
             }
 
-            // Feed again immediately after execute() before sleep
+            // Feed before execute() to start the countdown
             // This prevents the 50 ms Timer delay from counting toward the timeout
             crate::watchdog::feed();
+            let start = Instant::now(); 
+
 
             //measuring flight loop: time since prev iteration begin 
             if let Some(prev) = last_start {
                 let period_us = start.duration_since(prev).as_micros(); 
-                period_sum_us = period_us;
+                period_sum_us += period_us;
                 period_min_us = period_min_us.min(period_us); 
                 period_max_us = period_max_us.max(period_us); 
-                period_sample += 1; 
+                period_samples += 1; 
             }
+
+            last_start = Some(start); 
 
 
             flight_loop.execute().await;
@@ -839,13 +845,13 @@ async fn main(spawner: Spawner) {
             }
 
             // Toggle LED once per second (every LOOP_HZ cycle)
-            if flight_loop.flight_state.cycle_count % (constants::LOOP_HZ as _) == 0 {
+            if flight_loop.flight_state.cycle_count % (constants::LOOP_HZ as u32) == 0 {
                 led.toggle();
             }
             // measuring flight loop frequency
             if period_samples >= 200 {
                 let avg_us = period_sum_us / period_samples as u64; 
-                log::info!("LOOP Period us: avg={} min={} max={} => Hz", avg_us, period_min_us, period_max_us, 1_000_000/avg_us.max(1));
+                log::info!("LOOP Period us: avg={} min={} max={} => {} Hz", avg_us, period_min_us, period_max_us, 1_000_000 / avg_us.max(1));
                 period_samples = 0; 
                 period_sum_us = 0; 
                 period_min_us = u64::MAX;
@@ -877,4 +883,4 @@ async fn payload_loopback_task(mut rx: UartRx<'static, Async>) -> ! {
             Err(_) => log::warn!("LOOPBACK: no data in 5s — is the jumper connected?"),
         }
     }
-}
+    }
