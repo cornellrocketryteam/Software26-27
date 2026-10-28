@@ -1,0 +1,170 @@
+[
+  {
+    "domain": "main",
+    "offset": 140,
+    "flags": "PIN_OUTPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 3,
+    "signal": "EHRPWM4_B"
+  },
+  {
+    "domain": "main",
+    "offset": 132,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_32"
+  },
+  {
+    "domain": "main",
+    "offset": 144,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_35"
+  },
+  {
+    "domain": "main",
+    "offset": 148,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_36"
+  },
+  {
+    "domain": "main",
+    "offset": 152,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_37"
+  },
+  {
+    "domain": "main",
+    "offset": 156,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_38"
+  },
+  {
+    "domain": "main",
+    "offset": 160,
+    "flags": "PIN_INPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_39"
+  },
+  {
+    "domain": "main",
+    "offset": 164,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_40"
+  },
+  {
+    "domain": "main",
+    "offset": 168,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_41"
+  },
+  {
+    "domain": "main",
+    "offset": 172,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO0_42"
+  },
+  {
+    "domain": "main",
+    "offset": 520,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_42"
+  },
+  {
+    "domain": "main",
+    "offset": 524,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_43"
+  },
+  {
+    "domain": "main",
+    "offset": 528,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_44"
+  },
+  {
+    "domain": "main",
+    "offset": 536,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_46"
+  },
+  {
+    "domain": "main",
+    "offset": 544,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_48"
+  },
+  {
+    "domain": "main",
+    "offset": 556,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_51"
+  },
+  {
+    "domain": "main",
+    "offset": 584,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_58"
+  },
+  {
+    "domain": "main",
+    "offset": 600,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_62"
+  },
+  {
+    "domain": "main",
+    "offset": 604,
+    "flags": "PIN_OUTPUT_PULLDOWN|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_63"
+  },
+  {
+    "domain": "main",
+    "offset": 608,
+    "flags": "PIN_OUTPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_64"
+  },
+  {
+    "domain": "main",
+    "offset": 176,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 1,
+    "signal": "I2C2_SCL"
+  },
+  {
+    "domain": "main",
+    "offset": 180,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 1,
+    "signal": "I2C2_SDA"
+  },
+  {
+    "domain": "main",
+    "offset": 356,
+    "flags": "PIN_INPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 7,
+    "signal": "GPIO1_1"
+  },
+  {
+    "domain": "main",
+    "offset": 680,
+    "flags": "PIN_OUTPUT|PIN_DRIVE_STRENGTH_NOMINAL",
+    "mode": 0,
+    "signal": "USB0_DRVVBUS"
+  }
+]

@@ -1,0 +1,47 @@
+--- a/board/ti/am64x/evm.c
++++ b/board/ti/am64x/evm.c
+@@ -195,6 +195,24 @@
+ #ifdef CONFIG_BOARD_LATE_INIT
+ int board_late_init(void)
+ {
++	/*
++	 * Boot media from the boot-mode pins. BOOTCOMMAND tries the OSPI FIT
++	 * first only when this is "ospi", so booting with the switches on SD
++	 * always reaches the SD card.
++	 */
++	switch (get_boot_device()) {
++	case BOOT_DEVICE_SPI:
++		env_set("boot_device", "ospi");
++		break;
++	case BOOT_DEVICE_MMC1:
++	case BOOT_DEVICE_MMC2:
++		env_set("boot_device", "mmc");
++		break;
++	default:
++		env_set("boot_device", "other");
++		break;
++	}
++
+ 	if (IS_ENABLED(CONFIG_TI_I2C_BOARD_DETECT)) {
+ 		struct ti_am6_eeprom *ep = TI_AM6_EEPROM_DATA;
+ 
+--- a/board/ti/am64x/am64x.env
++++ b/board/ti/am64x/am64x.env
+@@ -20,6 +20,17 @@
+ bootdir=/boot
+ rd_spec=-
+ 
++ospi_fit_offset=0x800000
++ospi_fit_max=0x37c0000
++ospiboot=echo Booting FIT from OSPI ...;
++	sf probe &&
++	sf read ${addr_fit} ${ospi_fit_offset} 0x40 &&
++	fdt addr -q ${addr_fit} &&
++	fdt header get fitsize totalsize &&
++	itest ${fitsize} -le ${ospi_fit_max} &&
++	sf read ${addr_fit} ${ospi_fit_offset} ${fitsize} &&
++	bootm ${addr_fit}#board-0
++
+ args_usb=run finduuid;setenv bootargs console=${console}
+ 	${optargs}
+ 	root=PARTUUID=${uuid} rw

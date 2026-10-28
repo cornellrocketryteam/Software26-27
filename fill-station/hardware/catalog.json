@@ -1,0 +1,97 @@
+{
+  "igniter": {
+    "label": "Igniter",
+    "ports": {
+      "continuity": {
+        "kind": "gpio",
+        "direction": "input",
+        "bias": "pull-down"
+      },
+      "signal": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "pull-down"
+      }
+    },
+    "settings": {}
+  },
+  "solenoid_valve": {
+    "label": "Solenoid valve",
+    "ports": {
+      "control": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "pull-down"
+      },
+      "sense": {
+        "kind": "gpio",
+        "direction": "input",
+        "bias": "none"
+      }
+    },
+    "settings": {
+      "valve_type": {
+        "label": "Valve behavior",
+        "type": "enum",
+        "choices": [
+          "normally_closed",
+          "normally_open"
+        ],
+        "default": "normally_closed"
+      }
+    }
+  },
+  "ads1015": {
+    "label": "ADS1015 ADC",
+    "ports": {},
+    "settings": {}
+  },
+  "mav_servo": {
+    "label": "MAV servo",
+    "ports": {
+      "pwm": {
+        "kind": "pwm",
+        "direction": "output",
+        "bias": "none"
+      }
+    },
+    "settings": {}
+  },
+  "ball_valve": {
+    "label": "Ball valve",
+    "ports": {
+      "on_off": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "pull-down"
+      },
+      "signal": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "pull-down"
+      }
+    },
+    "settings": {}
+  },
+  "qd_stepper": {
+    "label": "QD stepper",
+    "ports": {
+      "step": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "pull-down"
+      },
+      "direction": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "pull-down"
+      },
+      "enable": {
+        "kind": "gpio",
+        "direction": "output",
+        "bias": "none"
+      }
+    },
+    "settings": {}
+  }
+}

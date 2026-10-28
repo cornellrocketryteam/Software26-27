@@ -2,14 +2,14 @@ import FillButtonComponent from "./subcomponents/FillButtonComponent";
 import { usePropulsion } from "../PropulsionPage";
 
 
-export default function FillComponent() {
+export default function FillComponent({ hardwareAvailable = true }: { hardwareAvailable?: boolean }) {
     const { fillState } = usePropulsion();
     
     const renderContnet  = () => {
         switch (fillState) {
             case 'INITIAL':
                 return (
-                    <FillButtonComponent />
+                    <FillButtonComponent hardwareAvailable={hardwareAvailable} />
                 );
 
             default:

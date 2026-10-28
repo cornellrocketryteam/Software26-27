@@ -80,8 +80,14 @@ CREATE TABLE telemetry_data (
     load_cell DOUBLE PRECISION,        -- Propellant Mass
     ignition BOOLEAN,                  -- Ignition Command
     qd_state SMALLINT,                  -- Quick Disconnect Integer
-    ms_since_boot_fill BIGINT         -- u32
+    ms_since_boot_fill BIGINT,        -- u32
+    availability_version BIGINT NOT NULL DEFAULT 0,
+    configured_devices_mask BIGINT NOT NULL DEFAULT 0,
+    valid_readings_mask BIGINT NOT NULL DEFAULT 0
 );
 
 SELECT create_hypertable('telemetry_data', 'time');
 CREATE INDEX idx_unit_id_time ON telemetry_data (unit_id, time DESC);
+
+-- Complete new installations by applying migrations/001-hardware-availability.sql
+-- before starting ingestion; it installs the availability normalization trigger.

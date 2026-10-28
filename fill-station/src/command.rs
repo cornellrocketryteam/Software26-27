@@ -1,7 +1,7 @@
+use crate::components::umbilical::FswTelemetry;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicI16};
 use std::time::Instant;
-use crate::components::umbilical::FswTelemetry;
 
 /// Last commanded state of fill-station actuators that we can't read back from
 /// hardware. Updated by the command handler, read by the MQTT publisher (and
@@ -29,9 +29,12 @@ impl Default for ActuatorState {
 pub enum Command {
     /// Fire igniters and send launch command to FSW simultaneously
     Launch,
+    GetHardwareAvailability,
     Ignite,
     /// Query continuity for a specific igniter (1 or 2)
-    GetIgniterContinuity { id: u8 },
+    GetIgniterContinuity {
+        id: u8,
+    },
     /// Start streaming ADC readings to this client
     StartAdcStream,
     /// Stop streaming ADC readings to this client
@@ -60,9 +63,13 @@ pub enum Command {
     #[serde(rename = "bv_close")]
     BVClose,
     #[serde(rename = "bv_signal")]
-    BVSignal { state: String }, // "high" or "low"
+    BVSignal {
+        state: String,
+    }, // "high" or "low"
     #[serde(rename = "bv_on_off")]
-    BVOnOff { state: String },  // "high" or "low"
+    BVOnOff {
+        state: String,
+    }, // "high" or "low"
 
     /// Get state of a solenoid valve (actuation and continuity)
     GetValveState {
@@ -70,7 +77,10 @@ pub enum Command {
         valve: String,
     },
     /// Move QD stepper a specific number of steps in a given direction
-    QdMove { steps: u32, direction: bool },
+    QdMove {
+        steps: u32,
+        direction: bool,
+    },
     /// Retract QD using preset steps (CW)
     QdRetract,
     /// Extend QD using preset steps (CCW)
@@ -136,7 +146,12 @@ pub enum Command {
     FswKeyArm,
     /// Disarm the FSW key (force Standby → Startup)
     FswKeyDisarm,
-    FswSetBlimsTarget { upwind_lat: f32, upwind_lon: f32, downwind_lat: f32, downwind_lon: f32 },
+    FswSetBlimsTarget {
+        upwind_lat: f32,
+        upwind_lon: f32,
+        downwind_lat: f32,
+        downwind_lon: f32,
+    },
 }
 
 /// Response sent back to WebSocket clients after command execution
@@ -145,10 +160,22 @@ pub enum Command {
 pub enum CommandResponse {
     Success,
     Error,
+    DeviceUnavailable {
+        devices: Vec<String>,
+    },
+    HardwareAvailability {
+        availability_version: u32,
+        configured_devices_mask: u32,
+    },
     /// ADC reading data
     AdcData {
         timestamp_ms: u64,
         valid: bool,
+        adc1_valid: bool,
+        adc2_valid: bool,
+        valid_readings_mask: u32,
+        availability_version: u32,
+        configured_devices_mask: u32,
         adc1: [ChannelReading; 4],
         adc2: [ChannelReading; 4],
     },
@@ -171,11 +198,18 @@ pub enum CommandResponse {
         telemetry: FswTelemetry,
     },
     /// Fill-station MAV state (last commanded)
-    MavState { open: bool, pulse_width_us: u32 },
+    MavState {
+        open: bool,
+        pulse_width_us: u32,
+    },
     /// Last-commanded ball valve state
-    BallValveState { open: bool },
+    BallValveState {
+        open: bool,
+    },
     /// Last-commanded QD state (-1 retracted, 0 unknown, 1 extended)
-    QdState { state: i16 },
+    QdState {
+        state: i16,
+    },
 }
 
 /// Single ADC channel reading with all relevant data
@@ -191,6 +225,8 @@ pub struct ChannelReading {
 pub struct AdcReadings {
     pub timestamp_ms: u64,
     pub valid: bool,
+    pub adc1_valid: bool,
+    pub adc2_valid: bool,
     pub adc1: [ChannelReading; 4],
     pub adc2: [ChannelReading; 4],
 }
@@ -200,8 +236,18 @@ impl Default for AdcReadings {
         Self {
             timestamp_ms: 0,
             valid: false,
-            adc1: [ChannelReading { raw: 0, voltage: 0.0, scaled: None }; 4],
-            adc2: [ChannelReading { raw: 0, voltage: 0.0, scaled: None }; 4],
+            adc1_valid: false,
+            adc2_valid: false,
+            adc1: [ChannelReading {
+                raw: 0,
+                voltage: 0.0,
+                scaled: None,
+            }; 4],
+            adc2: [ChannelReading {
+                raw: 0,
+                voltage: 0.0,
+                scaled: None,
+            }; 4],
         }
     }
 }
@@ -229,6 +275,55 @@ impl Default for UmbilicalReadings {
             connected: false,
             telemetry: FswTelemetry::default(),
             last_telem_instant: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod availability_tests {
+    use super::*;
+    #[test]
+    fn independent_adc_validity_maps_to_readings() {
+        let mut readings = AdcReadings::default();
+        readings.adc1_valid = true;
+        assert_eq!(readings.valid_readings_mask(), 3);
+        readings.adc1_valid = false;
+        readings.adc2_valid = true;
+        assert_eq!(readings.valid_readings_mask(), 4);
+    }
+}
+
+impl AdcReadings {
+    pub fn valid_readings_mask(&self) -> u32 {
+        (if self.adc1_valid { 3 } else { 0 }) | (if self.adc2_valid { 4 } else { 0 })
+    }
+}
+impl Command {
+    pub fn required_roles(&self) -> Vec<&str> {
+        match self {
+            Self::Launch | Self::Ignite => vec!["ig1", "ig2"],
+            Self::GetIgniterContinuity { id: 1 } => vec!["ig1"],
+            Self::GetIgniterContinuity { id: 2 } => vec!["ig2"],
+            Self::ActuateValve { valve, .. } | Self::GetValveState { valve } => {
+                match valve.to_ascii_lowercase().as_str() {
+                    "sv1" => vec!["sv1"],
+                    "sv2" => vec!["sv2"],
+                    "sv3" => vec!["sv3"],
+                    "sv4" => vec!["sv4"],
+                    "sv5" => vec!["sv5"],
+                    _ => vec![],
+                }
+            }
+            Self::MavOpen { .. } | Self::MavClose | Self::GetMavState => vec!["mav"],
+            Self::BVOpen
+            | Self::BVClose
+            | Self::BVSignal { .. }
+            | Self::BVOnOff { .. }
+            | Self::GetBallValveState => vec!["ball_valve"],
+            Self::QdMove { .. } | Self::QdRetract | Self::QdExtend | Self::GetQdState => {
+                vec!["qd_stepper"]
+            }
+            _ => vec![],
         }
     }
 }

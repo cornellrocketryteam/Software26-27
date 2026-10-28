@@ -4,7 +4,12 @@ import PropulsionPage from './PropulsionPage';
 import RecoveryPage from './RecoveryPage';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
+import { availabilityFromMessage } from './hardwareAvailability';
+import type { HardwareAvailability } from './hardwareAvailability';
+
 type AppContextType = {
+  hardwareAvailability: HardwareAvailability;
+  hardwareAvailabilityRef: React.RefObject<HardwareAvailability>;
   wsRef: React.RefObject<WebSocket | null>;
   currFlightMode: FlightMode;
   setCurrFlightMode: (flightMode: FlightMode) => void;
@@ -27,6 +32,8 @@ export const useAppContext = () => {
 
 function App() {
   const wsRef = useRef<WebSocket | null>(null);
+  const [hardwareAvailability, setHardwareAvailability] = useState<HardwareAvailability>(null);
+  const hardwareAvailabilityRef = useRef<HardwareAvailability>(null);
 
   const uri = "ws://192.168.1.106:9000"; //This is the actual router IP we would use for launch, so make sure any pushed code has this line commented out
   //const uri = "ws://localhost:9000"; //This is for testing on the mock server
@@ -41,6 +48,11 @@ function App() {
   const handleMessage = (event: MessageEvent) => {
     //Parse JSON data here
     const data = JSON.parse(event.data);
+    const availability = availabilityFromMessage(data);
+    if (availability !== undefined) {
+      hardwareAvailabilityRef.current = availability;
+      setHardwareAvailability(availability);
+    }
     if(data.type === "fsw_telemetry"){
       setCurrFlightMode(data.flight_mode as FlightMode);
     }
@@ -51,11 +63,14 @@ function App() {
         let heartbeatInterval: ReturnType<typeof setInterval>;
 
         const connect = () => {
+          hardwareAvailabilityRef.current = null;
+          setHardwareAvailability(null);
           wsRef.current = new WebSocket(uri);
 
           wsRef.current.onopen = () => {
                 console.log("WebSocket connection established.");
                 setWsReady(true);
+                wsRef.current?.send(JSON.stringify({command:"get_hardware_availability"}));
                 // Global heartbeat — keeps the connection alive on every page.
                 // Server disconnects after 15s without one (main.rs:231).
                 heartbeatInterval = setInterval(() => {
@@ -70,6 +85,8 @@ function App() {
                 console.log("WebSocket closed. Reconnecting in 3 seconds...");
                 clearInterval(heartbeatInterval);
                 setWsReady(false);
+                hardwareAvailabilityRef.current = null;
+                setHardwareAvailability(null);
                 reconnectTimeout = setTimeout(connect, 3000);
             };
 
@@ -94,7 +111,7 @@ function App() {
         };
     }, []);
   return (
-    <AppContext.Provider value={{hasLaunched, setHasLaunched, setCurrFlightMode, currFlightMode, wsRef, uri: uri, wsReady}}>
+    <AppContext.Provider value={{hardwareAvailability, hardwareAvailabilityRef, hasLaunched, setHasLaunched, setCurrFlightMode, currFlightMode, wsRef, uri: uri, wsReady}}>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />

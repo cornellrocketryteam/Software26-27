@@ -5,6 +5,7 @@ import DisplayButtonComponent from "./subcomponents/DisplayButtonComponent";
 import InteractiveButtonComponent from "./subcomponents/InteractiveButtonComponent";
 
 interface ButtonComponentProps {
+    available?: boolean;
     actuationLock: actuationLockType;
     buttonName: string;
     transitioning?: boolean
@@ -51,7 +52,7 @@ const labelMap: { [key: string]: [string, string] } = {
   
   
   
-export default function ButtonComponent({ buttonName, actuationLock, currentState = false, transitioning = false, showState = true, alwaysInteractive = false }: ButtonComponentProps) {
+export default function ButtonComponent({ available = true, buttonName, actuationLock, currentState = false, transitioning = false, showState = true, alwaysInteractive = false }: ButtonComponentProps) {
     const {buttonInteractionState} = usePropulsion();
     const label = labelMap[buttonName] ?? ["ON", "OFF"];
     const stateLabels = stateMap[buttonName] ?? ["ON", "OFF"];
@@ -63,6 +64,7 @@ export default function ButtonComponent({ buttonName, actuationLock, currentStat
 
 
     const renderObject = () => {
+        if (!available) return <button disabled className="bg-gray-200 border-[6px] border-black rounded-2xl p-4 w-full">{buttonName}<br />Unavailable</button>;
         if(alwaysInteractive || buttonInteractionState === 'ENABLED') {
             return (
                 <InteractiveButtonComponent />

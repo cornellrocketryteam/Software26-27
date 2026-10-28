@@ -117,7 +117,8 @@
               }
             ]
           },
-          "unit": "pressurepsi"
+          "unit": "pressurepsi",
+          "noValue": "Unavailable"
         },
         "overrides": []
       },
@@ -198,7 +199,8 @@
               }
             ]
           },
-          "unit": "masslb"
+          "unit": "masslb",
+          "noValue": "Unavailable"
         },
         "overrides": []
       },
@@ -215,7 +217,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -278,7 +280,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "noValue": "Unavailable"
         },
         "overrides": [
           {
@@ -379,7 +382,7 @@
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "/.*/",
           "values": false
@@ -530,7 +533,8 @@
               }
             ]
           },
-          "unit": "pressurepsi"
+          "unit": "pressurepsi",
+          "noValue": "Unavailable"
         },
         "overrides": []
       },
@@ -549,7 +553,7 @@
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -628,7 +632,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "noValue": "Unavailable"
         },
         "overrides": []
       },
@@ -647,7 +652,7 @@
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "/.*/",
           "values": false

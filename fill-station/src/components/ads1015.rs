@@ -8,8 +8,11 @@
 /// ```no_run
 /// use fill_station::components::ads1015::{Ads1015, Channel, Gain, DataRate};
 ///
+/// # fn example() -> anyhow::Result<()> {
 /// let mut adc = Ads1015::new("/dev/i2c-2", 0x48)?;
 /// let voltage = adc.read_voltage(Channel::Ain0, Gain::TwoThirds)?;
+/// # Ok(())
+/// # }
 /// ```
 
 use anyhow::Result;

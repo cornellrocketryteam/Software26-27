@@ -1,12 +1,12 @@
 use rumqttc::{Client, MqttOptions, QoS};
 use smol::Timer;
+use smol::lock::Mutex;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use smol::lock::Mutex;
-use tracing::{info, warn, error, debug};
+use tracing::{debug, error, info, warn};
 
-use crate::hardware::Hardware;
 use crate::command::{ActuatorState, AdcReadings, UmbilicalReadings};
+use crate::hardware::Hardware;
 // From the lib crate so the nanopb static library (linked into the lib) comes along
 use fill_station::telemetry_pb::{self, TelemetryPayload};
 
@@ -44,8 +44,10 @@ pub async fn start_mqtt_publisher(
     umbilical_readings: Arc<Mutex<UmbilicalReadings>>,
     actuator_state: Arc<ActuatorState>,
 ) {
-    info!("Starting MQTT publisher task ({}:{}, topic: {}, rate: {} Hz)",
-          BROKER_HOST, BROKER_PORT, MQTT_TOPIC, PUBLISH_RATE_HZ);
+    info!(
+        "Starting MQTT publisher task ({}:{}, topic: {}, rate: {} Hz)",
+        BROKER_HOST, BROKER_PORT, MQTT_TOPIC, PUBLISH_RATE_HZ
+    );
 
     let mut mqttoptions = MqttOptions::new(CLIENT_ID, BROKER_HOST, BROKER_PORT);
     mqttoptions.set_keep_alive(Duration::from_secs(30));
@@ -80,17 +82,26 @@ pub async fn start_mqtt_publisher(
         let ms_since_boot_fill = boot_time.elapsed().as_millis() as u64;
 
         // 1. Gather ADC data
-        let (pt_1_pressure, pt_2_pressure, load_cell) = {
+        let (pt_1_pressure, pt_2_pressure, load_cell, valid_readings_mask) = {
             let adc = adc_readings.lock().await;
-            if adc.valid {
-                (
-                    adc.adc1[0].scaled.unwrap_or(0.0) as f64, // PT1 (ADC1 Ch0)
-                    adc.adc1[1].scaled.unwrap_or(0.0) as f64, // PT2 (ADC1 Ch1)
-                    adc.adc2[1].scaled.unwrap_or(0.0) as f64, // Load cell
-                )
-            } else {
-                (0.0, 0.0, 0.0)
-            }
+            (
+                if adc.adc1_valid {
+                    adc.adc1[0].scaled.unwrap_or(0.0) as f64
+                } else {
+                    0.0
+                },
+                if adc.adc1_valid {
+                    adc.adc1[1].scaled.unwrap_or(0.0) as f64
+                } else {
+                    0.0
+                },
+                if adc.adc2_valid {
+                    adc.adc2[1].scaled.unwrap_or(0.0) as f64
+                } else {
+                    0.0
+                },
+                adc.valid_readings_mask(),
+            )
         };
 
         // 2. Gather FSW telemetry from umbilical
@@ -100,22 +111,29 @@ pub async fn start_mqtt_publisher(
         };
 
         // 3a. Gather last-commanded actuator state (ball valve, QD)
-        let ball_valve_open = actuator_state.ball_valve_open.load(std::sync::atomic::Ordering::Relaxed);
-        let qd_state = actuator_state.qd_state.load(std::sync::atomic::Ordering::Relaxed);
+        let ball_valve_open = actuator_state
+            .ball_valve_open
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let qd_state = actuator_state
+            .qd_state
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         // 3. Gather hardware state (SV1, igniters)
-        let (sv_1_open, ignition) = {
-            #[cfg(any(target_os = "linux", target_os = "android"))]
-            {
-                let hw = _hardware.lock().await;
-                let sv1 = hw.sv1.is_open().await.unwrap_or(false);
-                let ig = hw.ig1.is_igniting().await;
-                (sv1, ig)
-            }
-            #[cfg(not(any(target_os = "linux", target_os = "android")))]
-            {
-                (false, false)
-            }
+        let (sv_1_open, ignition, configured_devices_mask) = {
+            let hw = _hardware.lock().await;
+            let sv1 = match hw.solenoid("sv1") {
+                Some(sv) => sv.is_open().await.unwrap_or(false),
+                None => false,
+            };
+            let ig1 = match hw.igniter("ig1") {
+                Some(ig) => ig.is_igniting().await,
+                None => false,
+            };
+            let ig2 = match hw.igniter("ig2") {
+                Some(ig) => ig.is_igniting().await,
+                None => false,
+            };
+            (sv1, ig1 || ig2, hw.configured_devices_mask)
         };
 
         // 4. Build payload
@@ -184,6 +202,9 @@ pub async fn start_mqtt_publisher(
                 ignition,
                 qd_state: qd_state.into(),
                 ms_since_boot_fill,
+                availability_version: 1,
+                configured_devices_mask,
+                valid_readings_mask,
             }
         } else {
             // FSW not connected — still publish fill station data with zeroed FSW fields
@@ -196,6 +217,9 @@ pub async fn start_mqtt_publisher(
                 ignition,
                 qd_state: qd_state.into(),
                 ms_since_boot_fill,
+                availability_version: 1,
+                configured_devices_mask,
+                valid_readings_mask,
                 ..Default::default()
             }
         };

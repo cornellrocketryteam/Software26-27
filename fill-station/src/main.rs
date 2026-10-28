@@ -1,34 +1,34 @@
 mod command;
-mod hardware;
 mod components;
 mod csv_logger;
+mod hardware;
 mod mqtt_publisher;
 use anyhow::Result;
 use async_tungstenite::{WebSocketStream, tungstenite};
 use smol::Async;
-use smol::stream::StreamExt;
 use smol::Timer;
+use smol::lock::Mutex;
+use smol::stream::StreamExt;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use std::time::{SystemTime, UNIX_EPOCH};
-use smol::lock::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::{Instrument, Level, debug, error, info, span, warn};
 use tracing_subscriber::fmt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tungstenite::Message;
 
-use crate::command::{ActuatorState, AdcReadings, Command, CommandResponse, UmbilicalReadings};
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::command::ChannelReading;
-use crate::hardware::Hardware;
+use crate::command::{ActuatorState, AdcReadings, Command, CommandResponse, UmbilicalReadings};
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::components::umbilical::FswTelemetry;
+use crate::hardware::Hardware;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-use crate::components::ads1015::{Channel, Gain, DataRate};
+use crate::components::ads1015::{Channel, DataRate, Gain};
 
 // ============================================================================
 // ADC CONFIGURATION - Easy to modify
@@ -103,13 +103,11 @@ const TELEM_FRESHNESS_MS: u64 = 3_000;
 // SHARED ADC STATE
 // ============================================================================
 
-
 // The liquid and hybrid fill procedures are mutually exclusive
 #[cfg(all(feature = "liquid", feature = "hybrid"))]
 compile_error!("features `liquid` and `hybrid` are mutually exclusive; enable at most one");
 
 fn main() -> Result<()> {
-
     // Create a log layer for file output
     #[cfg(target_os = "linux")]
     let log_dir = "/tmp/fill-station/logs";
@@ -135,7 +133,7 @@ fn main() -> Result<()> {
         println!("~~  LIQUID MODE ON  ~~");
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
     }
-    
+
     #[cfg(feature = "hybrid")]
     {
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
@@ -171,10 +169,19 @@ fn main() -> Result<()> {
         let safety_counts = active_client_count.clone();
         let safety_umb_readings = umbilical_readings.clone();
         let safety_umb_tx = umb_cmd_tx.clone();
-        smol::spawn(safety_monitor_task(safety_hw, safety_counts, safety_umb_readings, safety_umb_tx)).detach();
+        smol::spawn(safety_monitor_task(
+            safety_hw,
+            safety_counts,
+            safety_umb_readings,
+            safety_umb_tx,
+        ))
+        .detach();
 
         // Spawn background ADC monitoring task
-        info!("Starting ADC monitoring task at {} Hz...", ADC_SAMPLE_RATE_HZ);
+        info!(
+            "Starting ADC monitoring task at {} Hz...",
+            ADC_SAMPLE_RATE_HZ
+        );
         let adc_task_hw = hardware.clone();
         let adc_task_readings = adc_readings.clone();
 
@@ -191,7 +198,13 @@ fn main() -> Result<()> {
         let mqtt_adc = adc_readings.clone();
         let mqtt_umb = umbilical_readings.clone();
         let mqtt_actuators = actuator_state.clone();
-        smol::spawn(mqtt_publisher::start_mqtt_publisher(mqtt_hw, mqtt_adc, mqtt_umb, mqtt_actuators)).detach();
+        smol::spawn(mqtt_publisher::start_mqtt_publisher(
+            mqtt_hw,
+            mqtt_adc,
+            mqtt_umb,
+            mqtt_actuators,
+        ))
+        .detach();
 
         info!("Initializing web socket server...");
         let listener = Async::<TcpListener>::bind(([0, 0, 0, 0], 9000))?;
@@ -226,7 +239,11 @@ fn main() -> Result<()> {
             let umb_tx = umb_cmd_tx.clone();
             let active_clients = active_client_count.clone();
             let actuators = actuator_state.clone();
-            smol::spawn(handle_socket(stream, hw, adc, umb, umb_tx, active_clients, actuators).instrument(span)).detach();
+            smol::spawn(
+                handle_socket(stream, hw, adc, umb, umb_tx, active_clients, actuators)
+                    .instrument(span),
+            )
+            .detach();
         }
     })
 }
@@ -241,6 +258,19 @@ async fn handle_socket(
     active_client_count: Arc<AtomicUsize>,
     actuator_state: Arc<ActuatorState>,
 ) {
+    let configured_devices_mask = hardware.lock().await.configured_devices_mask;
+    if send_response(
+        &mut stream,
+        CommandResponse::HardwareAvailability {
+            availability_version: 1,
+            configured_devices_mask,
+        },
+    )
+    .await
+    .is_err()
+    {
+        return;
+    }
     info!("Client connected");
     active_client_count.fetch_add(1, Ordering::SeqCst);
 
@@ -250,21 +280,21 @@ async fn handle_socket(
     let mut fsw_streaming_enabled = false;
     let mut last_sent_fsw_timestamp = 0u64;
     let mut last_heartbeat = Instant::now();
-    
+
     // Small timeout for non-blocking message receive
     let poll_interval = Duration::from_millis(50);
-    
+
     loop {
         // specific check for 15s timeout
         if last_heartbeat.elapsed() > Duration::from_secs(15) {
-             error!("Client timed out (no heartbeat for 15s) - disconnecting");
-             break;
+            error!("Client timed out (no heartbeat for 15s) - disconnecting");
+            break;
         }
 
         // Try to receive a message with timeout
         let msg_future = stream.next();
         let timeout_future = Timer::after(poll_interval);
-        
+
         match smol::future::or(
             async {
                 match msg_future.await {
@@ -275,12 +305,23 @@ async fn handle_socket(
             async {
                 timeout_future.await;
                 None
-            }
-        ).await {
+            },
+        )
+        .await
+        {
             Some(Ok(Message::Text(message))) => {
                 // Reset heartbeat timer on any valid message
                 last_heartbeat = Instant::now();
-                let response = process_message(&message, &hardware, &adc_readings, &mut streaming_enabled, &mut fsw_streaming_enabled, &umb_cmd_tx, &actuator_state).await;
+                let response = process_message(
+                    &message,
+                    &hardware,
+                    &adc_readings,
+                    &mut streaming_enabled,
+                    &mut fsw_streaming_enabled,
+                    &umb_cmd_tx,
+                    &actuator_state,
+                )
+                .await;
                 if let Err(e) = send_response(&mut stream, response).await {
                     error!("Error sending message: {}", e);
                     break;
@@ -304,6 +345,11 @@ async fn handle_socket(
                         let response = CommandResponse::AdcData {
                             timestamp_ms: readings.timestamp_ms,
                             valid: readings.valid,
+                            adc1_valid: readings.adc1_valid,
+                            adc2_valid: readings.adc2_valid,
+                            valid_readings_mask: readings.valid_readings_mask(),
+                            availability_version: 1,
+                            configured_devices_mask,
                             adc1: readings.adc1,
                             adc2: readings.adc2,
                         };
@@ -334,7 +380,7 @@ async fn handle_socket(
             }
         }
     }
-    
+
     info!("Client disconnected");
     active_client_count.fetch_sub(1, Ordering::SeqCst);
 }
@@ -353,7 +399,15 @@ async fn process_message(
     match serde_json::from_str(message) {
         Ok(command) => {
             info!("Received command: {:?}", command);
-            execute_command(command, hardware, streaming_enabled, fsw_streaming_enabled, umb_cmd_tx, actuator_state).await
+            execute_command(
+                command,
+                hardware,
+                streaming_enabled,
+                fsw_streaming_enabled,
+                umb_cmd_tx,
+                actuator_state,
+            )
+            .await
         }
         Err(e) => {
             warn!("Failed to parse command: {}", e);
@@ -370,7 +424,18 @@ async fn execute_command(
     umb_cmd_tx: &smol::channel::Sender<String>,
     actuator_state: &Arc<ActuatorState>,
 ) -> CommandResponse {
+    let missing = hardware
+        .lock()
+        .await
+        .missing_roles(&command.required_roles());
+    if !missing.is_empty() {
+        return CommandResponse::DeviceUnavailable { devices: missing };
+    }
     match command {
+        Command::GetHardwareAvailability => CommandResponse::HardwareAvailability {
+            availability_version: 1,
+            configured_devices_mask: hardware.lock().await.configured_devices_mask,
+        },
         Command::Launch => {
             let hw_bg = hardware.clone();
             smol::spawn(async move {
@@ -381,11 +446,21 @@ async fn execute_command(
                     // 1. Lock and Turn ON
                     {
                         let hw = hw_bg.lock().await;
-                        if let Err(e) = hw.ig1.set_actuated(true).await {
-                             error!("Failed to actuate igniter 1: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig1")
+                            .expect("preflight checked igniter")
+                            .set_actuated(true)
+                            .await
+                        {
+                            error!("Failed to actuate igniter 1: {}", e);
                         }
-                        if let Err(e) = hw.ig2.set_actuated(true).await {
-                             error!("Failed to actuate igniter 2: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig2")
+                            .expect("preflight checked igniter")
+                            .set_actuated(true)
+                            .await
+                        {
+                            error!("Failed to actuate igniter 2: {}", e);
                         }
                     }
 
@@ -395,11 +470,21 @@ async fn execute_command(
                     // 3. Lock and Turn OFF
                     {
                         let hw = hw_bg.lock().await;
-                        if let Err(e) = hw.ig1.set_actuated(false).await {
-                             error!("Failed to turn off igniter 1: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig1")
+                            .expect("preflight checked igniter")
+                            .set_actuated(false)
+                            .await
+                        {
+                            error!("Failed to turn off igniter 1: {}", e);
                         }
-                        if let Err(e) = hw.ig2.set_actuated(false).await {
-                             error!("Failed to turn off igniter 2: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig2")
+                            .expect("preflight checked igniter")
+                            .set_actuated(false)
+                            .await
+                        {
+                            error!("Failed to turn off igniter 2: {}", e);
                         }
                     }
                 }
@@ -409,14 +494,18 @@ async fn execute_command(
                     warn!("Launch command not supported on this platform");
                     Timer::after(Duration::from_secs(3)).await;
                 }
-                
+
                 info!("Launch sequence completed");
-            }).detach();
+            })
+            .detach();
 
             info!("Sending FSW Launch command via umbilical");
             match umb_cmd_tx.try_send("<L>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::Ignite => {
@@ -429,13 +518,23 @@ async fn execute_command(
                     // 1. Lock and Turn ON
                     {
                         let hw = hw_bg.lock().await;
-                        // Use join to set both simultaneously if possible, or just sequential is fine generally 
+                        // Use join to set both simultaneously if possible, or just sequential is fine generally
                         // as await won't block long for GPIO
-                        if let Err(e) = hw.ig1.set_actuated(true).await {
-                             error!("Failed to actuate igniter 1: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig1")
+                            .expect("preflight checked igniter")
+                            .set_actuated(true)
+                            .await
+                        {
+                            error!("Failed to actuate igniter 1: {}", e);
                         }
-                        if let Err(e) = hw.ig2.set_actuated(true).await {
-                             error!("Failed to actuate igniter 2: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig2")
+                            .expect("preflight checked igniter")
+                            .set_actuated(true)
+                            .await
+                        {
+                            error!("Failed to actuate igniter 2: {}", e);
                         }
                     }
 
@@ -445,11 +544,21 @@ async fn execute_command(
                     // 3. Lock and Turn OFF
                     {
                         let hw = hw_bg.lock().await;
-                        if let Err(e) = hw.ig1.set_actuated(false).await {
-                             error!("Failed to turn off igniter 1: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig1")
+                            .expect("preflight checked igniter")
+                            .set_actuated(false)
+                            .await
+                        {
+                            error!("Failed to turn off igniter 1: {}", e);
                         }
-                        if let Err(e) = hw.ig2.set_actuated(false).await {
-                             error!("Failed to turn off igniter 2: {}", e);
+                        if let Err(e) = hw
+                            .igniter("ig2")
+                            .expect("preflight checked igniter")
+                            .set_actuated(false)
+                            .await
+                        {
+                            error!("Failed to turn off igniter 2: {}", e);
                         }
                     }
                 }
@@ -457,12 +566,13 @@ async fn execute_command(
                 {
                     let _ = hw_bg;
                     warn!("Ignite command not supported on this platform");
-                     // Simulate delay for mock
+                    // Simulate delay for mock
                     Timer::after(Duration::from_secs(3)).await;
                 }
-                
+
                 info!("Ignition sequence completed");
-            }).detach();
+            })
+            .detach();
 
             CommandResponse::Success
         }
@@ -471,11 +581,21 @@ async fn execute_command(
             {
                 let hw = hardware.lock().await;
                 let continuity = match id {
-                    1 => Some(hw.ig1.has_continuity().await),
-                    2 => Some(hw.ig2.has_continuity().await),
+                    1 => Some(
+                        hw.igniter("ig1")
+                            .expect("preflight checked igniter")
+                            .has_continuity()
+                            .await,
+                    ),
+                    2 => Some(
+                        hw.igniter("ig2")
+                            .expect("preflight checked igniter")
+                            .has_continuity()
+                            .await,
+                    ),
                     _ => None,
                 };
-                
+
                 if let Some(c) = continuity {
                     CommandResponse::IgniterContinuity { id, continuity: c }
                 } else {
@@ -486,8 +606,14 @@ async fn execute_command(
             #[cfg(not(any(target_os = "linux", target_os = "android")))]
             {
                 let _ = hardware;
-                warn!("GetIgniterContinuity command not supported on this platform: {}", id);
-                CommandResponse::IgniterContinuity { id, continuity: false }
+                warn!(
+                    "GetIgniterContinuity command not supported on this platform: {}",
+                    id
+                );
+                CommandResponse::IgniterContinuity {
+                    id,
+                    continuity: false,
+                }
             }
         }
         Command::ActuateValve { valve, open } => {
@@ -495,11 +621,36 @@ async fn execute_command(
             {
                 let hw = hardware.lock().await;
                 let result = match valve.to_lowercase().as_str() {
-                    "sv1" => hw.sv1.set_open(open).await,
-                    "sv2" => hw.sv2.set_open(open).await,
-                    "sv3" => hw.sv3.set_open(open).await,
-                    "sv4" => hw.sv4.set_open(open).await,
-                    "sv5" => hw.sv5.set_open(open).await,
+                    "sv1" => {
+                        hw.solenoid("sv1")
+                            .expect("preflight checked valve")
+                            .set_open(open)
+                            .await
+                    }
+                    "sv2" => {
+                        hw.solenoid("sv2")
+                            .expect("preflight checked valve")
+                            .set_open(open)
+                            .await
+                    }
+                    "sv3" => {
+                        hw.solenoid("sv3")
+                            .expect("preflight checked valve")
+                            .set_open(open)
+                            .await
+                    }
+                    "sv4" => {
+                        hw.solenoid("sv4")
+                            .expect("preflight checked valve")
+                            .set_open(open)
+                            .await
+                    }
+                    "sv5" => {
+                        hw.solenoid("sv5")
+                            .expect("preflight checked valve")
+                            .set_open(open)
+                            .await
+                    }
                     _ => {
                         warn!("Unknown valve: {}", valve);
                         return CommandResponse::Error;
@@ -508,11 +659,20 @@ async fn execute_command(
 
                 match result {
                     Ok(_) => {
-                        info!("Valve {} set to {}", valve, if open { "OPEN" } else { "CLOSED" });
+                        info!(
+                            "Valve {} set to {}",
+                            valve,
+                            if open { "OPEN" } else { "CLOSED" }
+                        );
                         CommandResponse::Success
                     }
                     Err(e) => {
-                        error!("Failed to set valve {} {}: {}", valve, if open { "open" } else { "closed" }, e);
+                        error!(
+                            "Failed to set valve {} {}: {}",
+                            valve,
+                            if open { "open" } else { "closed" },
+                            e
+                        );
                         CommandResponse::Error
                     }
                 }
@@ -520,7 +680,10 @@ async fn execute_command(
             #[cfg(not(any(target_os = "linux", target_os = "android")))]
             {
                 let _ = hardware;
-                warn!("ActuateValve command not supported on this platform: {} -> {}", valve, open);
+                warn!(
+                    "ActuateValve command not supported on this platform: {} -> {}",
+                    valve, open
+                );
                 CommandResponse::Success
             }
         }
@@ -529,18 +692,65 @@ async fn execute_command(
             {
                 let hw = hardware.lock().await;
                 let result = match valve.to_lowercase().as_str() {
-                    "sv1" => Some((hw.sv1.is_open().await, hw.sv1.check_continuity().await)),
-                    "sv2" => Some((hw.sv2.is_open().await, hw.sv2.check_continuity().await)),
-                    "sv3" => Some((hw.sv3.is_open().await, hw.sv3.check_continuity().await)),
-                    "sv4" => Some((hw.sv4.is_open().await, hw.sv4.check_continuity().await)),
-                    "sv5" => Some((hw.sv5.is_open().await, hw.sv5.check_continuity().await)),
+                    "sv1" => Some((
+                        hw.solenoid("sv1")
+                            .expect("preflight checked valve")
+                            .is_open()
+                            .await,
+                        hw.solenoid("sv1")
+                            .expect("preflight checked valve")
+                            .check_continuity()
+                            .await,
+                    )),
+                    "sv2" => Some((
+                        hw.solenoid("sv2")
+                            .expect("preflight checked valve")
+                            .is_open()
+                            .await,
+                        hw.solenoid("sv2")
+                            .expect("preflight checked valve")
+                            .check_continuity()
+                            .await,
+                    )),
+                    "sv3" => Some((
+                        hw.solenoid("sv3")
+                            .expect("preflight checked valve")
+                            .is_open()
+                            .await,
+                        hw.solenoid("sv3")
+                            .expect("preflight checked valve")
+                            .check_continuity()
+                            .await,
+                    )),
+                    "sv4" => Some((
+                        hw.solenoid("sv4")
+                            .expect("preflight checked valve")
+                            .is_open()
+                            .await,
+                        hw.solenoid("sv4")
+                            .expect("preflight checked valve")
+                            .check_continuity()
+                            .await,
+                    )),
+                    "sv5" => Some((
+                        hw.solenoid("sv5")
+                            .expect("preflight checked valve")
+                            .is_open()
+                            .await,
+                        hw.solenoid("sv5")
+                            .expect("preflight checked valve")
+                            .check_continuity()
+                            .await,
+                    )),
                     _ => None,
                 };
 
                 match result {
-                    Some((Ok(open), Ok(continuity))) => {
-                        CommandResponse::ValveState { valve, open, continuity }
-                    }
+                    Some((Ok(open), Ok(continuity))) => CommandResponse::ValveState {
+                        valve,
+                        open,
+                        continuity,
+                    },
                     Some((Err(e), _)) => {
                         error!("Failed to get valve state: {}", e);
                         CommandResponse::Error
@@ -558,8 +768,15 @@ async fn execute_command(
             #[cfg(not(any(target_os = "linux", target_os = "android")))]
             {
                 let _ = hardware;
-                warn!("GetValveState command not supported on this platform: {}", valve);
-                CommandResponse::ValveState { valve: valve.to_string(), open: false, continuity: false }
+                warn!(
+                    "GetValveState command not supported on this platform: {}",
+                    valve
+                );
+                CommandResponse::ValveState {
+                    valve: valve.to_string(),
+                    open: false,
+                    continuity: false,
+                }
             }
         }
         Command::StartAdcStream => {
@@ -574,20 +791,31 @@ async fn execute_command(
         }
         Command::MavOpen { duration_ms } => {
             let hw = hardware.lock().await;
-            info!("Opening MAV{}", duration_ms.map(|d| format!(" for {} ms", d)).unwrap_or_default());
-            match hw.mav.open().await {
+            info!(
+                "Opening MAV{}",
+                duration_ms
+                    .map(|d| format!(" for {} ms", d))
+                    .unwrap_or_default()
+            );
+            match hw.mav().expect("preflight checked device").open().await {
                 Ok(generation) => {
                     if let Some(ms) = duration_ms.filter(|&ms| ms > 0) {
                         let hw_bg = hardware.clone();
                         smol::spawn(async move {
                             Timer::after(Duration::from_millis(ms)).await;
                             let hw = hw_bg.lock().await;
-                            match hw.mav.close_if_generation(generation).await {
+                            match hw
+                                .mav()
+                                .expect("preflight checked device")
+                                .close_if_generation(generation)
+                                .await
+                            {
                                 Ok(true) => info!("MAV auto-closed after {} ms", ms),
                                 Ok(false) => {} // superseded by a later open/close
                                 Err(e) => error!("Failed to auto-close MAV: {}", e),
                             }
-                        }).detach();
+                        })
+                        .detach();
                     }
                     CommandResponse::Success
                 }
@@ -600,7 +828,7 @@ async fn execute_command(
         Command::MavClose => {
             let hw = hardware.lock().await;
             info!("Closing MAV");
-            if let Err(e) = hw.mav.close().await {
+            if let Err(e) = hw.mav().expect("preflight checked device").close().await {
                 error!("Failed to close MAV: {}", e);
                 CommandResponse::Error
             } else {
@@ -609,113 +837,168 @@ async fn execute_command(
         }
         Command::GetMavState => {
             let hw = hardware.lock().await;
-            CommandResponse::MavState { open: hw.mav.is_open(), pulse_width_us: hw.mav.pulse_width_us() }
+            CommandResponse::MavState {
+                open: hw.mav().expect("preflight checked device").is_open(),
+                pulse_width_us: hw.mav().expect("preflight checked device").pulse_width_us(),
+            }
         }
         Command::BVOpen => {
             let hw = hardware.lock().await;
             info!("Executing BallValve Open Sequence");
-            if let Err(e) = hw.ball_valve.open_sequence().await {
+            if let Err(e) = hw
+                .ball_valve()
+                .expect("preflight checked device")
+                .open_sequence()
+                .await
+            {
                 error!("Failed to open ball valve: {}", e);
                 CommandResponse::Error
             } else {
-                actuator_state.ball_valve_open.store(true, std::sync::atomic::Ordering::Relaxed);
+                actuator_state
+                    .ball_valve_open
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
                 CommandResponse::Success
             }
         }
         Command::BVClose => {
             let hw = hardware.lock().await;
             info!("Executing BallValve Close Sequence");
-            if let Err(e) = hw.ball_valve.close_sequence().await {
+            if let Err(e) = hw
+                .ball_valve()
+                .expect("preflight checked device")
+                .close_sequence()
+                .await
+            {
                 error!("Failed to close ball valve: {}", e);
                 CommandResponse::Error
             } else {
-                actuator_state.ball_valve_open.store(false, std::sync::atomic::Ordering::Relaxed);
+                actuator_state
+                    .ball_valve_open
+                    .store(false, std::sync::atomic::Ordering::Relaxed);
                 CommandResponse::Success
             }
         }
         Command::BVSignal { state } => {
-             let hw = hardware.lock().await;
-             let high = match state.to_lowercase().as_str() {
-                 "high" | "open" | "true" => true,
-                 "low" | "close" | "false" => false,
-                 _ => {
-                     warn!("Invalid signal state: {}", state);
-                     return CommandResponse::Error;
-                 }
-             };
-             info!("Setting BallValve Signal to {}", if high { "HIGH" } else { "LOW" });
-             
-             if let Err(e) = hw.ball_valve.set_signal_safe(high).await {
-                 error!("Failed to set ball valve signal: {}", e);
-                 // If error is due to ON_OFF being high, it will be caught here
-                 CommandResponse::Error
-             } else {
-                 CommandResponse::Success
-             }
+            let hw = hardware.lock().await;
+            let high = match state.to_lowercase().as_str() {
+                "high" | "open" | "true" => true,
+                "low" | "close" | "false" => false,
+                _ => {
+                    warn!("Invalid signal state: {}", state);
+                    return CommandResponse::Error;
+                }
+            };
+            info!(
+                "Setting BallValve Signal to {}",
+                if high { "HIGH" } else { "LOW" }
+            );
+
+            if let Err(e) = hw
+                .ball_valve()
+                .expect("preflight checked device")
+                .set_signal_safe(high)
+                .await
+            {
+                error!("Failed to set ball valve signal: {}", e);
+                // If error is due to ON_OFF being high, it will be caught here
+                CommandResponse::Error
+            } else {
+                CommandResponse::Success
+            }
         }
         Command::BVOnOff { state } => {
-             let hw = hardware.lock().await;
-             let high = match state.to_lowercase().as_str() {
-                 "high" | "on" | "true" => true,
-                 "low" | "off" | "false" => false,
-                 _ => {
-                     warn!("Invalid ON/OFF state: {}", state);
-                     return CommandResponse::Error;
-                 }
-             };
-             info!("Setting BallValve ON_OFF to {}", if high { "HIGH" } else { "LOW" });
-             
-             if let Err(e) = hw.ball_valve.set_on_off(high).await {
-                 error!("Failed to set ball valve ON_OFF: {}", e);
-                 CommandResponse::Error
-             } else {
-                 CommandResponse::Success
-             }
+            let hw = hardware.lock().await;
+            let high = match state.to_lowercase().as_str() {
+                "high" | "on" | "true" => true,
+                "low" | "off" | "false" => false,
+                _ => {
+                    warn!("Invalid ON/OFF state: {}", state);
+                    return CommandResponse::Error;
+                }
+            };
+            info!(
+                "Setting BallValve ON_OFF to {}",
+                if high { "HIGH" } else { "LOW" }
+            );
+
+            if let Err(e) = hw
+                .ball_valve()
+                .expect("preflight checked device")
+                .set_on_off(high)
+                .await
+            {
+                error!("Failed to set ball valve ON_OFF: {}", e);
+                CommandResponse::Error
+            } else {
+                CommandResponse::Success
+            }
         }
         Command::QdMove { steps, direction } => {
             let hw_bg = hardware.clone();
             smol::spawn(async move {
                 let hw = hw_bg.lock().await;
-                if let Err(e) = hw.qd_stepper.move_steps(steps, direction).await {
+                if let Err(e) = hw
+                    .qd_stepper()
+                    .expect("preflight checked device")
+                    .move_steps(steps, direction)
+                    .await
+                {
                     error!("QD move failed: {}", e);
                 }
-            }).detach();
+            })
+            .detach();
             CommandResponse::Success
         }
         Command::QdRetract => {
-            use crate::components::qd_stepper::{QD_RETRACT_STEPS, QD_RETRACT_DIRECTION};
+            use crate::components::qd_stepper::{QD_RETRACT_DIRECTION, QD_RETRACT_STEPS};
             let hw_bg = hardware.clone();
             smol::spawn(async move {
                 let hw = hw_bg.lock().await;
-                if let Err(e) = hw.qd_stepper.move_steps(QD_RETRACT_STEPS, QD_RETRACT_DIRECTION).await {
+                if let Err(e) = hw
+                    .qd_stepper()
+                    .expect("preflight checked device")
+                    .move_steps(QD_RETRACT_STEPS, QD_RETRACT_DIRECTION)
+                    .await
+                {
                     error!("QD retract failed: {}", e);
                 }
-            }).detach();
-            actuator_state.qd_state.store(-1, std::sync::atomic::Ordering::Relaxed);
+            })
+            .detach();
+            actuator_state
+                .qd_state
+                .store(-1, std::sync::atomic::Ordering::Relaxed);
             CommandResponse::Success
         }
         Command::QdExtend => {
-            use crate::components::qd_stepper::{QD_EXTEND_STEPS, QD_EXTEND_DIRECTION};
+            use crate::components::qd_stepper::{QD_EXTEND_DIRECTION, QD_EXTEND_STEPS};
             let hw_bg = hardware.clone();
             smol::spawn(async move {
                 let hw = hw_bg.lock().await;
-                if let Err(e) = hw.qd_stepper.move_steps(QD_EXTEND_STEPS, QD_EXTEND_DIRECTION).await {
+                if let Err(e) = hw
+                    .qd_stepper()
+                    .expect("preflight checked device")
+                    .move_steps(QD_EXTEND_STEPS, QD_EXTEND_DIRECTION)
+                    .await
+                {
                     error!("QD extend failed: {}", e);
                 }
-            }).detach();
-            actuator_state.qd_state.store(1, std::sync::atomic::Ordering::Relaxed);
+            })
+            .detach();
+            actuator_state
+                .qd_state
+                .store(1, std::sync::atomic::Ordering::Relaxed);
             CommandResponse::Success
         }
-        Command::GetBallValveState => {
-            CommandResponse::BallValveState {
-                open: actuator_state.ball_valve_open.load(std::sync::atomic::Ordering::Relaxed),
-            }
-        }
-        Command::GetQdState => {
-            CommandResponse::QdState {
-                state: actuator_state.qd_state.load(std::sync::atomic::Ordering::Relaxed),
-            }
-        }
+        Command::GetBallValveState => CommandResponse::BallValveState {
+            open: actuator_state
+                .ball_valve_open
+                .load(std::sync::atomic::Ordering::Relaxed),
+        },
+        Command::GetQdState => CommandResponse::QdState {
+            state: actuator_state
+                .qd_state
+                .load(std::sync::atomic::Ordering::Relaxed),
+        },
         Command::Heartbeat => {
             // Heartbeat command just keeps the connection alive
             CommandResponse::Success
@@ -725,154 +1008,220 @@ async fn execute_command(
             info!("Sending FSW Launch command via umbilical");
             match umb_cmd_tx.try_send("<L>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswTriggerDrogue => {
             info!("Sending FSW Trigger Drogue command via umbilical");
             match umb_cmd_tx.try_send("<D>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswTriggerMain => {
             info!("Sending FSW Trigger Main command via umbilical");
             match umb_cmd_tx.try_send("<d>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswOpenMav => {
             info!("Sending FSW Open MAV command via umbilical");
             match umb_cmd_tx.try_send("<M>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswCloseMav => {
             info!("Sending FSW Close MAV command via umbilical");
             match umb_cmd_tx.try_send("<m>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswOpenSv => {
             info!("Sending FSW Open SV command via umbilical");
             match umb_cmd_tx.try_send("<S>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswCloseSv => {
             info!("Sending FSW Close SV command via umbilical");
             match umb_cmd_tx.try_send("<s>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswSafe => {
             info!("Sending FSW Safe command via umbilical");
             match umb_cmd_tx.try_send("<V>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswResetFram => {
             info!("Sending FSW Reset FRAM command via umbilical");
             match umb_cmd_tx.try_send("<F>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswDumpFram => {
             info!("Sending FSW Dump FRAM command via umbilical");
             match umb_cmd_tx.try_send("<f>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswWipeFramReboot => {
             info!("Sending FSW Wipe FRAM + Reboot command via umbilical");
             match umb_cmd_tx.try_send("<X>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswReboot => {
             info!("Sending FSW Reboot command via umbilical");
             match umb_cmd_tx.try_send("<R>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswDumpFlash => {
             info!("Sending FSW Dump Flash command via umbilical");
             match umb_cmd_tx.try_send("<G>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswWipeFlash => {
             info!("Sending FSW Wipe Flash command via umbilical");
             match umb_cmd_tx.try_send("<W>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswFlashInfo => {
             info!("Sending FSW Flash Info command via umbilical");
             match umb_cmd_tx.try_send("<I>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadN1 => {
             info!("Sending FSW Payload N1 command via umbilical");
             match umb_cmd_tx.try_send("<1>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadN2 => {
             info!("Sending FSW Payload N2 command via umbilical");
             match umb_cmd_tx.try_send("<2>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadN3 => {
             info!("Sending FSW Payload N3 command via umbilical");
             match umb_cmd_tx.try_send("<3>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadN4 => {
             info!("Sending FSW Payload N4 command via umbilical");
             match umb_cmd_tx.try_send("<4>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadA1 => {
             info!("Sending FSW Payload A1 command via umbilical");
             match umb_cmd_tx.try_send("<A1>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadA2 => {
             info!("Sending FSW Payload A2 command via umbilical");
             match umb_cmd_tx.try_send("<A2>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswPayloadA3 => {
             info!("Sending FSW Payload A3 command via umbilical");
             match umb_cmd_tx.try_send("<A3>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::StartFswStream => {
@@ -889,27 +1238,50 @@ async fn execute_command(
             info!("Sending FSW Key Arm command via umbilical");
             match umb_cmd_tx.try_send("<KA>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
         Command::FswKeyDisarm => {
             info!("Sending FSW Key Disarm command via umbilical");
             match umb_cmd_tx.try_send("<KD>".into()) {
                 Ok(_) => CommandResponse::Success,
-                Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                Err(e) => {
+                    error!("Failed to send FSW command: {}", e);
+                    CommandResponse::Error
+                }
             }
         }
-        Command::FswSetBlimsTarget { upwind_lat, upwind_lon, downwind_lat, downwind_lon } => {
-            if !(-90.0..=90.0).contains(&upwind_lat) || !(-180.0..=180.0).contains(&upwind_lon) ||
-               !(-90.0..=90.0).contains(&downwind_lat) || !(-180.0..=180.0).contains(&downwind_lon) {
-                error!("FSW SetBlimsTarget rejected: out of range uw_lat={} uw_lon={} dw_lat={} dw_lon={}", upwind_lat, upwind_lon, downwind_lat, downwind_lon);
+        Command::FswSetBlimsTarget {
+            upwind_lat,
+            upwind_lon,
+            downwind_lat,
+            downwind_lon,
+        } => {
+            if !(-90.0..=90.0).contains(&upwind_lat)
+                || !(-180.0..=180.0).contains(&upwind_lon)
+                || !(-90.0..=90.0).contains(&downwind_lat)
+                || !(-180.0..=180.0).contains(&downwind_lon)
+            {
+                error!(
+                    "FSW SetBlimsTarget rejected: out of range uw_lat={} uw_lon={} dw_lat={} dw_lon={}",
+                    upwind_lat, upwind_lon, downwind_lat, downwind_lon
+                );
                 CommandResponse::Error
             } else {
-                let msg = format!("<T,{:.7},{:.7},{:.7},{:.7}>", upwind_lat, upwind_lon, downwind_lat, downwind_lon);
+                let msg = format!(
+                    "<T,{:.7},{:.7},{:.7},{:.7}>",
+                    upwind_lat, upwind_lon, downwind_lat, downwind_lon
+                );
                 info!("Sending FSW SetBlimsTarget: {}", msg);
                 match umb_cmd_tx.try_send(msg) {
                     Ok(_) => CommandResponse::Success,
-                    Err(e) => { error!("Failed to send FSW command: {}", e); CommandResponse::Error }
+                    Err(e) => {
+                        error!("Failed to send FSW command: {}", e);
+                        CommandResponse::Error
+                    }
                 }
             }
         }
@@ -978,7 +1350,8 @@ async fn safety_monitor_task(
         // but no $TELEM flowing) correctly reads as disconnected.
         let umb_connected = {
             let mut umb = umbilical_readings.lock().await;
-            let fresh = umb.last_telem_instant
+            let fresh = umb
+                .last_telem_instant
                 .map(|t| t.elapsed() < Duration::from_millis(TELEM_FRESHNESS_MS))
                 .unwrap_or(false);
             umb.connected = fresh;
@@ -1004,12 +1377,16 @@ async fn safety_monitor_task(
                     {
                         let hw = hardware.lock().await;
                         // Close Ball Valve
-                        if let Err(e) = hw.ball_valve.close_sequence().await {
-                            error!("Failed to close Ball Valve during umbilical safety: {}", e);
+                        if let Some(device) = hw.ball_valve() {
+                            if let Err(e) = device.close_sequence().await {
+                                error!("Failed to close Ball Valve during umbilical safety: {}", e);
+                            }
                         }
                         // Open SV1
-                        if let Err(e) = hw.sv1.set_open(true).await {
-                            error!("Failed to open SV1 during umbilical safety: {}", e);
+                        if let Some(device) = hw.solenoid("sv1") {
+                            if let Err(e) = device.set_open(true).await {
+                                error!("Failed to open SV1 during umbilical safety: {}", e);
+                            }
                         }
                     }
                     #[cfg(not(any(target_os = "linux", target_os = "android")))]
@@ -1035,35 +1412,15 @@ async fn perform_emergency_shutdown(
     hardware: &Arc<Mutex<Hardware>>,
     umb_cmd_tx: &smol::channel::Sender<String>,
 ) {
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    {
-        let hw = hardware.lock().await;
-        info!("EMERGENCY SHUTDOWN: Closing all Valves");
-
-        // Close SV1-SV5
-        let _ = hw.sv1.set_open(false).await;
-        let _ = hw.sv2.set_open(false).await;
-        let _ = hw.sv3.set_open(false).await;
-        let _ = hw.sv4.set_open(false).await;
-        let _ = hw.sv5.set_open(false).await;
-
-        // Close Ball Valve
-        let _ = hw.ball_valve.close_sequence().await;
-    }
-
-    // Close MAV
-    {
-        let hw = hardware.lock().await;
-        info!("EMERGENCY SHUTDOWN: Closing MAV");
-        if let Err(e) = hw.mav.close().await {
-            error!("Failed to close MAV during emergency shutdown: {}", e);
-        }
-    }
+    hardware.lock().await.shutdown().await;
 
     // Send FSW Safe command via umbilical to close FSW SV
     info!("EMERGENCY SHUTDOWN: Sending FSW Open SV command via umbilical");
     if let Err(e) = umb_cmd_tx.try_send("<S>".into()) {
-        error!("Failed to send FSW Open SV command during emergency shutdown: {}", e);
+        error!(
+            "Failed to send FSW Open SV command during emergency shutdown: {}",
+            e
+        );
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
@@ -1076,119 +1433,77 @@ async fn perform_emergency_shutdown(
 // ADC BACKGROUND TASKS
 // ============================================================================
 
-/// Background task that continuously reads ADCs and updates shared state
+/// Read each configured ADC independently; failure cannot invalidate the other adapter/device.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 async fn adc_monitoring_task(
     hardware: Arc<Mutex<Hardware>>,
     adc_readings: Arc<Mutex<AdcReadings>>,
 ) {
-    let sample_interval = Duration::from_millis(1000 / ADC_SAMPLE_RATE_HZ);
-    let channels = [Channel::Ain0, Channel::Ain1, Channel::Ain2, Channel::Ain3];
-    
-    info!("ADC monitoring task started");
-    
+    let interval = Duration::from_millis(1000 / ADC_SAMPLE_RATE_HZ);
     loop {
-        let start = std::time::Instant::now();
-        
-        // Attempt to read ADCs with retry logic
-        match read_all_adcs(&hardware, &channels).await {
-            Ok((adc1_readings, adc2_readings)) => {
-                // Get current timestamp
-                let timestamp_ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis() as u64;
-                
-                // Update shared state
-                let mut readings = adc_readings.lock().await;
-                readings.timestamp_ms = timestamp_ms;
-                readings.valid = true;
-                readings.adc1 = adc1_readings;
-                readings.adc2 = adc2_readings;
-                
-                debug!("ADC readings updated successfully");
-            }
-            Err(e) => {
-                error!("Failed to read ADCs after {} retries: {}", ADC_MAX_RETRIES, e);
-                
-                // Mark readings as invalid
-                let mut readings = adc_readings.lock().await;
-                readings.valid = false;
-                readings.timestamp_ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis() as u64;
-            }
+        let start = Instant::now();
+        let (adc1, adc2) = {
+            let mut hw = hardware.lock().await;
+            let one = read_adc(hw.adc_mut("adc1"), &ADC1_SCALING).await;
+            let two = read_adc(hw.adc_mut("adc2"), &ADC2_SCALING).await;
+            (one, two)
+        };
+        let mut readings = adc_readings.lock().await;
+        readings.timestamp_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        readings.adc1_valid = adc1.is_some();
+        readings.adc2_valid = adc2.is_some();
+        readings.valid = readings.adc1_valid && readings.adc2_valid;
+        if let Some(value) = adc1 {
+            readings.adc1 = value;
         }
-        
-        // Sleep for remainder of sample interval
-        let elapsed = start.elapsed();
-        if elapsed < sample_interval {
-            Timer::after(sample_interval - elapsed).await;
-        } else {
-            warn!("ADC read took {}ms, longer than {}ms interval", 
-                  elapsed.as_millis(), sample_interval.as_millis());
+        if let Some(value) = adc2 {
+            readings.adc2 = value;
         }
+        drop(readings);
+        Timer::after(interval.saturating_sub(start.elapsed())).await;
     }
 }
-
-/// Read all ADC channels with retry logic
 #[cfg(any(target_os = "linux", target_os = "android"))]
-async fn read_all_adcs(
-    hardware: &Arc<Mutex<Hardware>>,
-    channels: &[Channel; 4],
-) -> Result<([ChannelReading; 4], [ChannelReading; 4])> {
-    let mut last_error = None;
-    
+async fn read_adc(
+    adc: Option<&mut crate::components::ads1015::Ads1015>,
+    scaling: &[Option<(f32, f32)>; 4],
+) -> Option<[ChannelReading; 4]> {
+    let adc = adc?;
+    let channels = [Channel::Ain0, Channel::Ain1, Channel::Ain2, Channel::Ain3];
     for attempt in 1..=ADC_MAX_RETRIES {
-        match try_read_all_adcs(hardware, channels).await {
-            Ok(result) => return Ok(result),
+        let result: Result<[ChannelReading; 4]> = (|| {
+            let mut readings = [ChannelReading {
+                raw: 0,
+                voltage: 0.0,
+                scaled: None,
+            }; 4];
+            for (i, channel) in channels.iter().copied().enumerate() {
+                let raw = adc.read_raw(channel, ADC_GAIN, ADC_DATA_RATE)?;
+                readings[i] = ChannelReading {
+                    raw,
+                    voltage: raw as f32 * ADC_GAIN.lsb_size(),
+                    scaled: scaling[i].map(|(scale, offset)| raw as f32 * scale + offset),
+                };
+            }
+            Ok(readings)
+        })();
+        match result {
+            Ok(readings) => return Some(readings),
             Err(e) => {
+                warn!(
+                    "ADC read attempt {}/{} failed: {}",
+                    attempt, ADC_MAX_RETRIES, e
+                );
                 if attempt < ADC_MAX_RETRIES {
-                    warn!("ADC read attempt {}/{} failed: {}, retrying...", 
-                          attempt, ADC_MAX_RETRIES, e);
                     Timer::after(Duration::from_millis(ADC_RETRY_DELAY_MS)).await;
                 }
-                last_error = Some(e);
             }
         }
     }
-    
-    Err(last_error.unwrap())
-}
-
-/// Attempt to read all ADC channels once
-#[cfg(any(target_os = "linux", target_os = "android"))]
-async fn try_read_all_adcs(
-    hardware: &Arc<Mutex<Hardware>>,
-    channels: &[Channel; 4],
-) -> Result<([ChannelReading; 4], [ChannelReading; 4])> {
-    let mut hw = hardware.lock().await;
-    
-    let mut adc1_readings = [ChannelReading { raw: 0, voltage: 0.0, scaled: None }; 4];
-    let mut adc2_readings = [ChannelReading { raw: 0, voltage: 0.0, scaled: None }; 4];
-    
-    // Read ADC1 channels
-    for (i, &channel) in channels.iter().enumerate() {
-        let raw = hw.adc1.read_raw(channel, ADC_GAIN, ADC_DATA_RATE)?;
-        let voltage = (raw as f32) * ADC_GAIN.lsb_size();
-        
-        let scaled = ADC1_SCALING[i].map(|(scale, offset)| raw as f32 * scale + offset);
-        
-        adc1_readings[i] = ChannelReading { raw, voltage, scaled };
-    }
-    
-    // Read ADC2 channels
-    for (i, &channel) in channels.iter().enumerate() {
-        let raw = hw.adc2.read_raw(channel, ADC_GAIN, ADC_DATA_RATE)?;
-        let voltage = (raw as f32) * ADC_GAIN.lsb_size();
-        
-        let scaled = ADC2_SCALING[i].map(|(scale, offset)| raw as f32 * scale + offset);
-        
-        adc2_readings[i] = ChannelReading { raw, voltage, scaled };
-    }
-    
-    Ok((adc1_readings, adc2_readings))
+    None
 }
 
 /// Stub for non-Linux platforms
@@ -1220,7 +1535,10 @@ async fn umbilical_task(
     use std::io::Read as _;
     use std::io::Write as _;
 
-    info!("Umbilical task started, looking for device at {}", UMBILICAL_DEVICE);
+    info!(
+        "Umbilical task started, looking for device at {}",
+        UMBILICAL_DEVICE
+    );
 
     loop {
         // Try to open the serial port
@@ -1275,7 +1593,8 @@ async fn umbilical_task(
                 let write_result = smol::unblock({
                     let mut port_clone = port.try_clone().expect("Failed to clone serial port");
                     move || port_clone.write_all(b"<H>")
-                }).await;
+                })
+                .await;
                 if let Err(e) = write_result {
                     error!("Umbilical heartbeat write failed: {}", e);
                     break;
@@ -1289,7 +1608,8 @@ async fn umbilical_task(
                 let write_result = smol::unblock({
                     let mut port_clone = port.try_clone().expect("Failed to clone serial port");
                     move || port_clone.write_all(&cmd_bytes)
-                }).await;
+                })
+                .await;
                 if let Err(e) = write_result {
                     error!("Umbilical write failed: {}", e);
                     break;
@@ -1306,7 +1626,8 @@ async fn umbilical_task(
                         Err(e) => Err(e),
                     }
                 }
-            }).await;
+            })
+            .await;
 
             match read_result {
                 Ok((data, bytes_read)) => {
@@ -1317,7 +1638,10 @@ async fn umbilical_task(
                     line_buf.push_str(&text);
 
                     if line_buf.len() > LINE_BUF_MAX {
-                        warn!("umbilical line buffer overflow ({} bytes), resetting", line_buf.len());
+                        warn!(
+                            "umbilical line buffer overflow ({} bytes), resetting",
+                            line_buf.len()
+                        );
                         line_buf.clear();
                         newlines_seen = 0;
                         continue;
@@ -1352,7 +1676,8 @@ async fn umbilical_task(
                                 let timestamp_ms = SystemTime::now()
                                     .duration_since(UNIX_EPOCH)
                                     .unwrap()
-                                    .as_millis() as u64;
+                                    .as_millis()
+                                    as u64;
 
                                 {
                                     let mut umb = umbilical_readings.lock().await;
@@ -1360,7 +1685,10 @@ async fn umbilical_task(
                                     umb.telemetry = telemetry;
                                 }
 
-                                debug!("FSW telemetry received: mode={}", telemetry.flight_mode_name());
+                                debug!(
+                                    "FSW telemetry received: mode={}",
+                                    telemetry.flight_mode_name()
+                                );
                             } else {
                                 warn!("Failed to parse FSW telemetry CSV: {}", line);
                             }
@@ -1400,5 +1728,30 @@ async fn umbilical_task(
     warn!("Umbilical not supported on this platform (no serial port)");
     loop {
         Timer::after(Duration::from_secs(3600)).await;
+    }
+}
+
+#[cfg(test)]
+mod hardware_command_tests {
+    use super::*;
+    #[test]
+    fn unavailable_launch_never_queues_fsw_launch() {
+        smol::block_on(async {
+            let hw = Arc::new(Mutex::new(Hardware::default()));
+            let (tx, rx) = smol::channel::unbounded();
+            let response = execute_command(
+                Command::Launch,
+                &hw,
+                &mut false,
+                &mut false,
+                &tx,
+                &Arc::new(ActuatorState::default()),
+            )
+            .await;
+            let json = serde_json::to_value(response).unwrap();
+            assert_eq!(json["type"], "device_unavailable");
+            assert_eq!(json["devices"], serde_json::json!(["ig1", "ig2"]));
+            assert!(rx.try_recv().is_err());
+        });
     }
 }

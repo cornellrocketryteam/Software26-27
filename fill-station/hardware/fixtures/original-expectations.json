@@ -1,0 +1,1040 @@
+{
+  "pins": [
+    {
+      "domain": "main",
+      "offset": 132,
+      "value": 16391,
+      "signal": "GPIO0_32",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:15"
+      ],
+      "ball": "P16"
+    },
+    {
+      "domain": "main",
+      "offset": 144,
+      "value": 344071,
+      "signal": "GPIO0_35",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:7"
+      ],
+      "ball": "P17"
+    },
+    {
+      "domain": "main",
+      "offset": 148,
+      "value": 344071,
+      "signal": "GPIO0_36",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:29"
+      ],
+      "ball": "T19"
+    },
+    {
+      "domain": "main",
+      "offset": 152,
+      "value": 344071,
+      "signal": "GPIO0_37",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:31"
+      ],
+      "ball": "W19"
+    },
+    {
+      "domain": "main",
+      "offset": 156,
+      "value": 16391,
+      "signal": "GPIO0_38",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:16"
+      ],
+      "ball": "Y18"
+    },
+    {
+      "domain": "main",
+      "offset": 160,
+      "value": 278535,
+      "signal": "GPIO0_39",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:18"
+      ],
+      "ball": "N16"
+    },
+    {
+      "domain": "main",
+      "offset": 164,
+      "value": 16391,
+      "signal": "GPIO0_40",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:22"
+      ],
+      "ball": "N17"
+    },
+    {
+      "domain": "main",
+      "offset": 168,
+      "value": 16391,
+      "signal": "GPIO0_41",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:37"
+      ],
+      "ball": "R19"
+    },
+    {
+      "domain": "main",
+      "offset": 172,
+      "value": 16391,
+      "signal": "GPIO0_42",
+      "group": "allgpio0_pins_default",
+      "headers": [
+        "EXPANSION:13"
+      ],
+      "ball": "R20"
+    },
+    {
+      "domain": "main",
+      "offset": 136,
+      "value": 278535,
+      "signal": "GPIO0_33",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "EXPANSION:32"
+      ],
+      "ball": "R18"
+    },
+    {
+      "domain": "main",
+      "offset": 352,
+      "value": 278535,
+      "signal": "GPIO1_0",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:13"
+      ],
+      "ball": "Y1"
+    },
+    {
+      "domain": "main",
+      "offset": 360,
+      "value": 278535,
+      "signal": "GPIO1_2",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:15"
+      ],
+      "ball": "U2"
+    },
+    {
+      "domain": "main",
+      "offset": 364,
+      "value": 278535,
+      "signal": "GPIO1_3",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:16"
+      ],
+      "ball": "V2"
+    },
+    {
+      "domain": "main",
+      "offset": 368,
+      "value": 278535,
+      "signal": "GPIO1_4",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:17"
+      ],
+      "ball": "AA2"
+    },
+    {
+      "domain": "main",
+      "offset": 372,
+      "value": 278535,
+      "signal": "GPIO1_5",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:18"
+      ],
+      "ball": "R3"
+    },
+    {
+      "domain": "main",
+      "offset": 376,
+      "value": 278535,
+      "signal": "GPIO1_6",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:19"
+      ],
+      "ball": "T3"
+    },
+    {
+      "domain": "main",
+      "offset": 380,
+      "value": 278535,
+      "signal": "GPIO1_7",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:20"
+      ],
+      "ball": "T1"
+    },
+    {
+      "domain": "main",
+      "offset": 384,
+      "value": 278535,
+      "signal": "GPIO1_8",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:21"
+      ],
+      "ball": "T2"
+    },
+    {
+      "domain": "main",
+      "offset": 388,
+      "value": 278535,
+      "signal": "GPIO1_9",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:22"
+      ],
+      "ball": "W6"
+    },
+    {
+      "domain": "main",
+      "offset": 392,
+      "value": 278535,
+      "signal": "GPIO1_10",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:23"
+      ],
+      "ball": "AA5"
+    },
+    {
+      "domain": "main",
+      "offset": 396,
+      "value": 278535,
+      "signal": "GPIO1_11",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:24"
+      ],
+      "ball": "Y3"
+    },
+    {
+      "domain": "main",
+      "offset": 400,
+      "value": 278535,
+      "signal": "GPIO1_12",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:25"
+      ],
+      "ball": "AA3"
+    },
+    {
+      "domain": "main",
+      "offset": 404,
+      "value": 278535,
+      "signal": "GPIO1_13",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:26"
+      ],
+      "ball": "R6"
+    },
+    {
+      "domain": "main",
+      "offset": 408,
+      "value": 278535,
+      "signal": "GPIO1_14",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:27"
+      ],
+      "ball": "V4"
+    },
+    {
+      "domain": "main",
+      "offset": 412,
+      "value": 278535,
+      "signal": "GPIO1_15",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:28"
+      ],
+      "ball": "T5"
+    },
+    {
+      "domain": "main",
+      "offset": 416,
+      "value": 278535,
+      "signal": "GPIO1_16",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:7"
+      ],
+      "ball": "U4"
+    },
+    {
+      "domain": "main",
+      "offset": 420,
+      "value": 278535,
+      "signal": "GPIO1_17",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:30"
+      ],
+      "ball": "U1"
+    },
+    {
+      "domain": "main",
+      "offset": 424,
+      "value": 278535,
+      "signal": "GPIO1_18",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:31"
+      ],
+      "ball": "V1"
+    },
+    {
+      "domain": "main",
+      "offset": 428,
+      "value": 278535,
+      "signal": "GPIO1_19",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:32"
+      ],
+      "ball": "W1"
+    },
+    {
+      "domain": "main",
+      "offset": 432,
+      "value": 278535,
+      "signal": "GPIO1_20",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:35"
+      ],
+      "ball": "Y2"
+    },
+    {
+      "domain": "main",
+      "offset": 436,
+      "value": 278535,
+      "signal": "GPIO1_21",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:36",
+        "EXPANSION:8"
+      ],
+      "ball": "W2"
+    },
+    {
+      "domain": "main",
+      "offset": 440,
+      "value": 278535,
+      "signal": "GPIO1_22",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:37"
+      ],
+      "ball": "V3"
+    },
+    {
+      "domain": "main",
+      "offset": 444,
+      "value": 278535,
+      "signal": "GPIO1_23",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:38"
+      ],
+      "ball": "T4"
+    },
+    {
+      "domain": "main",
+      "offset": 448,
+      "value": 278535,
+      "signal": "GPIO1_24",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:39"
+      ],
+      "ball": "W3"
+    },
+    {
+      "domain": "main",
+      "offset": 452,
+      "value": 278535,
+      "signal": "GPIO1_25",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:40"
+      ],
+      "ball": "P4"
+    },
+    {
+      "domain": "main",
+      "offset": 456,
+      "value": 278535,
+      "signal": "GPIO1_26",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:41"
+      ],
+      "ball": "R5"
+    },
+    {
+      "domain": "main",
+      "offset": 460,
+      "value": 278535,
+      "signal": "GPIO1_27",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:42"
+      ],
+      "ball": "W5"
+    },
+    {
+      "domain": "main",
+      "offset": 464,
+      "value": 278535,
+      "signal": "GPIO1_28",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:43"
+      ],
+      "ball": "R1"
+    },
+    {
+      "domain": "main",
+      "offset": 468,
+      "value": 278535,
+      "signal": "GPIO1_29",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:44"
+      ],
+      "ball": "Y5"
+    },
+    {
+      "domain": "main",
+      "offset": 472,
+      "value": 278535,
+      "signal": "GPIO1_30",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:45"
+      ],
+      "ball": "V6"
+    },
+    {
+      "domain": "main",
+      "offset": 476,
+      "value": 278535,
+      "signal": "GPIO1_31",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:46"
+      ],
+      "ball": "W4"
+    },
+    {
+      "domain": "main",
+      "offset": 480,
+      "value": 278535,
+      "signal": "GPIO1_32",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:47"
+      ],
+      "ball": "Y4"
+    },
+    {
+      "domain": "main",
+      "offset": 484,
+      "value": 278535,
+      "signal": "GPIO1_33",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:48",
+        "EXPANSION:10"
+      ],
+      "ball": "T6"
+    },
+    {
+      "domain": "main",
+      "offset": 488,
+      "value": 278535,
+      "signal": "GPIO1_34",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:49"
+      ],
+      "ball": "U6"
+    },
+    {
+      "domain": "main",
+      "offset": 492,
+      "value": 278535,
+      "signal": "GPIO1_35",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:50"
+      ],
+      "ball": "U5"
+    },
+    {
+      "domain": "main",
+      "offset": 496,
+      "value": 278535,
+      "signal": "GPIO1_36",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:51"
+      ],
+      "ball": "AA4"
+    },
+    {
+      "domain": "main",
+      "offset": 500,
+      "value": 278535,
+      "signal": "GPIO1_37",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:52"
+      ],
+      "ball": "V5"
+    },
+    {
+      "domain": "main",
+      "offset": 512,
+      "value": 278535,
+      "signal": "GPIO1_40",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:11"
+      ],
+      "ball": "P2"
+    },
+    {
+      "domain": "main",
+      "offset": 516,
+      "value": 278535,
+      "signal": "GPIO1_41",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "PRU:9"
+      ],
+      "ball": "P3"
+    },
+    {
+      "domain": "main",
+      "offset": 532,
+      "value": 278535,
+      "signal": "GPIO1_45",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "EXPANSION:19"
+      ],
+      "ball": "A13"
+    },
+    {
+      "domain": "main",
+      "offset": 540,
+      "value": 278535,
+      "signal": "GPIO1_47",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "EXPANSION:12"
+      ],
+      "ball": "B14"
+    },
+    {
+      "domain": "main",
+      "offset": 548,
+      "value": 278535,
+      "signal": "GPIO1_49",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "EXPANSION:40"
+      ],
+      "ball": "C14"
+    },
+    {
+      "domain": "main",
+      "offset": 552,
+      "value": 278535,
+      "signal": "GPIO1_50",
+      "group": "idlemain_pins_default",
+      "headers": [
+        "EXPANSION:38"
+      ],
+      "ball": "B15"
+    },
+    {
+      "domain": "main",
+      "offset": 520,
+      "value": 344071,
+      "signal": "GPIO1_42",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:24"
+      ],
+      "ball": "D12"
+    },
+    {
+      "domain": "main",
+      "offset": 524,
+      "value": 16391,
+      "signal": "GPIO1_43",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:26"
+      ],
+      "ball": "C13"
+    },
+    {
+      "domain": "main",
+      "offset": 528,
+      "value": 16391,
+      "signal": "GPIO1_44",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:23"
+      ],
+      "ball": "D13"
+    },
+    {
+      "domain": "main",
+      "offset": 536,
+      "value": 344071,
+      "signal": "GPIO1_46",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:21"
+      ],
+      "ball": "A14"
+    },
+    {
+      "domain": "main",
+      "offset": 544,
+      "value": 16391,
+      "signal": "GPIO1_48",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:11"
+      ],
+      "ball": "D14"
+    },
+    {
+      "domain": "main",
+      "offset": 556,
+      "value": 344071,
+      "signal": "GPIO1_51",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:35"
+      ],
+      "ball": "A15"
+    },
+    {
+      "domain": "main",
+      "offset": 584,
+      "value": 16391,
+      "signal": "GPIO1_58",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:36"
+      ],
+      "ball": "D16"
+    },
+    {
+      "domain": "main",
+      "offset": 600,
+      "value": 16391,
+      "signal": "GPIO1_62",
+      "group": "allgpio1_pins_default",
+      "headers": [],
+      "ball": "C17"
+    },
+    {
+      "domain": "main",
+      "offset": 604,
+      "value": 16391,
+      "signal": "GPIO1_63",
+      "group": "allgpio1_pins_default",
+      "headers": [],
+      "ball": "D17"
+    },
+    {
+      "domain": "main",
+      "offset": 608,
+      "value": 81927,
+      "signal": "GPIO1_64",
+      "group": "allgpio1_pins_default",
+      "headers": [
+        "EXPANSION:28"
+      ],
+      "ball": "A18"
+    },
+    {
+      "domain": "main",
+      "offset": 356,
+      "value": 344071,
+      "signal": "GPIO1_1",
+      "group": "prutest_pins_default",
+      "headers": [
+        "PRU:14"
+      ],
+      "ball": "R4"
+    },
+    {
+      "domain": "main",
+      "offset": 176,
+      "value": 344065,
+      "signal": "I2C2_SCL",
+      "group": "senseboard_pins_default",
+      "headers": [
+        "EXPANSION:5"
+      ],
+      "ball": "P19"
+    },
+    {
+      "domain": "main",
+      "offset": 180,
+      "value": 344065,
+      "signal": "I2C2_SDA",
+      "group": "senseboard_pins_default",
+      "headers": [
+        "EXPANSION:3"
+      ],
+      "ball": "R21"
+    },
+    {
+      "domain": "main",
+      "offset": 140,
+      "value": 81923,
+      "signal": "EHRPWM4_B",
+      "group": "mav_pins_default",
+      "headers": [
+        "EXPANSION:33"
+      ],
+      "ball": "T21"
+    },
+    {
+      "domain": "main",
+      "offset": 680,
+      "value": 81920,
+      "signal": "USB0_DRVVBUS",
+      "group": "usb_pins_default",
+      "headers": [],
+      "ball": "E19"
+    },
+    {
+      "domain": "mcu",
+      "offset": 0,
+      "value": 278535,
+      "signal": "MCU_GPIO0_13",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:8"
+      ],
+      "ball": "D6"
+    },
+    {
+      "domain": "mcu",
+      "offset": 4,
+      "value": 278535,
+      "signal": "MCU_GPIO0_12",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:3"
+      ],
+      "ball": "C6"
+    },
+    {
+      "domain": "mcu",
+      "offset": 8,
+      "value": 278535,
+      "signal": "MCU_GPIO0_11",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:18"
+      ],
+      "ball": "E6"
+    },
+    {
+      "domain": "mcu",
+      "offset": 12,
+      "value": 278535,
+      "signal": "MCU_GPIO0_10",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:6"
+      ],
+      "ball": "E7"
+    },
+    {
+      "domain": "mcu",
+      "offset": 16,
+      "value": 278535,
+      "signal": "MCU_GPIO0_4",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:4"
+      ],
+      "ball": "B6"
+    },
+    {
+      "domain": "mcu",
+      "offset": 24,
+      "value": 278535,
+      "signal": "MCU_GPIO0_6",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:10"
+      ],
+      "ball": "B7"
+    },
+    {
+      "domain": "mcu",
+      "offset": 28,
+      "value": 278535,
+      "signal": "MCU_GPIO0_7",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:11"
+      ],
+      "ball": "D7"
+    },
+    {
+      "domain": "mcu",
+      "offset": 32,
+      "value": 278535,
+      "signal": "MCU_GPIO0_8",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:5"
+      ],
+      "ball": "C7"
+    },
+    {
+      "domain": "mcu",
+      "offset": 36,
+      "value": 278535,
+      "signal": "MCU_GPIO0_9",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:14"
+      ],
+      "ball": "C8"
+    },
+    {
+      "domain": "mcu",
+      "offset": 56,
+      "value": 278535,
+      "signal": "MCU_GPIO0_14",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:13"
+      ],
+      "ball": "C9"
+    },
+    {
+      "domain": "mcu",
+      "offset": 60,
+      "value": 278535,
+      "signal": "MCU_GPIO0_15",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:19"
+      ],
+      "ball": "D9"
+    },
+    {
+      "domain": "mcu",
+      "offset": 64,
+      "value": 278535,
+      "signal": "MCU_GPIO0_16",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:12"
+      ],
+      "ball": "B8"
+    },
+    {
+      "domain": "mcu",
+      "offset": 68,
+      "value": 278535,
+      "signal": "MCU_GPIO0_17",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:17"
+      ],
+      "ball": "B9"
+    },
+    {
+      "domain": "mcu",
+      "offset": 72,
+      "value": 344071,
+      "signal": "MCU_GPIO0_18",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:24"
+      ],
+      "ball": "E9"
+    },
+    {
+      "domain": "mcu",
+      "offset": 76,
+      "value": 344071,
+      "signal": "MCU_GPIO0_19",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:21"
+      ],
+      "ball": "A10"
+    },
+    {
+      "domain": "mcu",
+      "offset": 80,
+      "value": 278535,
+      "signal": "MCU_GPIO0_20",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:22"
+      ],
+      "ball": "A11"
+    },
+    {
+      "domain": "mcu",
+      "offset": 84,
+      "value": 278535,
+      "signal": "MCU_GPIO0_21",
+      "group": "idlemcu_pins_default",
+      "headers": [
+        "MCU:16"
+      ],
+      "ball": "B10"
+    }
+  ],
+  "pinctrl": {
+    "gpio:main": [
+      "allgpio0_pins_default",
+      "idlemain_pins_default",
+      "allgpio1_pins_default",
+      "prutest_pins_default"
+    ],
+    "main_i2c2": [
+      "senseboard_pins_default"
+    ],
+    "epwm4": [
+      "mav_pins_default"
+    ],
+    "usb0": [
+      "usb_pins_default"
+    ],
+    "gpio:mcu": [
+      "idlemcu_pins_default"
+    ]
+  },
+  "idle_gpio_lines": {
+    "main_gpio0": [
+      33
+    ],
+    "main_gpio1": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      40,
+      41,
+      45,
+      47,
+      49,
+      50
+    ],
+    "mcu_gpio0": [
+      4,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ]
+  },
+  "controllers": {
+    "main_i2c0": "disabled",
+    "main_i2c2": "okay",
+    "main_i2c3": "disabled",
+    "mcu_i2c0": "disabled",
+    "mcu_i2c1": "disabled",
+    "epwm0": "disabled",
+    "epwm1": "disabled",
+    "epwm2": "disabled",
+    "epwm3": "disabled",
+    "epwm4": "okay",
+    "epwm5": "disabled",
+    "epwm6": "disabled",
+    "epwm7": "disabled",
+    "epwm8": "disabled"
+  }
+}

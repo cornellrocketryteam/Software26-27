@@ -78,4 +78,7 @@ message TelemetryPayload {
     bool ignition = 61;
     int32 qd_state = 62;
     uint64 ms_since_boot_fill = 63;
+  uint32 availability_version = 64;
+  uint32 configured_devices_mask = 65;
+  uint32 valid_readings_mask = 66;
 }

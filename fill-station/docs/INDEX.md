@@ -59,11 +59,16 @@ Complete documentation for the Cornell Rocketry Team fill station server.
   - I2C configuration
   - Calibration procedures
 
-- **[DTBO_BUILDER.md](DTBO_BUILDER.md)** - Device Tree Overlay automated builder
-  - Automated SysConfig to DTBO conversion
+- **[HARDWARE_CONFIG.md](HARDWARE_CONFIG.md)** - Complete hardware editor usage guide in plain language
+  - Features, everyday steps, limits, mistakes to avoid, troubleshooting, and FAQs
+- **[HARDWARE_CONFIG_TESTING.md](HARDWARE_CONFIG_TESTING.md)** - Hardware editor testing checklist
+  - Laptop tests, browser checks, image builds, and physical bench checks
+
+- **[DTBO_BUILDER.md](DTBO_BUILDER.md)** - Hardware editor and generated Device Tree Overlay
+  - JSON profiles shared by Rust wiring and device-tree generation
   - How to update pinmux configuration
-- **[PRU_HEADER.md](PRU_HEADER.md)** - Adding GPIO / I2C / PWM / SPI on the PRU header pads
-  - Usable pads, per-peripheral overlay recipes, on-board tests
+- **[PRU_HEADER.md](PRU_HEADER.md)** - PRU, expansion and MCU header connections
+  - Usable pads, I²C routes, protected resources and idle behavior
   - Integrated into Nix build system
 
 - **[WIFI_SETUP.md](WIFI_SETUP.md)** - Wi-Fi Configuration Guide

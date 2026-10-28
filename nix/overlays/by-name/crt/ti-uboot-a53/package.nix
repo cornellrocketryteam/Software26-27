@@ -16,6 +16,8 @@ buildUBoot {
   '';
   extraPatches = [
     ./patches/ti-board-detect-fixes.patch
+    # boot_device env var + `ospiboot` (boot the FIT from OSPI at 0x800000)
+    ./patches/ospi-boot.patch
   ];
 
   extraMeta.platforms = [ "aarch64-linux" ];

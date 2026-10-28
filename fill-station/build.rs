@@ -53,14 +53,44 @@ fn python(manifest_dir: &Path) -> PathBuf {
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let liquid = env::var_os("CARGO_FEATURE_LIQUID").is_some();
+    let hybrid = env::var_os("CARGO_FEATURE_HYBRID").is_some();
+    assert!(
+        !(liquid && hybrid),
+        "liquid and hybrid hardware features are mutually exclusive"
+    );
+    let profile = if liquid {
+        "liquid"
+    } else if hybrid {
+        "hybrid"
+    } else {
+        "none"
+    };
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("hardware").display()
+    );
+    let status = Command::new(python(&manifest_dir))
+        .arg(manifest_dir.join("hardware/compiler.py"))
+        .args(["--profile", profile, "--output"])
+        .arg(&out_dir)
+        .status()
+        .expect("failed to execute hardware configuration compiler");
+    assert!(status.success(), "hardware configuration validation failed");
     let nanopb = nanopb_dir(&manifest_dir);
     let proto_dir = manifest_dir.join("proto");
     let proto = proto_dir.join("telemetry.proto");
     let csrc = manifest_dir.join("csrc");
 
     println!("cargo:rerun-if-changed={}", proto.display());
-    println!("cargo:rerun-if-changed={}", csrc.join("telemetry_codec.h").display());
-    println!("cargo:rerun-if-changed={}", csrc.join("telemetry_codec.c").display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        csrc.join("telemetry_codec.h").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        csrc.join("telemetry_codec.c").display()
+    );
     println!("cargo:rerun-if-changed={}", nanopb.join("pb.h").display());
     println!("cargo:rerun-if-env-changed=NANOPB_PYTHON");
     println!("cargo:rerun-if-env-changed=NANOPB_DIR");
@@ -75,7 +105,12 @@ fn main() {
         .arg(&out_dir)
         .arg(&proto)
         .status()
-        .unwrap_or_else(|e| panic!("failed to run nanopb generator with {}: {e}", python.display()));
+        .unwrap_or_else(|e| {
+            panic!(
+                "failed to run nanopb generator with {}: {e}",
+                python.display()
+            )
+        });
     assert!(
         status.success(),
         "nanopb generator failed (does {} have protobuf installed, and grpcio-tools or protoc available?)",

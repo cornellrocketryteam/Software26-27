@@ -19,6 +19,7 @@ in
   imports = [
     ./fit
     ./mode.nix
+    ./ospi-image
     ./sd-image
   ];
 

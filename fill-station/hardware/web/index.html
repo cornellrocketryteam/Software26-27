@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fill station · Hardware editor</title>
+<link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script>
+</head>
+<body>
+<header class="toolbar"><div class="identity"><span class="boardmark" aria-hidden="true">▦</span><div><span class="eyebrow">CORNELL ROCKETRY · SK-AM64B</span><h1>Hardware editor</h1></div></div><div class="actions"><label class="profile-label">Application <select id="profile" aria-label="Application profile"><option value="liquid">Liquid</option><option value="hybrid">Hybrid</option></select></label><button id="discard">Discard changes</button><button id="validate">Validate</button><button id="save" class="primary">Save profile</button></div></header>
+<div class="statusbar"><span id="status" role="status">Loading hardware profiles…</span><span class="offline">Local configuration · no live hardware control</span></div>
+<main class="workbench">
+<aside class="device-pane"><div class="section-title"><h2>Devices</h2><button id="add-device" class="small">+ Add</button></div><nav id="devices" aria-label="Device instances"></nav><div class="section-title bus-heading"><h2>I²C buses</h2><button id="add-bus" class="small">+ Add</button></div><nav id="buses" aria-label="I2C buses"></nav><p class="sidebar-note">Profiles pair with the selected application at build time. Saving updates the JSON profile only.</p></aside>
+<section class="editor-pane"><div id="editor"></div><section class="validation-box"><div class="section-title"><h2>Configuration check</h2><span id="validation-state" class="badge">Checking</span></div><div id="errors" aria-live="polite"></div></section></section>
+<aside class="header-pane"><div class="section-title"><h2>Board connections</h2></div><p class="muted">Physical pin positions. Select a pin to see its connection and shared positions.</p><div class="legend"><span><i class="dot active"></i>Assigned</span><span><i class="dot idle"></i>Idle input</span><span><i class="dot locked"></i>Protected / unlisted</span></div><div id="pin-detail" role="status">Select a pin to inspect its pad.</div><div id="headers"></div><p class="hardware-note">Unused available pins are GPIO inputs with pull-downs, except dedicated I²C pads without internal pulls. This does not hold a normally-open valve closed. Power, board controls, and protected peripherals are locked.</p></aside>
+</main>
+<dialog id="add-dialog"><form method="dialog" id="add-form"><div class="section-title"><h2 id="dialog-title">Add device</h2><button value="cancel" aria-label="Cancel">×</button></div><label>Supported type<select id="new-type"></select></label><label>Instance ID<input id="new-id" pattern="[a-z][a-z0-9_]*" required placeholder="e.g. sv6" autocomplete="off"></label><p class="muted">Added instances initialize at startup. Application commands and telemetry require a separate code binding.</p><div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="confirm-add" value="add" class="primary">Add device</button></div></form></dialog>
+</body></html>

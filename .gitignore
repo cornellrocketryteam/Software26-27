@@ -1,5 +1,6 @@
-# Nix result files
+# Nix result files (plus named links like result-ospi)
 result
+result-*
 
 # Created by https://www.toptal.com/developers/gitignore/api/vim,linux,macos,windows,visualstudiocode,rust,rust-analyzer,c++,cmake
 # Edit at https://www.toptal.com/developers/gitignore?templates=vim,linux,macos,windows,visualstudiocode,rust,rust-analyzer,c++,cmake

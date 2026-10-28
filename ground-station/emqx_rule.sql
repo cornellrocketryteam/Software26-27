@@ -79,6 +79,11 @@ SELECT
     payload.qd_state as qd_state,
     payload.ms_since_boot_fill as ms_since_boot_fill,
 
+    -- Missing metadata marks legacy publishers; preserve their interpretation.
+    CASE WHEN is_null(payload.availability_version) THEN 0 ELSE payload.availability_version END as availability_version,
+    CASE WHEN is_null(payload.configured_devices_mask) THEN 0 ELSE payload.configured_devices_mask END as configured_devices_mask,
+    CASE WHEN is_null(payload.valid_readings_mask) THEN 0 ELSE payload.valid_readings_mask END as valid_readings_mask,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/raw/0")
     int(nth(3, split(topic, '/'))) as unit_id
   

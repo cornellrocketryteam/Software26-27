@@ -1,0 +1,1335 @@
+{
+  "source": "TI SPRUJ64 header tables 4-20/4-21/4-22; TI SysConfig 1.28.1+4785 AM64x ALV device data. Header names are connector-local physical pin numbers.",
+  "protected": [
+    "PRG0_PRU1_GPO18/19: Ethernet MDIO",
+    "PRG1 pads: Ethernet RGMII",
+    "I2C0_SDA: protected in Hybrid; Liquid uses native shared board bus (PRU:8 / EXPANSION:27)",
+    "PRU reset/interrupt/detect and MCU reset/safety/TEST_LED2: board control",
+    "Power, ground, clocks, boot, DDR, OSPI, SD and other unlisted pads"
+  ],
+  "idle_exceptions": "Dedicated open-drain I2C pads have no internal pull. Hybrid retains QD enable on I2C0_SCL with main_i2c0 disabled. Liquid reserves SCL/SDA for its always-enabled shared I2C0 bus; unused QD step/direction become idle inputs.",
+  "pins": [
+    {
+      "domain": "main",
+      "offset": 132,
+      "pad": "GPMC0_ADVn_ALE",
+      "ball": "P16",
+      "headers": [
+        "EXPANSION:15"
+      ],
+      "functions": {
+        "GPIO0_32": 7
+      },
+      "gpio": "GPIO0_32",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 136,
+      "pad": "GPMC0_OEn_REn",
+      "ball": "R18",
+      "headers": [
+        "EXPANSION:32"
+      ],
+      "functions": {
+        "EHRPWM4_A": 3,
+        "GPIO0_33": 7
+      },
+      "gpio": "GPIO0_33",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 140,
+      "pad": "GPMC0_WEn",
+      "ball": "T21",
+      "headers": [
+        "EXPANSION:33"
+      ],
+      "functions": {
+        "EHRPWM4_B": 3,
+        "GPIO0_34": 7
+      },
+      "gpio": "GPIO0_34",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 144,
+      "pad": "GPMC0_BE0n_CLE",
+      "ball": "P17",
+      "headers": [
+        "EXPANSION:7"
+      ],
+      "functions": {
+        "EHRPWM7_A": 5,
+        "GPIO0_35": 7
+      },
+      "gpio": "GPIO0_35",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 148,
+      "pad": "GPMC0_BE1n",
+      "ball": "T19",
+      "headers": [
+        "EXPANSION:29"
+      ],
+      "functions": {
+        "EHRPWM5_A": 3,
+        "GPIO0_36": 7
+      },
+      "gpio": "GPIO0_36",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 152,
+      "pad": "GPMC0_WAIT0",
+      "ball": "W19",
+      "headers": [
+        "EXPANSION:31"
+      ],
+      "functions": {
+        "EHRPWM5_B": 3,
+        "GPIO0_37": 7
+      },
+      "gpio": "GPIO0_37",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 156,
+      "pad": "GPMC0_WAIT1",
+      "ball": "Y18",
+      "headers": [
+        "EXPANSION:16"
+      ],
+      "functions": {
+        "EHRPWM7_B": 5,
+        "GPIO0_38": 7
+      },
+      "gpio": "GPIO0_38",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 160,
+      "pad": "GPMC0_WPn",
+      "ball": "N16",
+      "headers": [
+        "EXPANSION:18"
+      ],
+      "functions": {
+        "GPIO0_39": 7,
+        "EHRPWM6_A": 8
+      },
+      "gpio": "GPIO0_39",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 164,
+      "pad": "GPMC0_DIR",
+      "ball": "N17",
+      "headers": [
+        "EXPANSION:22"
+      ],
+      "functions": {
+        "GPIO0_40": 7,
+        "EHRPWM6_B": 8
+      },
+      "gpio": "GPIO0_40",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 168,
+      "pad": "GPMC0_CSn0",
+      "ball": "R19",
+      "headers": [
+        "EXPANSION:37"
+      ],
+      "functions": {
+        "GPIO0_41": 7
+      },
+      "gpio": "GPIO0_41",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 172,
+      "pad": "GPMC0_CSn1",
+      "ball": "R20",
+      "headers": [
+        "EXPANSION:13"
+      ],
+      "functions": {
+        "GPIO0_42": 7
+      },
+      "gpio": "GPIO0_42",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 176,
+      "pad": "GPMC0_CSn2",
+      "ball": "P19",
+      "headers": [
+        "EXPANSION:5"
+      ],
+      "functions": {
+        "I2C2_SCL": 1,
+        "GPIO0_43": 7
+      },
+      "gpio": "GPIO0_43",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 180,
+      "pad": "GPMC0_CSn3",
+      "ball": "R21",
+      "headers": [
+        "EXPANSION:3"
+      ],
+      "functions": {
+        "I2C2_SDA": 1,
+        "GPIO0_44": 7
+      },
+      "gpio": "GPIO0_44",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 352,
+      "pad": "PRG0_PRU0_GPO0",
+      "ball": "Y1",
+      "headers": [
+        "PRU:13"
+      ],
+      "functions": {
+        "GPIO1_0": 7
+      },
+      "gpio": "GPIO1_0",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 356,
+      "pad": "PRG0_PRU0_GPO1",
+      "ball": "R4",
+      "headers": [
+        "PRU:14"
+      ],
+      "functions": {
+        "GPIO1_1": 7
+      },
+      "gpio": "GPIO1_1",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 360,
+      "pad": "PRG0_PRU0_GPO2",
+      "ball": "U2",
+      "headers": [
+        "PRU:15"
+      ],
+      "functions": {
+        "GPIO1_2": 7
+      },
+      "gpio": "GPIO1_2",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 364,
+      "pad": "PRG0_PRU0_GPO3",
+      "ball": "V2",
+      "headers": [
+        "PRU:16"
+      ],
+      "functions": {
+        "GPIO1_3": 7
+      },
+      "gpio": "GPIO1_3",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 368,
+      "pad": "PRG0_PRU0_GPO4",
+      "ball": "AA2",
+      "headers": [
+        "PRU:17"
+      ],
+      "functions": {
+        "GPIO1_4": 7
+      },
+      "gpio": "GPIO1_4",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 372,
+      "pad": "PRG0_PRU0_GPO5",
+      "ball": "R3",
+      "headers": [
+        "PRU:18"
+      ],
+      "functions": {
+        "GPIO1_5": 7
+      },
+      "gpio": "GPIO1_5",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 376,
+      "pad": "PRG0_PRU0_GPO6",
+      "ball": "T3",
+      "headers": [
+        "PRU:19"
+      ],
+      "functions": {
+        "GPIO1_6": 7
+      },
+      "gpio": "GPIO1_6",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 380,
+      "pad": "PRG0_PRU0_GPO7",
+      "ball": "T1",
+      "headers": [
+        "PRU:20"
+      ],
+      "functions": {
+        "GPIO1_7": 7
+      },
+      "gpio": "GPIO1_7",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 384,
+      "pad": "PRG0_PRU0_GPO8",
+      "ball": "T2",
+      "headers": [
+        "PRU:21"
+      ],
+      "functions": {
+        "GPIO1_8": 7
+      },
+      "gpio": "GPIO1_8",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 388,
+      "pad": "PRG0_PRU0_GPO9",
+      "ball": "W6",
+      "headers": [
+        "PRU:22"
+      ],
+      "functions": {
+        "GPIO1_9": 7
+      },
+      "gpio": "GPIO1_9",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 392,
+      "pad": "PRG0_PRU0_GPO10",
+      "ball": "AA5",
+      "headers": [
+        "PRU:23"
+      ],
+      "functions": {
+        "GPIO1_10": 7
+      },
+      "gpio": "GPIO1_10",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 396,
+      "pad": "PRG0_PRU0_GPO11",
+      "ball": "Y3",
+      "headers": [
+        "PRU:24"
+      ],
+      "functions": {
+        "GPIO1_11": 7
+      },
+      "gpio": "GPIO1_11",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 400,
+      "pad": "PRG0_PRU0_GPO12",
+      "ball": "AA3",
+      "headers": [
+        "PRU:25"
+      ],
+      "functions": {
+        "GPIO1_12": 7
+      },
+      "gpio": "GPIO1_12",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 404,
+      "pad": "PRG0_PRU0_GPO13",
+      "ball": "R6",
+      "headers": [
+        "PRU:26"
+      ],
+      "functions": {
+        "GPIO1_13": 7
+      },
+      "gpio": "GPIO1_13",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 408,
+      "pad": "PRG0_PRU0_GPO14",
+      "ball": "V4",
+      "headers": [
+        "PRU:27"
+      ],
+      "functions": {
+        "GPIO1_14": 7
+      },
+      "gpio": "GPIO1_14",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 412,
+      "pad": "PRG0_PRU0_GPO15",
+      "ball": "T5",
+      "headers": [
+        "PRU:28"
+      ],
+      "functions": {
+        "GPIO1_15": 7
+      },
+      "gpio": "GPIO1_15",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 416,
+      "pad": "PRG0_PRU0_GPO16",
+      "ball": "U4",
+      "headers": [
+        "PRU:7"
+      ],
+      "functions": {
+        "GPIO1_16": 7
+      },
+      "gpio": "GPIO1_16",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 420,
+      "pad": "PRG0_PRU0_GPO17",
+      "ball": "U1",
+      "headers": [
+        "PRU:30"
+      ],
+      "functions": {
+        "GPIO1_17": 7
+      },
+      "gpio": "GPIO1_17",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 424,
+      "pad": "PRG0_PRU0_GPO18",
+      "ball": "V1",
+      "headers": [
+        "PRU:31"
+      ],
+      "functions": {
+        "EHRPWM8_A": 6,
+        "GPIO1_18": 7
+      },
+      "gpio": "GPIO1_18",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 428,
+      "pad": "PRG0_PRU0_GPO19",
+      "ball": "W1",
+      "headers": [
+        "PRU:32"
+      ],
+      "functions": {
+        "EHRPWM8_B": 6,
+        "GPIO1_19": 7
+      },
+      "gpio": "GPIO1_19",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 432,
+      "pad": "PRG0_PRU1_GPO0",
+      "ball": "Y2",
+      "headers": [
+        "PRU:35"
+      ],
+      "functions": {
+        "GPIO1_20": 7
+      },
+      "gpio": "GPIO1_20",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 436,
+      "pad": "PRG0_PRU1_GPO1",
+      "ball": "W2",
+      "headers": [
+        "PRU:36",
+        "EXPANSION:8"
+      ],
+      "functions": {
+        "GPIO1_21": 7
+      },
+      "gpio": "GPIO1_21",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 440,
+      "pad": "PRG0_PRU1_GPO2",
+      "ball": "V3",
+      "headers": [
+        "PRU:37"
+      ],
+      "functions": {
+        "GPIO1_22": 7
+      },
+      "gpio": "GPIO1_22",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 444,
+      "pad": "PRG0_PRU1_GPO3",
+      "ball": "T4",
+      "headers": [
+        "PRU:38"
+      ],
+      "functions": {
+        "GPIO1_23": 7
+      },
+      "gpio": "GPIO1_23",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 448,
+      "pad": "PRG0_PRU1_GPO4",
+      "ball": "W3",
+      "headers": [
+        "PRU:39"
+      ],
+      "functions": {
+        "GPIO1_24": 7
+      },
+      "gpio": "GPIO1_24",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 452,
+      "pad": "PRG0_PRU1_GPO5",
+      "ball": "P4",
+      "headers": [
+        "PRU:40"
+      ],
+      "functions": {
+        "GPIO1_25": 7
+      },
+      "gpio": "GPIO1_25",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 456,
+      "pad": "PRG0_PRU1_GPO6",
+      "ball": "R5",
+      "headers": [
+        "PRU:41"
+      ],
+      "functions": {
+        "GPIO1_26": 7
+      },
+      "gpio": "GPIO1_26",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 460,
+      "pad": "PRG0_PRU1_GPO7",
+      "ball": "W5",
+      "headers": [
+        "PRU:42"
+      ],
+      "functions": {
+        "GPIO1_27": 7
+      },
+      "gpio": "GPIO1_27",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 464,
+      "pad": "PRG0_PRU1_GPO8",
+      "ball": "R1",
+      "headers": [
+        "PRU:43"
+      ],
+      "functions": {
+        "GPIO1_28": 7
+      },
+      "gpio": "GPIO1_28",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 468,
+      "pad": "PRG0_PRU1_GPO9",
+      "ball": "Y5",
+      "headers": [
+        "PRU:44"
+      ],
+      "functions": {
+        "GPIO1_29": 7
+      },
+      "gpio": "GPIO1_29",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 472,
+      "pad": "PRG0_PRU1_GPO10",
+      "ball": "V6",
+      "headers": [
+        "PRU:45"
+      ],
+      "functions": {
+        "GPIO1_30": 7
+      },
+      "gpio": "GPIO1_30",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 476,
+      "pad": "PRG0_PRU1_GPO11",
+      "ball": "W4",
+      "headers": [
+        "PRU:46"
+      ],
+      "functions": {
+        "GPIO1_31": 7
+      },
+      "gpio": "GPIO1_31",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 480,
+      "pad": "PRG0_PRU1_GPO12",
+      "ball": "Y4",
+      "headers": [
+        "PRU:47"
+      ],
+      "functions": {
+        "GPIO1_32": 7
+      },
+      "gpio": "GPIO1_32",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 484,
+      "pad": "PRG0_PRU1_GPO13",
+      "ball": "T6",
+      "headers": [
+        "PRU:48",
+        "EXPANSION:10"
+      ],
+      "functions": {
+        "GPIO1_33": 7
+      },
+      "gpio": "GPIO1_33",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 488,
+      "pad": "PRG0_PRU1_GPO14",
+      "ball": "U6",
+      "headers": [
+        "PRU:49"
+      ],
+      "functions": {
+        "GPIO1_34": 7
+      },
+      "gpio": "GPIO1_34",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 492,
+      "pad": "PRG0_PRU1_GPO15",
+      "ball": "U5",
+      "headers": [
+        "PRU:50"
+      ],
+      "functions": {
+        "GPIO1_35": 7
+      },
+      "gpio": "GPIO1_35",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 496,
+      "pad": "PRG0_PRU1_GPO16",
+      "ball": "AA4",
+      "headers": [
+        "PRU:51"
+      ],
+      "functions": {
+        "GPIO1_36": 7
+      },
+      "gpio": "GPIO1_36",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 500,
+      "pad": "PRG0_PRU1_GPO17",
+      "ball": "V5",
+      "headers": [
+        "PRU:52"
+      ],
+      "functions": {
+        "GPIO1_37": 7
+      },
+      "gpio": "GPIO1_37",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 512,
+      "pad": "PRG0_MDIO0_MDIO",
+      "ball": "P2",
+      "headers": [
+        "PRU:11"
+      ],
+      "functions": {
+        "GPIO1_40": 7
+      },
+      "gpio": "GPIO1_40",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 516,
+      "pad": "PRG0_MDIO0_MDC",
+      "ball": "P3",
+      "headers": [
+        "PRU:9"
+      ],
+      "functions": {
+        "GPIO1_41": 7
+      },
+      "gpio": "GPIO1_41",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 520,
+      "pad": "SPI0_CS0",
+      "ball": "D12",
+      "headers": [
+        "EXPANSION:24"
+      ],
+      "functions": {
+        "GPIO1_42": 7
+      },
+      "gpio": "GPIO1_42",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 524,
+      "pad": "SPI0_CS1",
+      "ball": "C13",
+      "headers": [
+        "EXPANSION:26"
+      ],
+      "functions": {
+        "I2C2_SCL": 2,
+        "GPIO1_43": 7
+      },
+      "gpio": "GPIO1_43",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 528,
+      "pad": "SPI0_CLK",
+      "ball": "D13",
+      "headers": [
+        "EXPANSION:23"
+      ],
+      "functions": {
+        "GPIO1_44": 7
+      },
+      "gpio": "GPIO1_44",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 532,
+      "pad": "SPI0_D0",
+      "ball": "A13",
+      "headers": [
+        "EXPANSION:19"
+      ],
+      "functions": {
+        "GPIO1_45": 7
+      },
+      "gpio": "GPIO1_45",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 536,
+      "pad": "SPI0_D1",
+      "ball": "A14",
+      "headers": [
+        "EXPANSION:21"
+      ],
+      "functions": {
+        "GPIO1_46": 7
+      },
+      "gpio": "GPIO1_46",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 540,
+      "pad": "SPI1_CS0",
+      "ball": "B14",
+      "headers": [
+        "EXPANSION:12"
+      ],
+      "functions": {
+        "EHRPWM6_A": 3,
+        "GPIO1_47": 7
+      },
+      "gpio": "GPIO1_47",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 544,
+      "pad": "SPI1_CS1",
+      "ball": "D14",
+      "headers": [
+        "EXPANSION:11"
+      ],
+      "functions": {
+        "I2C2_SDA": 2,
+        "GPIO1_48": 7
+      },
+      "gpio": "GPIO1_48",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 548,
+      "pad": "SPI1_CLK",
+      "ball": "C14",
+      "headers": [
+        "EXPANSION:40"
+      ],
+      "functions": {
+        "GPIO1_49": 7
+      },
+      "gpio": "GPIO1_49",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 552,
+      "pad": "SPI1_D0",
+      "ball": "B15",
+      "headers": [
+        "EXPANSION:38"
+      ],
+      "functions": {
+        "GPIO1_50": 7
+      },
+      "gpio": "GPIO1_50",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 556,
+      "pad": "SPI1_D1",
+      "ball": "A15",
+      "headers": [
+        "EXPANSION:35"
+      ],
+      "functions": {
+        "EHRPWM6_B": 3,
+        "GPIO1_51": 7
+      },
+      "gpio": "GPIO1_51",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 584,
+      "pad": "UART1_CTSn",
+      "ball": "D16",
+      "headers": [
+        "EXPANSION:36"
+      ],
+      "functions": {
+        "GPIO1_58": 7
+      },
+      "gpio": "GPIO1_58",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 600,
+      "pad": "MCAN1_TX",
+      "ball": "C17",
+      "headers": [],
+      "functions": {
+        "I2C3_SCL": 1,
+        "GPIO1_62": 7
+      },
+      "gpio": "GPIO1_62",
+      "idle": false,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 604,
+      "pad": "MCAN1_RX",
+      "ball": "D17",
+      "headers": [],
+      "functions": {
+        "I2C3_SDA": 1,
+        "GPIO1_63": 7
+      },
+      "gpio": "GPIO1_63",
+      "idle": false,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 608,
+      "pad": "I2C0_SCL",
+      "ball": "A18",
+      "headers": [
+        "EXPANSION:28",
+        "PRU:6"
+      ],
+      "functions": {
+        "GPIO1_64": 7,
+        "I2C0_SCL": 0
+      },
+      "gpio": "GPIO1_64",
+      "idle": true,
+      "idle_bias": "none"
+    },
+    {
+      "domain": "main",
+      "offset": 680,
+      "pad": "USB0_DRVVBUS",
+      "ball": "E19",
+      "headers": [],
+      "functions": {
+        "USB0_DRVVBUS": 0
+      },
+      "gpio": null,
+      "idle": false,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 0,
+      "pad": "MCU_SPI0_CS0",
+      "ball": "D6",
+      "headers": [
+        "MCU:8"
+      ],
+      "functions": {
+        "MCU_GPIO0_13": 7
+      },
+      "gpio": "MCU_GPIO0_13",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 4,
+      "pad": "MCU_SPI0_CS1",
+      "ball": "C6",
+      "headers": [
+        "MCU:3"
+      ],
+      "functions": {
+        "MCU_GPIO0_12": 7
+      },
+      "gpio": "MCU_GPIO0_12",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 8,
+      "pad": "MCU_SPI0_CLK",
+      "ball": "E6",
+      "headers": [
+        "MCU:18"
+      ],
+      "functions": {
+        "MCU_GPIO0_11": 7
+      },
+      "gpio": "MCU_GPIO0_11",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 12,
+      "pad": "MCU_SPI0_D0",
+      "ball": "E7",
+      "headers": [
+        "MCU:6"
+      ],
+      "functions": {
+        "MCU_GPIO0_10": 7
+      },
+      "gpio": "MCU_GPIO0_10",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 16,
+      "pad": "MCU_SPI0_D1",
+      "ball": "B6",
+      "headers": [
+        "MCU:4"
+      ],
+      "functions": {
+        "MCU_GPIO0_4": 7
+      },
+      "gpio": "MCU_GPIO0_4",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 24,
+      "pad": "MCU_SPI1_CS1",
+      "ball": "B7",
+      "headers": [
+        "MCU:10"
+      ],
+      "functions": {
+        "MCU_GPIO0_6": 7
+      },
+      "gpio": "MCU_GPIO0_6",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 28,
+      "pad": "MCU_SPI1_CLK",
+      "ball": "D7",
+      "headers": [
+        "MCU:11"
+      ],
+      "functions": {
+        "MCU_GPIO0_7": 7
+      },
+      "gpio": "MCU_GPIO0_7",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 32,
+      "pad": "MCU_SPI1_D0",
+      "ball": "C7",
+      "headers": [
+        "MCU:5"
+      ],
+      "functions": {
+        "MCU_GPIO0_8": 7
+      },
+      "gpio": "MCU_GPIO0_8",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 36,
+      "pad": "MCU_SPI1_D1",
+      "ball": "C8",
+      "headers": [
+        "MCU:14"
+      ],
+      "functions": {
+        "MCU_GPIO0_9": 7
+      },
+      "gpio": "MCU_GPIO0_9",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 56,
+      "pad": "MCU_UART1_RXD",
+      "ball": "C9",
+      "headers": [
+        "MCU:13"
+      ],
+      "functions": {
+        "MCU_GPIO0_14": 7
+      },
+      "gpio": "MCU_GPIO0_14",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 60,
+      "pad": "MCU_UART1_TXD",
+      "ball": "D9",
+      "headers": [
+        "MCU:19"
+      ],
+      "functions": {
+        "MCU_GPIO0_15": 7
+      },
+      "gpio": "MCU_GPIO0_15",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 64,
+      "pad": "MCU_UART1_CTSn",
+      "ball": "B8",
+      "headers": [
+        "MCU:12"
+      ],
+      "functions": {
+        "MCU_GPIO0_16": 7
+      },
+      "gpio": "MCU_GPIO0_16",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 68,
+      "pad": "MCU_UART1_RTSn",
+      "ball": "B9",
+      "headers": [
+        "MCU:17"
+      ],
+      "functions": {
+        "MCU_GPIO0_17": 7
+      },
+      "gpio": "MCU_GPIO0_17",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 72,
+      "pad": "MCU_I2C0_SCL",
+      "ball": "E9",
+      "headers": [
+        "MCU:24"
+      ],
+      "functions": {
+        "MCU_I2C0_SCL": 0,
+        "MCU_GPIO0_18": 7
+      },
+      "gpio": "MCU_GPIO0_18",
+      "idle": true,
+      "idle_bias": "none"
+    },
+    {
+      "domain": "mcu",
+      "offset": 76,
+      "pad": "MCU_I2C0_SDA",
+      "ball": "A10",
+      "headers": [
+        "MCU:21"
+      ],
+      "functions": {
+        "MCU_I2C0_SDA": 0,
+        "MCU_GPIO0_19": 7
+      },
+      "gpio": "MCU_GPIO0_19",
+      "idle": true,
+      "idle_bias": "none"
+    },
+    {
+      "domain": "mcu",
+      "offset": 80,
+      "pad": "MCU_I2C1_SCL",
+      "ball": "A11",
+      "headers": [
+        "MCU:22"
+      ],
+      "functions": {
+        "MCU_I2C1_SCL": 0,
+        "MCU_GPIO0_20": 7
+      },
+      "gpio": "MCU_GPIO0_20",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "mcu",
+      "offset": 84,
+      "pad": "MCU_I2C1_SDA",
+      "ball": "B10",
+      "headers": [
+        "MCU:16"
+      ],
+      "functions": {
+        "MCU_I2C1_SDA": 0,
+        "MCU_GPIO0_21": 7
+      },
+      "gpio": "MCU_GPIO0_21",
+      "idle": true,
+      "idle_bias": "pull-down"
+    },
+    {
+      "domain": "main",
+      "offset": 612,
+      "pad": "I2C0_SDA",
+      "ball": "B18",
+      "headers": [
+        "EXPANSION:27",
+        "PRU:8"
+      ],
+      "functions": {
+        "I2C0_SDA": 0
+      },
+      "gpio": null,
+      "idle": false,
+      "idle_bias": "none"
+    }
+  ],
+  "shared_i2c0": {
+    "profiles": [
+      "liquid"
+    ],
+    "reserved_addresses": [
+      48,
+      80,
+      81
+    ],
+    "description": "Liquid shared board bus: PMIC 0x30, expansion EEPROM reservation 0x50, board EEPROM 0x51. External devices require compatible 3.3 V I2C electrical levels."
+  }
+}

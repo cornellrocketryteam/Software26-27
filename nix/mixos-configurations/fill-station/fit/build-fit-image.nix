@@ -2,6 +2,8 @@
   kernel,
   dtb,
   dtbOverlay,
+  pinmuxExpectations,
+  pinmuxVerifier,
   initrd,
   debug ? false,
 
@@ -9,6 +11,7 @@
   dtc,
   xz,
   ubootTools,
+  python3,
 }:
 stdenvNoCC.mkDerivation {
   name = "fill-station-fit-image";
@@ -17,6 +20,7 @@ stdenvNoCC.mkDerivation {
     dtc
     xz
     ubootTools
+    python3
   ];
 
   env = {
@@ -62,11 +66,7 @@ stdenvNoCC.mkDerivation {
     usb0=/bus@f4000/cdns-usb@f900000/usb@f400000
     expect "usb0 dr_mode" "$(fdtget dtb-merged $usb0 dr_mode)" host
     expect "usb0 phys removed" "$(fdtget -d absent dtb-merged $usb0 phys)" absent
-    expect "main_i2c0 disabled (pad used as GPIO1_64)" \
-      "$(fdtget dtb-merged /bus@f4000/i2c@20000000 status)" disabled
-    expect "PRU test pin (GPIO1_1)" \
-      "$(fdtget -tx dtb-merged /bus@f4000/pinctrl@f4000/pru-test-default-pins pinctrl-single,pins)" \
-      "164 50007"
+    python3 ${pinmuxVerifier} dtb-merged ${pinmuxExpectations}
 
     # Add kernel boot parameters to the merged DTB
     fdtput --auto-path --verbose --type=s dtb-merged /chosen bootargs "''${kernelParams[@]}"

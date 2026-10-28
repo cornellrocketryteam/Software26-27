@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
+import { useAppContext } from "../../App";
+import { reconcileVentClose } from "../../hardwareAvailability";
 import { usePropulsion } from "../../PropulsionPage";
 
-export default function FillButtonComponent() {
+export default function FillButtonComponent({ hardwareAvailable = true }: { hardwareAvailable?: boolean }) {
+    const { wsReady, wsRef } = useAppContext();
+    const pendingVentCloseRef = useRef(false);
     const {
         manualVentRef,
         fillUIActive,
@@ -28,6 +32,7 @@ export default function FillButtonComponent() {
     //  Click handler: only responsible for pre-checks and setting the  
     //  fillUIActive flag. The actual loop is managed in the useEffect below.
     const handleInitiate = () => {
+        if (!hardwareAvailable) return;
         // Safety: close any open valves before starting to ensure a known state.
         if (valveDataRef.current.SV1.actuated) handleButtonClickRef.current("Solenoid Valve 1", 'CLOSE');
         if (valveDataRef.current.SV2.actuated) handleButtonClickRef.current("Solenoid Valve 2", 'CLOSE');
@@ -43,7 +48,25 @@ export default function FillButtonComponent() {
     };
 
     useEffect(() => {
+        const next = reconcileVentClose(pendingVentCloseRef.current, isVentingRef.current, hardwareAvailable, wsReady);
+        pendingVentCloseRef.current = next.pending;
+        if (next.close) wsRef.current?.send(JSON.stringify({command:'fsw_close_sv'}));
+    }, [hardwareAvailable, wsReady]);
+
+    useEffect(() => {
         if (!fillUIActive) return;
+        if (!hardwareAvailable) {
+            isFillingRef.current = false;
+            isVentingRef.current = false;
+            manualVentRef.current = false;
+            if (ventTimeoutRef.current) clearTimeout(ventTimeoutRef.current);
+            setFillUIActive(false);
+            setVentUIActive(false);
+            setButtonInteractionState('ENABLED');
+            canInteractRef.current = 'ENABLED';
+            // Stop every previously scheduled sequence; retain manual safe/stop controls.
+            return;
+        }
 
         if (canInteractRef.current === 'ENABLED') {
             setButtonInteractionState('DISABLED');
@@ -127,7 +150,7 @@ export default function FillButtonComponent() {
             pendingTimeouts.forEach(clearTimeout); // cancel any vent/BV-open timer still pending at teardown
         };
 
-    }, [fillUIActive]);
+    }, [fillUIActive, hardwareAvailable]);
 
     return (
         <>
@@ -140,12 +163,12 @@ export default function FillButtonComponent() {
                     // Disable the button while a fill is already in progress
                     // to prevent double-initiating the loop. 
                     // Also disable if we are already at or above the target pressure to prevent unnecessary fill attempts.
-                    disabled={fillUIActive || (telemetryDataRef.current.at(-1)?.telemetry.pt3 ?? 0) >= 900}
+                    disabled={!hardwareAvailable || fillUIActive || (telemetryDataRef.current.at(-1)?.telemetry.pt3 ?? 0) >= 900}
                     className="bg-[#5A87FF] border-[6px] border-black rounded-3xl px-24 py-8 font-inter font-bold text-[69px] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {fillUIActive ? (ventUIActive ? "Venting..." : "Filling...") : "Initiate"}
                 </button>
-                {fillUIActive && <div className="flex flex-row items-center gap-2">
+                {(fillUIActive || !hardwareAvailable) && <div className="flex flex-row items-center gap-2">
                     <button
                         onClick={() => {
                             // Stop the fill loop

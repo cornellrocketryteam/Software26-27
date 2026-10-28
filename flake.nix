@@ -14,6 +14,14 @@
   };
 
   outputs = inputs: {
+    apps = inputs.nixpkgs.lib.mapAttrs (_: pkgs: {
+      hardware-config = {
+        type = "app";
+        program = "${pkgs.writeShellScriptBin "hardware-config" ''
+          exec ${pkgs.python3}/bin/python3 ${./fill-station/hardware}/server.py "$@"
+        ''}/bin/hardware-config";
+      };
+    }) inputs.self.legacyPackages;
     devShells = import ./nix/dev-shells inputs;
     formatter = import ./nix/formatter inputs;
     legacyPackages = import ./nix/legacy-packages inputs;

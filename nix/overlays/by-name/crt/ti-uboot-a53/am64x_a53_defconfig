@@ -464,7 +464,7 @@ CONFIG_ARCH_FIXUP_FDT_MEMORY=y
 # CONFIG_USE_BOOTARGS is not set
 # CONFIG_BOOTARGS_SUBST is not set
 CONFIG_USE_BOOTCOMMAND=y
-CONFIG_BOOTCOMMAND="run envboot; bootflow scan -lb"
+CONFIG_BOOTCOMMAND="if test \"${boot_device}\" = ospi; then run ospiboot; fi; run envboot; run ospiboot; bootflow scan -lb"
 # CONFIG_USE_PREBOOT is not set
 CONFIG_DEFAULT_FDT_FILE=""
 # CONFIG_SAVE_PREV_BL_FDT_ADDR is not set
@@ -707,7 +707,7 @@ CONFIG_BOOTM_LINUX=y
 # CONFIG_CMD_BOOTMENU is not set
 # CONFIG_CMD_ADTIMG is not set
 # CONFIG_CMD_ELF is not set
-# CONFIG_CMD_FDT is not set
+CONFIG_CMD_FDT=y
 # CONFIG_CMD_GO is not set
 CONFIG_CMD_RUN=y
 # CONFIG_CMD_IMI is not set

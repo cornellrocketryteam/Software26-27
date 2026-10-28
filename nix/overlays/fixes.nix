@@ -7,6 +7,14 @@ final: prev: {
     withReadline = false;
   };
 
+  # flashcp (defaults to off in busybox's Kconfig) writes FITs to the OSPI
+  # flash from Linux; see tools/flash-ospi.sh
+  busybox = prev.busybox.override {
+    extraConfig = ''
+      CONFIG_FLASHCP y
+    '';
+  };
+
   libgpiod = prev.libgpiod.overrideAttrs (oldAttrs: {
     configureFlags =
       (oldAttrs.configureFlags or [ ])

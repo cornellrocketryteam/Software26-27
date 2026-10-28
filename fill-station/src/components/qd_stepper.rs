@@ -11,8 +11,8 @@ const ENABLE_WAKE_MS: u64 = 30; // Wait after enable for coil current to establi
 const DIR_SETUP_MS: u64 = 5; // DIR must be stable before first STEP rising edge
 
 // Acceleration ramp configuration
-const RAMP_START_HZ: u32 = 40;  // Initial step rate at rest
-const RAMP_STEPS: u32 = 50;     // Number of steps to ramp up (and down)
+const RAMP_START_HZ: u32 = 40; // Initial step rate at rest
+const RAMP_STEPS: u32 = 50; // Number of steps to ramp up (and down)
 
 // Preset step counts and directions
 // CW (true) = retract, CCW (false) = extend
@@ -37,7 +37,7 @@ impl QdStepper {
     /// Initialize the QD stepper component.
     ///
     /// Configures STEP, DIR, and ENA GPIO lines.
-    /// ENA is set HIGH (driver enabled) at init. STEP starts LOW.
+    /// ENA starts LOW (driver disabled) at init. STEP starts LOW.
     #[cfg(any(target_os = "linux", target_os = "android"))]
     pub async fn new(
         chip_step: &Chip,
@@ -52,21 +52,27 @@ impl QdStepper {
         let opts_step = Options::output([pin_step])
             .values([false])
             .consumer(format!("{}-step", name));
-        let step_line = chip_step.request_lines(opts_step).await
+        let step_line = chip_step
+            .request_lines(opts_step)
+            .await
             .context("Failed to request STEP GPIO line")?;
 
         // 2. Configure DIR GPIO (output, start LOW)
         let opts_dir = Options::output([pin_dir])
             .values([false])
             .consumer(format!("{}-dir", name));
-        let dir_line = chip_dir.request_lines(opts_dir).await
+        let dir_line = chip_dir
+            .request_lines(opts_dir)
+            .await
             .context("Failed to request DIR GPIO line")?;
 
         // 3. Configure ENA GPIO (output, start LOW = driver disabled)
         let opts_ena = Options::output([pin_ena])
             .values([false])
             .consumer(format!("{}-ena", name));
-        let ena_line = chip_ena.request_lines(opts_ena).await
+        let ena_line = chip_ena
+            .request_lines(opts_ena)
+            .await
             .context("Failed to request ENA GPIO line")?;
 
         info!(
@@ -108,18 +114,26 @@ impl QdStepper {
             "QD '{}': moving {} steps, direction={}",
             self.name,
             steps,
-            if direction { "CW/RETRACT" } else { "CCW/EXTEND" }
+            if direction {
+                "CW/RETRACT"
+            } else {
+                "CCW/EXTEND"
+            }
         );
 
         #[cfg(any(target_os = "linux", target_os = "android"))]
         {
             // Set direction first and let it settle through the opto-coupler
-            self.dir_line.set_values([direction]).await
+            self.dir_line
+                .set_values([direction])
+                .await
                 .context("Failed to set DIR GPIO")?;
             smol::Timer::after(Duration::from_millis(DIR_SETUP_MS)).await;
 
             // Ensure driver is enabled (ENA HIGH), then wait for wake
-            self.ena_line.set_values([true]).await
+            self.ena_line
+                .set_values([true])
+                .await
                 .context("Failed to set ENA GPIO")?;
             smol::Timer::after(Duration::from_millis(ENABLE_WAKE_MS)).await;
 
@@ -129,28 +143,32 @@ impl QdStepper {
             for i in 0..steps {
                 let freq_hz = if i < ramp_len {
                     // Ramp up: linear from RAMP_START_HZ to STEP_FREQUENCY_HZ
-                    RAMP_START_HZ
-                        + (STEP_FREQUENCY_HZ - RAMP_START_HZ) * i / ramp_len.max(1)
+                    RAMP_START_HZ + (STEP_FREQUENCY_HZ - RAMP_START_HZ) * i / ramp_len.max(1)
                 } else if i >= steps - ramp_len {
                     // Ramp down: linear from STEP_FREQUENCY_HZ back to RAMP_START_HZ
                     let j = steps - 1 - i;
-                    RAMP_START_HZ
-                        + (STEP_FREQUENCY_HZ - RAMP_START_HZ) * j / ramp_len.max(1)
+                    RAMP_START_HZ + (STEP_FREQUENCY_HZ - RAMP_START_HZ) * j / ramp_len.max(1)
                 } else {
                     STEP_FREQUENCY_HZ
                 };
                 let half_period = Duration::from_micros(500_000 / freq_hz as u64);
 
-                self.step_line.set_values([true]).await
+                self.step_line
+                    .set_values([true])
+                    .await
                     .context("Failed to set STEP HIGH")?;
                 smol::Timer::after(half_period).await;
-                self.step_line.set_values([false]).await
+                self.step_line
+                    .set_values([false])
+                    .await
                     .context("Failed to set STEP LOW")?;
                 smol::Timer::after(half_period).await;
             }
 
             // Disable driver after movement is complete
-            self.ena_line.set_values([false]).await
+            self.ena_line
+                .set_values([false])
+                .await
                 .context("Failed to disable ENA GPIO")?;
         }
 
@@ -164,11 +182,25 @@ impl QdStepper {
         Ok(())
     }
 
+    pub async fn disable(&self) -> Result<()> {
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        {
+            disable_outputs(
+                async { self.step_line.set_values([false]).await.map_err(Into::into) },
+                async { self.ena_line.set_values([false]).await.map_err(Into::into) },
+            )
+            .await?;
+        }
+        Ok(())
+    }
+
     /// Read current ENA (enabled) state. Returns true if driver is enabled.
     pub async fn is_enabled(&self) -> bool {
         #[cfg(any(target_os = "linux", target_os = "android"))]
         {
-            self.ena_line.get_values([false]).await
+            self.ena_line
+                .get_values([false])
+                .await
                 .map(|v| *v.get(0).unwrap_or(&false))
                 .unwrap_or(false)
         }
@@ -182,7 +214,9 @@ impl QdStepper {
     pub async fn get_direction(&self) -> bool {
         #[cfg(any(target_os = "linux", target_os = "android"))]
         {
-            self.dir_line.get_values([false]).await
+            self.dir_line
+                .get_values([false])
+                .await
                 .map(|v| *v.get(0).unwrap_or(&false))
                 .unwrap_or(false)
         }
@@ -191,4 +225,31 @@ impl QdStepper {
             false
         }
     }
+}
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    #[test]
+    fn disable_attempts_ena_even_after_step_failure() {
+        let attempted = std::cell::Cell::new(false);
+        let result = smol::block_on(disable_outputs(
+            async { anyhow::bail!("STEP failed") },
+            async {
+                attempted.set(true);
+                Ok(())
+            },
+        ));
+        assert!(result.is_err());
+        assert!(attempted.get());
+    }
+}
+
+async fn disable_outputs(
+    step: impl std::future::Future<Output = Result<()>>,
+    enable: impl std::future::Future<Output = Result<()>>,
+) -> Result<()> {
+    let step_result = step.await;
+    let enable_result = enable.await;
+    step_result.and(enable_result)
 }

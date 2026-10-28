@@ -82,7 +82,10 @@ INSERT INTO telemetry_data (
     load_cell,
     ignition,
     qd_state,
-    ms_since_boot_fill
+    ms_since_boot_fill,
+    availability_version,
+    configured_devices_mask,
+    valid_readings_mask
 ) VALUES (
     -- Convert EMQX's internal arrival clock into a standard PostgreSQL TIMESTAMPTZ
     to_timestamp(${broker_arrival_ms} / 1000.0),
@@ -167,5 +170,8 @@ INSERT INTO telemetry_data (
     ${load_cell},
     ${ignition},
     ${qd_state},
-    ${ms_since_boot_fill}
+    ${ms_since_boot_fill},
+    ${availability_version},
+    ${configured_devices_mask},
+    ${valid_readings_mask}
 );

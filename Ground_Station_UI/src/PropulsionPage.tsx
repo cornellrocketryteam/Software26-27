@@ -1,3 +1,4 @@
+import { commandAvailable, hardwareRoles, readingAvailable, roleAvailable } from "./hardwareAvailability";
 import Header from "./components/HeaderComponent";
 import ButtonComponent from "./components/ButtonComponent";
 import VentButtonComponent from "./components/VentButtonComponent";
@@ -54,6 +55,10 @@ type AdcDataMessage = {
     type: string;
     timestamp_ms: number;
     valid: boolean;
+    adc1_valid?: boolean;
+    adc2_valid?: boolean;
+    availability_version?: number;
+    valid_readings_mask?: number;
     adc1: AdcChannel[];
     adc2: AdcChannel[];
 }
@@ -137,8 +142,11 @@ export const usePropulsion = () => {
 };
 
 export function PropulsionPage() {
-    const { wsRef, wsReady, currFlightMode, hasLaunched, setHasLaunched} = useAppContext(); //The App's websocket refrence
+    const { hardwareAvailability, hardwareAvailabilityRef, wsRef, wsReady, currFlightMode, hasLaunched, setHasLaunched} = useAppContext(); //The App's websocket refrence
 
+    const [hardwareError, setHardwareError] = useState('');
+    const [sensorValues, setSensorValues] = useState<(number | null)[]>([null,null,null]);
+    const fillHardwareAvailable = roleAvailable(hardwareAvailability, 'sv1') && roleAvailable(hardwareAvailability, 'ball_valve');
     const [fillState, setFillState] = useState<FillState>('INITIAL');
     const [ventSeconds, setVentSeconds] = useState(0);
     const [confirmedVentSeconds, setConfirmedVentSeconds] = useState(0);
@@ -223,6 +231,10 @@ export function PropulsionPage() {
     //SEND COMMAND DELAY FUNCTION
     const sendCommandWithDelay = (param: any, delay: number) => {
         setTimeout(() => {
+            if (!commandAvailable(hardwareAvailabilityRef.current, param)) {
+                setHardwareError('Command unavailable: a required device is disabled in the hardware profile.');
+                return;
+            }
             if (typeof param === 'function') {
                 param();
                 return;
@@ -349,8 +361,17 @@ export function PropulsionPage() {
         const data = JSON.parse(event.data);
         //console.log("Received message:", data); <- don't log so we can see pressure readings
 
-        switch (data.type) { //Switch on response type 
+        switch (data.type) { //Switch on response type
+            case "device_unavailable":
+                setHardwareError(`Unavailable devices: ${(data.devices ?? []).join(', ')}`);
+                break;
+
             case "adc_data":
+                setSensorValues([
+                    readingAvailable(data,0) ? data.adc1?.[0]?.scaled ?? null : null,
+                    readingAvailable(data,1) ? data.adc1?.[1]?.scaled ?? null : null,
+                    readingAvailable(data,2) ? data.adc2?.[1]?.scaled ?? null : null
+                ]);
                 if (adcDataRef.current.length > 2000) { //Limit the size of the ADC data array to prevent memory issues, adjust as needed based on how much data you want to keep track of
                     adcDataRef.current.shift(); //Remove the oldest entry when we exceed the limit
                 }
@@ -491,6 +512,14 @@ export function PropulsionPage() {
         };
     }, [wsReady]); // Re-run effect if WebSocket connection status changes
 
+    useEffect(() => {
+        if (!wsReady) {
+            setSensorValues([null, null, null]);
+            adcDataRef.current = [];
+            umbilicalDataRef.current = [];
+        }
+    }, [wsReady]);
+
     return (
         <PropulsionContext.Provider value={{ hasLaunched, setHasLaunched, ventTimeoutRef, confirmedVentSecondsRef, canInteractRef, buttonInteractionState, setButtonInteractionState, valveDataRef, fillUIActive, setFillUIActive, ventUIActive, setVentUIActive, isVentingRef, isFillingRef, manualVentRef, handleButtonClickRef, fillState, setFillState, ventSeconds, setVentSeconds, confirmedVentSeconds, setConfirmedVentSeconds, valveData, adcDataRef: adcDataRef, telemetryDataRef: umbilicalDataRef }}>
             <div className={`min-h-screen bg-white ${ventUIActive ? 'cursor-wait' : ''}`}>
@@ -504,14 +533,21 @@ export function PropulsionPage() {
                     setButtonInteractionState={setButtonInteractionState}
                 />
 
+                <div className="px-8 pt-4" role="status">
+                    {hardwareAvailability && hardwareRoles.filter(role => !roleAvailable(hardwareAvailability,role)).length > 0 &&
+                        <p>Unavailable hardware: {hardwareRoles.filter(role => !roleAvailable(hardwareAvailability,role)).join(', ')}</p>}
+                    {hardwareError && <p role="alert">{hardwareError}</p>}
+                    <p>PT1: {sensorValues[0] ?? 'Unavailable'} · PT2: {sensorValues[1] ?? 'Unavailable'} · Load cell: {sensorValues[2] ?? 'Unavailable'}</p>
+                </div>
                 {/* Main Content */}
                 <div className="flex gap-5 p-8">
                     {/* Left Column */}
                     <div className="flex-1 flex flex-col gap-8">
                         {/* START AUTOMATED FILL */}
-                        <FillButtonComponent />
+                        {!fillHardwareAvailable && <p>Automated fill unavailable: SV1 and ball valve are required.</p>}
+                        <FillButtonComponent hardwareAvailable={fillHardwareAvailable && wsReady} />
 
-                        {/* VENT BUTTON */}
+                        {/* This control vents through FSW SV2 independently of local hardware. */}
                         <VentButtonComponent />
 
                         {/* Key Arm Toggle */}
@@ -532,12 +568,12 @@ export function PropulsionPage() {
                         <div className="bg-[#D9D9D9] border-[6px] border-black rounded-3xl p-5">
                             <h2 className="text-2xl font-inter font-semibold"> Fill Station Commands:</h2>
                             <div className="grid grid-cols-2 gap-[25px]">
-                                <ButtonComponent buttonName="Solenoid Valve 1" currentState={valveData.SV1.actuated} actuationLock='LOCKED' />
+                                <ButtonComponent available={roleAvailable(hardwareAvailability,'sv1')} buttonName="Solenoid Valve 1" currentState={valveData.SV1.actuated} actuationLock='LOCKED' />
                                 <ButtonComponent buttonName="Solenoid Valve 2" currentState={valveData.SV2.actuated} actuationLock='LOCKED' />
-                                <ButtonComponent buttonName="Ball Valve" currentState={valveData.BV.actuated} actuationLock='UNLOCKED' />
+                                <ButtonComponent available={roleAvailable(hardwareAvailability,'ball_valve')} buttonName="Ball Valve" currentState={valveData.BV.actuated} actuationLock='UNLOCKED' />
                                 <ButtonComponent buttonName="MAV" currentState={valveData.MAV.actuated} actuationLock='LOCKED' />
-                                <ButtonComponent buttonName="Quick Disconnect" currentState={valveData.QD.retracted} actuationLock='UNLOCKED' />
-                                <ButtonComponent buttonName="Launch Button" actuationLock='UNLOCKED' />
+                                <ButtonComponent available={roleAvailable(hardwareAvailability,'qd_stepper')} buttonName="Quick Disconnect" currentState={valveData.QD.retracted} actuationLock='UNLOCKED' />
+                                <ButtonComponent available={roleAvailable(hardwareAvailability,'ig1') && roleAvailable(hardwareAvailability,'ig2')} buttonName="Launch Button" actuationLock='UNLOCKED' />
                             </div>
                         </div>
                         {/* General System Commands */}
