@@ -31,6 +31,7 @@ blims = { path = "../BLIMS", default-features = false }
 controller_in_rust_v3 = { path = "../air-brake-controls/controller_in_rust_v3", default-features = false }
 [features]
 default = []
+profile_loop = []
 test_mav = []
 test_sv = []
 test_ssa = []

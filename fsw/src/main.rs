@@ -792,12 +792,12 @@ async fn main(spawner: Spawner) {
         crate::watchdog::init(Watchdog::new(p.WATCHDOG));
         log::info!("FLIGHT LOOP: Watchdog started ({} ms timeout). Loop running.", constants::WATCHDOG_TIMEOUT_MS);
 
-        // measuring flight loop
-        let mut last_start: Option<Instant> = None; 
-        let mut period_samples: u32 = 0; 
-        let mut period_sum_us: u64 = 0; 
-        let mut period_min_us: u64 = u64::MAX;
-        let mut period_max_us: u64 = 0;          
+        // Loop period measurement — test builds only (`--features profile_loop`).
+        #[cfg(feature = "profile_loop")]
+        let mut last_start: Option<Instant> = None;
+        #[cfg(feature = "profile_loop")]
+        let (mut period_samples, mut period_sum_us, mut period_min_us, mut period_max_us,
+             mut exec_sum_us, mut exec_max_us) = (0u32, 0u64, u64::MAX, 0u64, 0u64, 0u64);
 
         let mut ticker = Ticker::every(Duration::from_millis(constants::LOOP_PERIOD_MS));
 
@@ -810,24 +810,32 @@ async fn main(spawner: Spawner) {
             // Feed before execute() to start the countdown
             // This prevents the 50 ms Timer delay from counting toward the timeout
             crate::watchdog::feed();
-            let start = Instant::now(); 
+            let start = Instant::now();
 
-
-            //measuring flight loop: time since prev iteration begin 
-            if let Some(prev) = last_start {
-                let period_us = start.duration_since(prev).as_micros(); 
-                period_sum_us += period_us;
-                period_min_us = period_min_us.min(period_us); 
-                period_max_us = period_max_us.max(period_us); 
-                period_samples += 1; 
+            // Period = time between consecutive cycle starts.
+            #[cfg(feature = "profile_loop")]
+            {
+                if let Some(prev) = last_start {
+                    let period_us = start.duration_since(prev).as_micros();
+                    period_sum_us += period_us;
+                    period_min_us = period_min_us.min(period_us);
+                    period_max_us = period_max_us.max(period_us);
+                    period_samples += 1;
+                }
+                last_start = Some(start);
             }
-
-            last_start = Some(start); 
-
 
             flight_loop.execute().await;
 
             let elapsed = start.elapsed().as_millis();
+
+            // Busy time = how long execute() itself took (headroom = period - busy).
+            #[cfg(feature = "profile_loop")]
+            {
+                let exec_us = start.elapsed().as_micros();
+                exec_sum_us += exec_us;
+                exec_max_us = exec_max_us.max(exec_us);
+            }
 
             // Feed again immediately after execute() before sleep
             // This prevents the 50 ms Timer delay from counting toward the timeout
@@ -848,14 +856,18 @@ async fn main(spawner: Spawner) {
             if flight_loop.flight_state.cycle_count % (constants::LOOP_HZ as u32) == 0 {
                 led.toggle();
             }
-            // measuring flight loop frequency
+            // Report every 200 cycles (4 s at 50 Hz).
+            #[cfg(feature = "profile_loop")]
             if period_samples >= 200 {
-                let avg_us = period_sum_us / period_samples as u64; 
-                log::info!("LOOP Period us: avg={} min={} max={} => {} Hz", avg_us, period_min_us, period_max_us, 1_000_000 / avg_us.max(1));
-                period_samples = 0; 
-                period_sum_us = 0; 
-                period_min_us = u64::MAX;
-                period_max_us = 0; 
+                let n = period_samples as u64;
+                let avg_us = period_sum_us / n;
+                log::warn!(
+                    "LOOP period us: avg={} min={} max={} => {} Hz | execute() us: avg={} max={} (target {} us)",
+                    avg_us, period_min_us, period_max_us, 1_000_000 / avg_us.max(1),
+                    exec_sum_us / n, exec_max_us, constants::LOOP_PERIOD_MS * 1000,
+                );
+                (period_samples, period_sum_us, period_min_us, period_max_us, exec_sum_us, exec_max_us) =
+                    (0, 0, u64::MAX, 0, 0, 0);
             }
 
             ticker.next().await; 

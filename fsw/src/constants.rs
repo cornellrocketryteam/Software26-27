@@ -71,8 +71,17 @@ pub const LOOP_BUDGET_MS: u64 = 15;
 pub const LOOP_HZ: u64 = 50; 
 pub const LOOP_PERIOD_MS: u64 = 1000 / LOOP_HZ; 
 
-pub const ALT_WINDOW_S: f32 = 0.5; 
-pub const ALT_BUF_LEN: usize = (LOOP_HZ as f32 * ALT_WINDOW_S) as usize; 
+pub const ALT_WINDOW_S: f32 = 0.5;
+pub const ALT_BUF_LEN: usize = (LOOP_HZ as f32 * ALT_WINDOW_S) as usize;
+
+/// IMU calibration averages this many seconds of samples (was a fixed 20 samples at 20 Hz).
+pub const IMU_CALIBRATION_S: f32 = 1.0;
+pub const IMU_CALIBRATION_SAMPLES: u16 = (LOOP_HZ as f32 * IMU_CALIBRATION_S) as u16;
+
+/// Baseline for the altitude-slope velocity estimate (A2 fault signal). Measured in
+/// real time so it doesn't depend on LOOP_HZ, and long enough that a repeated
+/// BMP390 sample (sensor ODR and loop aren't synchronised) can't zero or double it.
+pub const VEL_WINDOW_MS: u64 = 200;
 
 /// Hardware watchdog timeout in milliseconds
 /// Mustl be well above the worst-case execute() time and aove LOOP_PERIOD_MS.

@@ -84,7 +84,10 @@ pub struct FlightLoop {
 
     // Fault signaling
     fault_signal_sent: bool,
-    last_alt: f32,
+    /// Altitude and time at the start of the current velocity window.
+    vel_ref: Option<(f32, Instant)>,
+    /// Vertical velocity (m/s, up positive) over the last VEL_WINDOW_MS; used by A2.
+    vertical_vel: f32,
 
     // Overpressure latch — once PT3 has been above the threshold for
     // OVERPRESSURE_CONFIRM_CYCLES consecutive cycles (about 150 ms) we open SV and
@@ -109,7 +112,7 @@ pub struct FlightLoop {
     pub sim_accel_z_override: Option<f32>,
 
     /// Sim only: if Some, overrides packet.accel_y (m/s²) after read_sensors().
-    /// Required for launch detection (Standby → Ascent uses a 10-sample accel_y average).
+    /// Forwarded to the airbrake controller (launch itself is the umbilical command).
     pub sim_accel_y_override: Option<f32>,
 
     /// Sim only: if Some, forces cfc_arm_active after read_sensors() overwrites it from
@@ -221,7 +224,8 @@ impl FlightLoop {
             n3_sent: false,
             n4_sent: false,
             fault_signal_sent: false,
-            last_alt: 0.0,
+            vel_ref: None,
+            vertical_vel: 0.0,
             overpressure_triggered: false,
             overpressure_count: 0,
             sim_altitude_override: None,
@@ -412,8 +416,19 @@ impl FlightLoop {
         // Snapshot ring: throttled to 1 Hz internally, runs in every mode.
         self.flight_state.log_to_fram().await;
 
-        // Track previous altitude for fault velocity estimate (A2 payload signal)
-        self.last_alt = self.flight_state.packet.altitude;
+        // Fault velocity estimate (A2 payload signal): altitude slope over at
+        // least VEL_WINDOW_MS of measured time, independent of LOOP_HZ.
+        let alt = self.flight_state.packet.altitude;
+        match self.vel_ref {
+            None => self.vel_ref = Some((alt, now)),
+            Some((ref_alt, ref_time)) => {
+                let dt_ms = now.duration_since(ref_time).as_millis();
+                if dt_ms >= constants::VEL_WINDOW_MS {
+                    self.vertical_vel = (alt - ref_alt) * 1000.0 / dt_ms as f32;
+                    self.vel_ref = Some((alt, now));
+                }
+            }
+        }
     }
 
     pub async fn check_ground_commands(&mut self) {
@@ -1129,8 +1144,7 @@ impl FlightLoop {
                         }
                     } else {
                         let alt = self.flight_state.packet.altitude;
-                        // One-cycle slope: altitude change per loop tick x loops per second.
-                        let vel = (alt - self.last_alt) * constants::LOOP_HZ as f32;
+                        let vel = self.vertical_vel;
                         let mut buf = heapless::String::<32>::new();
                         let _ = core::fmt::write(&mut buf, format_args!("A2,{:.1},{:.1}\n", alt, vel));
                         match self.flight_state.payload_uart.write(buf.as_bytes()).await {

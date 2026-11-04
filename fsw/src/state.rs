@@ -82,7 +82,7 @@ pub struct FlightState {
     imu_fail_count: u8,
     imu_probe_count: u8,
     pub imu_calibrating: bool,
-    imu_calibration_samples: u8,
+    imu_calibration_samples: u16,
     imu_gyro_sum: [f32; 3],
     imu_accel_sum: [f32; 3],
     pub gyro_offsets: [f32; 3],
@@ -506,7 +506,7 @@ impl FlightState {
                     );
                 }
                 Ok(Err(GpsError::NoData)) => {
-                    // No fix yet — normal at 20 Hz vs 1 Hz GPS output; not an I2C fault.
+                    // No fix yet — normal when the loop runs faster than GPS output; not an I2C fault.
                 }
                 Ok(Err(GpsError::I2cError)) => {
                     log::error!("GPS: I2C error");
@@ -562,7 +562,7 @@ impl FlightState {
                         self.imu_gyro_sum[2] += self.packet.gyro_z;
                         self.imu_calibration_samples += 1;
 
-                        if self.imu_calibration_samples >= 20 { // 1 second at 20Hz
+                        if self.imu_calibration_samples >= constants::IMU_CALIBRATION_SAMPLES {
                             self.finish_imu_calibration();
                         }
                     } else {
@@ -805,7 +805,7 @@ impl FlightState {
     }
 
     // Appends the current packet as CSV to the onboard QSPI Flash memory
-    /// Write a fast (20 Hz) or full (1 Hz) binary record to flash.
+    /// Write a fast (FLASH_LOGGING_PERIOD_MS) or full (1 Hz) binary record to flash.
     pub async fn save_packet_to_flash(&mut self, full: bool) {
         if !self.flash.flash_ok || self.flash.storage_full {
             return;
