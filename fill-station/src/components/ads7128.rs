@@ -43,7 +43,18 @@ impl Ads7128 {
 
         let mut adc = Self { device, address };
 
-        let status = adc.read_register(SYSTEM_STATUS)?;
+        // Opening the bus succeeds even with no chip attached; this read is the real connection test
+        //only for testing purposes -- will delete later
+        let status = match adc.read_register(SYSTEM_STATUS) {
+            Ok(status) => {
+                println!("ADS7128 connected on {} at {:#04X} (SYSTEM_STATUS = {:#04X})", bus, address, status);
+                status
+            }
+            Err(e) => {
+                eprintln!("ADS7128 NOT responding on {} at {:#04X}: {:#}", bus, address, e);
+                return Err(e);
+            }
+        };
         tracing::info!("ADS7128 at {:#04X}: System status = {:#04X}", address, status);
 
         Ok(adc)
@@ -127,6 +138,7 @@ pub struct Ads7128 {
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 impl Ads7128 {
     pub fn new(_bus: &str, address: u16) -> Result<Self> {
+        println!("Connect");
         Ok(Self { _address: address })
     }
 
