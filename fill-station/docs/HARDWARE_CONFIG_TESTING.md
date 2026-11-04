@@ -42,7 +42,7 @@ python3 tests/test_pinmux.py
 
 The database test is skipped unless PostgreSQL is provided. A skip does not mean that test passed. Section 6 explains how to run it.
 
-The default-profile regression expects the original wiring: **24 active pads and 61 idle pads** in Hybrid. Liquid now expects **23 active pads and 63 idle pads**, QD disabled, I²C0 enabled on PRU6/8, and the original ADCs still on I²C2. If you intentionally change the default wiring later, that baseline needs review too.
+The default-profile regression expects **23 active pads and 62 idle pads** in Hybrid. Liquid expects **22 active pads and 64 idle pads**, QD disabled, I²C0 enabled on PRU6/8, and the original ADCs still on I²C2. If you intentionally change the default wiring later, that baseline needs review too.
 
 ### Rust application
 
@@ -95,7 +95,7 @@ Use the editor only during these tests; it does not operate the live board.
 |---|---|---|
 | Profiles | Switch between Liquid and Hybrid. | Each profile loads independently. |
 | Pin display | Select PRU pin 36 in the diagram. | It identifies the same pad as expansion pin 8. |
-| Disable | Uncheck Enable device for `ig1`, then validate. | The profile is valid; its two pins return to idle. Liquid becomes 21 active / 65 idle; Hybrid becomes 22 active / 63 idle. |
+| Disable | Uncheck Enable device for `ig1`, then validate. | The profile is valid; its two pins return to idle. Liquid becomes 20 active / 66 idle; Hybrid becomes 21 active / 64 idle. |
 | Persistence | Save, reload the page, and select the profile again if needed. | `ig1` remains disabled. Re-enable it, save, and reload to restore it. |
 | Extra device | Add an ADS1015 on the existing bus with address `0x48` (72). | Validation rejects the address conflict. |
 | Correct the conflict | Change the added ADC address to `0x4a` (74). | Validation succeeds; it is marked Initialized only. |

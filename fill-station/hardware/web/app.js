@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 const state = {profile:null, baseline:'', revision:'', selected:null, bootstrap:null, report:null, epoch:0, selectedPin:null};
 const names = {main_i2c0:'Main I²C0 · shared board bus',main_i2c2:'Main I²C2',main_i2c3:'Main I²C3',mcu_i2c0:'MCU I²C0',mcu_i2c1:'MCU I²C1'};
 const noPull = new Set(['main:0x0260','main:0x0264','mcu:0x0048','mcu:0x004c']);
-const fixed = new Set(['main:0x0164','main:0x02a8']);
+const fixed = new Set(['main:0x02a8']);
 const key = (pin) => `${pin.domain}:0x${Number(pin.offset).toString(16).padStart(4,'0')}`;
 const sharedBus = bus => state.profile?.profile==='liquid' && bus.controller==='main_i2c0';
 const controllerChoices = () => Object.entries(names).filter(([name])=>name!=='main_i2c0'||state.profile?.profile==='liquid');

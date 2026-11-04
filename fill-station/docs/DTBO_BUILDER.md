@@ -67,7 +67,7 @@ Shared connector positions identify one SoC pad and cannot be allocated twice.
 - MCU I²C1 uses MCU16/22 (SDA/SCL), adapter `/dev/i2c-5`.
 - PRU6/8 are the shared board I²C0 pins. Liquid uses them as always-on I²C0 (`/dev/i2c-0`) with QD disabled; Hybrid keeps stepper enable on PRU6 and I²C0 disabled. They are not an extra free I²C controller.
 - Native I²C cannot be assigned arbitrarily to PRU GPO pins. The editor offers actual mux routes only.
-- Ethernet, board buses/control pins, boot resources and unlisted pads remain protected. USB host policy and GPIO1_1 test input remain board-owned.
+- Ethernet, board buses/control pins, boot resources and unlisted pads remain protected. USB host policy remains board-owned. PRU pin 14 (GPIO1_1) is available for device assignments.
 
 Kernel support is assumed configured. SPI, PRU firmware, UARTs and new control protocols
 are outside this editor. Coordinate Linux ownership before adding MCU/PRU firmware use.
@@ -120,7 +120,7 @@ node --test Ground_Station_UI/tests/hardwareAvailability.test.mjs
 Real-tree tests need clang, dtc, fdtoverlay, fdtget and fdtput. Downstream migration tests
 can use an isolated PostgreSQL installation with `PG_BIN=/path/to/postgresql/bin`.
 The fixture `hardware/fixtures/original-expectations.json` preserves the exact initial
-register values: 24 active pads and 61 idle inputs in Hybrid. Liquid now has 23 active pads and 63 idle inputs, with native I²C0 and QD disabled.
+register values. The current defaults have 23 active pads and 62 idle inputs in Hybrid and 22 active pads and 64 idle inputs in Liquid. Both default PRU pin 14 to an idle input.
 
 For a no-network station UI regression fixture, run `npm run dev --prefix Ground_Station_UI -- --host 127.0.0.1`
 and open `/tests/hardware-availability.html` on its printed URL. Commands stay inside

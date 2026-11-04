@@ -241,7 +241,7 @@ fdtput -d dtb-merged /bus@f4000/cdns-usb@f900000/usb@f400000 phy-names
 
 # 4. Sanity-check the merged tree (build fails on mismatch)
 expect "usb0 dr_mode" "$(fdtget dtb-merged $usb0 dr_mode)" host
-expect "PRU test pin (GPIO1_1)" "$(fdtget -tx dtb-merged .../pru-test-default-pins pinctrl-single,pins)" "164 50007"
+python3 ${pinmuxVerifier} dtb-merged ${pinmuxExpectations}
 
 # 5. Write kernel boot parameters into /chosen/bootargs
 fdtput --auto-path --verbose --type=s dtb-merged /chosen bootargs \

@@ -158,9 +158,9 @@ def compile_profile(profile):
         for port in ('scl', 'sda'):
             connection(bus['connections'][port], 'i2c', 'input', f'{bus_id}.{port}', f'{prefix}_{port.upper()}')
 
-    # These are board policy, never writable device records.
-    for pin_id, function, direction, bias in [('main:0x0164','GPIO1_1','input','none'), ('main:0x02a8','USB0_DRVVBUS','output','none')]:
-        connection(dict(pin=pin_id,function=function,bias=bias,schmitt=True), 'gpio' if function.startswith('GPIO') else 'usb', direction, 'board.' + function)
+    # USB host VBUS is board policy, never a writable device record.
+    connection(dict(pin='main:0x02a8', function='USB0_DRVVBUS', bias='none', schmitt=True),
+               'usb', 'output', 'board.USB0_DRVVBUS')
     # Preserve TI's existing Schmitt setting on every idle pad as well as active pads.
     for pin_id, pin in PINS.items():
         if pin['idle'] and pin_id not in claimed:

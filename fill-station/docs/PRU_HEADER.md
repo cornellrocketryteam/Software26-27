@@ -14,8 +14,8 @@ signals are protected; the inventory is not a license to claim every SoC ball.
 ## PRU header
 
 PRG0_PRU0_GPO0–19 and PRG0_PRU1_GPO0–17 can be ordinary GPIOs. The default
-profiles retain the existing test input on pad 0x164 (GPIO1_1) and idle the
-other available signals as input pull-downs. PRG0_MDIO0 signals on this header
+profiles idle available signals as inputs with pull-downs. PRU pin 14
+(GPIO1_1) is available for device assignments. PRG0_MDIO0 signals on this header
 are also inventoried. PRG0_PRU1_GPO18/19 are Ethernet MDIO signals and remain
 protected, as do PRG1 Ethernet pads.
 

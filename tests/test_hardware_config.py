@@ -17,14 +17,16 @@ class HardwareConfigTests(unittest.TestCase):
         self.profile = compiler.load_profile('hybrid')
     def compile(self):
         return compiler.compile_profile(self.profile)
-    def test_default_profiles_exact_register_regression(self):
+    def test_hybrid_register_regression_except_released_test_pin(self):
         baseline = json.loads((HW / 'fixtures/original-expectations.json').read_text())
         values = lambda result: {(p['domain'],p['offset']):p['value'] for p in result['pins']}
         for name in ('hybrid',):
             result=compiler.compile_profile(compiler.load_profile(name))
-            self.assertEqual(values(result['expectations']),values(baseline))
-            self.assertEqual(len(result['report']['assignments']),24)
-            self.assertEqual(len(result['report']['idle']),61)
+            expected = values(baseline)
+            expected[('main', 0x164)] = 0x44007  # GPIO input with pull-down and Schmitt trigger
+            self.assertEqual(values(result['expectations']), expected)
+            self.assertEqual(len(result['report']['assignments']),23)
+            self.assertEqual(len(result['report']['idle']),62)
             self.assertEqual(len(result['runtime']['devices']),12)
             self.assertEqual(result['runtime']['configured_devices_mask'],4095)
     def test_liquid_shared_bus_without_external_devices(self):
@@ -36,8 +38,8 @@ class HardwareConfigTests(unittest.TestCase):
         assigned={x['offset']:x for x in result['report']['assignments'] if x['domain']=='main'}
         self.assertEqual(assigned[0x260]['signal'],'I2C0_SCL')
         self.assertEqual(assigned[0x264]['signal'],'I2C0_SDA')
-        self.assertEqual(len(result['report']['assignments']),23)
-        self.assertEqual(len(result['report']['idle']),63)
+        self.assertEqual(len(result['report']['assignments']),22)
+        self.assertEqual(len(result['report']['idle']),64)
         for d in result['runtime']['devices']:
             if d['type']=='ads1015':self.assertEqual(d['bus'],'/dev/i2c-2')
         for d in p['devices']:
@@ -50,6 +52,8 @@ class HardwareConfigTests(unittest.TestCase):
         new={(p['domain'],p['offset']):p['value'] for p in result['expectations']['pins']}
         qd=next(d for d in compiler.load_profile('hybrid')['devices'] if d['role']=='qd_stepper')
         changed={tuple([c['pin'].split(':')[0],int(c['pin'].split(':')[1],16)]) for c in qd['connections'].values()}
+        changed.add(('main', 0x164))  # Released test input
+        self.assertEqual(new[('main', 0x164)], 0x44007)
         for pad,value in old.items():
             if pad not in changed:self.assertEqual(new[pad],value,pad)
     def test_shared_bus_rejects_internal_pull_and_wrong_route(self):
@@ -73,6 +77,18 @@ class HardwareConfigTests(unittest.TestCase):
             p=compiler.load_profile('liquid');d=next(d for d in p['devices'] if d['role']=='adc1')
             d['bus']=next(b['id'] for b in p['buses'] if b['controller']=='main_i2c0');d['address']=address
             with self.assertRaisesRegex(ValueError,'reserved'):compiler.compile_profile(p)
+    def test_pru_pin_14_is_available_for_solenoid_control(self):
+        for name in ('liquid', 'hybrid'):
+            with self.subTest(profile=name):
+                profile = compiler.load_profile(name)
+                result = compiler.compile_profile(profile)
+                self.assertIn(1, result['expectations']['idle_gpio_lines']['main_gpio1'])
+                valve = next(d for d in profile['devices'] if d['role'] == 'sv1')
+                valve['connections']['control'].update(pin='main:0x0164', function='GPIO1_1')
+                result = compiler.compile_profile(profile)
+                self.assertNotIn(1, result['expectations']['idle_gpio_lines']['main_gpio1'])
+                self.assertTrue(any(p['domain'] == 'main' and p['offset'] == 0x164
+                                    for p in result['report']['assignments']))
     def test_duplicate_pad_across_devices_rejected(self):
         self.profile['devices'][1]['connections']['signal']=copy.deepcopy(self.profile['devices'][0]['connections']['signal'])
         with self.assertRaisesRegex(ValueError,'duplicate|claimed'):self.compile()

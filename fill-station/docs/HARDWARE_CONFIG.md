@@ -297,7 +297,7 @@ The editor does not change servo pulse widths, calibration, PWM frequency, or ti
 
 ### Board ownership
 
-The tool protects board functions such as Ethernet, boot resources, board buses, and control pins. It also retains fixed USB host setup and the existing GPIO1_1 test input. You cannot reassign these through ordinary device entries.
+The tool protects board functions such as Ethernet, boot resources, board buses, and control pins. It also retains fixed USB host setup. You cannot reassign these protected resources through device entries. PRU pin 14 (GPIO1_1) is available for device assignments.
 
 “PRU header” and “MCU header” describe connectors. Selecting their pins here gives Linux ownership through this workflow; it does not configure a PRU or MCU firmware program to use them.
 
