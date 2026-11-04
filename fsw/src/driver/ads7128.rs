@@ -85,21 +85,50 @@ impl Ads7128Sensor {
         Ok(buf[0])
     }
 
-    pub async fn read_channel(&mut self, channel: u8) -> Result<u16, Ads7128Error<<I2cDevice<'static> as embedded_hal_async::i2c::ErrorType>::Error>> {
-        if channel > 7 {
-            return Err(Ads7128Error::InvalidChannel);
-        }
-        self.write_register(CHANNEL_SEL, channel).await?; 
-
-        let mut buf = [0u8; 2];
-        self.i2c.read(constants::ADS7128_I2C_ADDR, &mut buf).await?;
-
-
-        //upper and lower need to be shifted
-        let value = ((buf[0] as u16) << 4) | ((buf[1] as u16) >> 4);
-
-        Ok(value)
+pub async fn read_channel(
+    &mut self,
+    channel: u8,
+) -> Result<u16, Ads7128Error<<I2cDevice<'static> as embedded_hal_async::i2c::ErrorType>::Error>> {
+    if channel > 7 {
+        return Err(Ads7128Error::InvalidChannel);
     }
+
+    log::info!("Selecting ADS7128 channel {}", channel);
+
+    self.write_register(CHANNEL_SEL, channel).await?;
+
+    let mut buf = [0u8; 2];
+    self.i2c
+        .read(constants::ADS7128_I2C_ADDR, &mut buf)
+        .await?;
+
+    let value = ((buf[0] as u16) << 4) | ((buf[1] as u16) >> 4);
+
+    log::info!("Channel {} raw bytes: {:02X} {:02X}", channel, buf[0], buf[1]);
+
+    Ok(value)
+}
+
+//only for testing purposes -- will delete later 
+pub async fn test_all_channels(&mut self) {
+    log::info!("Starting ADS7128 channel test");
+
+    loop {
+        for channel in 0u8..8 {
+            match self.read_channel(channel).await {
+                Ok(raw) => {
+                    log::info!("Channel {}: raw = {}", channel, raw);
+                }
+                Err(err) => {
+                    log::error!("Channel {} failed: {:?}", channel, err);
+                }
+            }
+        }
+
+        log::info!("Channel scan complete");
+        embassy_time::Timer::after_millis(1000).await;
+    }
+}
 
     //need to figure out what other channels need to be read + scaling for them and change it from last years 
     pub async fn read_into_packet(&mut self, packet: &mut Packet) -> Result<(), Ads7128Error<<I2cDevice<'static> as embedded_hal_async::i2c::ErrorType>::Error>> {

@@ -2,7 +2,7 @@
 
 #![no_std]
 #![no_main]
-
+#[cfg(feature = "test_ads7128")] //only for testing purposes -- can remove after 
 use embassy_executor::{Executor, Spawner};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::multicore::{spawn_core1, Stack};
@@ -16,6 +16,7 @@ pub mod actuator;
 pub mod airbrake_task;
 mod constants;
 mod driver;
+mod ads7128_test; 
 mod flight_loop;
 #[cfg(any(
     feature = "sim_simple",
@@ -57,6 +58,9 @@ async fn main(spawner: Spawner) {
     log::info!("INIT [1/8]: Starting I2C bus...");
     let i2c_bus = module::init_shared_i2c(p.I2C0, p.PIN_0, p.PIN_1);
     log::info!("INIT [1/8]: I2C bus ready");
+    //only for testing purposes -- uncomment to test the ads7128
+    #[cfg(feature = "test_ads7128")]
+    ads7128_test::run(i2c_bus).await;
 
     // Perform an I2C scan
     /*
@@ -739,7 +743,7 @@ async fn main(spawner: Spawner) {
                 if elapsed > constants::LOOP_BUDGET_MS { "OVERRUN" } else { "OK" },
             );
             led.toggle();
-            Timer::after_millis(constants::LOOP_PERIOD_MS).await;
+            Timer::after_millis(constants::MAIN_LOOP_DELAY_MS).await;
         }
 
         // Part 2: deliberate stall — watchdog MUST fire and reset the chip
@@ -870,7 +874,7 @@ async fn main(spawner: Spawner) {
                     (0, 0, u64::MAX, 0, 0, 0);
             }
 
-            ticker.next().await; 
+            Timer::after_millis(constants::MAIN_LOOP_DELAY_MS).await;
         }
     }
 }
