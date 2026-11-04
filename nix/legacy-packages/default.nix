@@ -13,7 +13,6 @@ inputs.nixpkgs.lib.genAttrs
       overlays = [
         inputs.self.overlays.default
         inputs.mixos.overlays.default
-        inputs.fenix.overlays.default
       ];
     })
   )

@@ -13,7 +13,6 @@ mapAttrs (
           nixpkgs.overlays = [
             inputs.self.overlays.default
             inputs.mixos.overlays.default
-            inputs.fenix.overlays.default
           ];
           etc."hostname".source = mkDefault (pkgs.writeText "hostname" name);
         }
