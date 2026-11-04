@@ -2,6 +2,7 @@ pub mod igniter;
 pub mod solenoid_valve;
 
 pub mod ads1015;
+pub mod ads7128;
 pub mod ball_valve;
 pub mod mav;
 pub mod umbilical;

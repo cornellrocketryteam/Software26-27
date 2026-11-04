@@ -1,0 +1,12 @@
+name: nanopb
+build:
+  cmake-ext: True
+  kconfig-ext: True
+package-managers:
+  pip:
+    requirement-files:
+      - extra/requirements.txt
+security:
+  external-references:
+    - cpe:2.3:a:nanopb_project:nanopb:0.4.9.2:*:*:*:*:*:*:*
+    - pkg:github/nanopb/nanopb@0.4.9.2
