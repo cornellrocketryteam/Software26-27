@@ -1,3 +1,6 @@
+# Vite cache
+.vite/
+
 # Nix result files (plus named links like result-ospi)
 result
 result-*
