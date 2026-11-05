@@ -81,12 +81,12 @@ and Nix use it. Generated files belong in build directories; do not edit them.
 ```sh
 python3 fill-station/hardware/compiler.py --profile liquid --output /tmp/liquid-hardware
 nix build .#mixosConfigurations.fill-station-liquid.config.system.build.pinmuxOverlay
-nix build .#mixosConfigurations.fill-station-hybrid.config.system.build.pinmuxOverlay
+nix build .#mixosConfigurations.fill-station.config.system.build.pinmuxOverlay
 nix develop --command cargo test --manifest-path fill-station/Cargo.toml --features liquid
 ```
 
-The normal image names remain `fill-station-liquid` and `fill-station-hybrid`, paired by
-`fillStation.mode`. The plain image defaults to Hybrid. Cargo without either feature
+The images are `fill-station` (Hybrid) and `fill-station-liquid`, paired by
+`fillStation.mode`. Cargo without either feature
 uses the empty development configuration. Selecting both features is an error; `none`
 has no boot-image pinmux profile.
 

@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
-SOURCE=ROOT/'nix/overlays/by-name/crt/fillstation-dtbo'
+SOURCE=ROOT/'nix/packages/crt/fillstation-dtbo'
 HARDWARE=ROOT/'fill-station/hardware'
 KERNEL=os.environ.get('KERNEL_DTS_DIR')
 spec=importlib.util.spec_from_file_location('compiler',HARDWARE/'compiler.py')

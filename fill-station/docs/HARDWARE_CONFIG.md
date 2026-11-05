@@ -152,7 +152,7 @@ The application build chooses the matching file automatically. There is no separ
 
 **Selecting Hybrid in the editor does not select Hybrid for your next terminal build.** The selector chooses the file you edit. The build command chooses which version you build.
 
-Only these two editable profiles are supported. The plain `fill-station` image defaults to Hybrid. A Cargo build with neither vehicle feature uses an empty development configuration; it is not a third editable hardware profile. Selecting both vehicle features is an error.
+Only these two editable profiles are supported. The `fill-station` image is Hybrid; every configuration must set `fillStation.mode`. A Cargo build with neither vehicle feature uses an empty development configuration; it is not a third editable hardware profile. Selecting both vehicle features is an error.
 
 ## 6. Edit an existing device
 
@@ -400,7 +400,7 @@ nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage 
 or:
 
 ```sh
-nix build .#mixosConfigurations.fill-station-hybrid.config.system.build.sdImage --out-link result-sd-hybrid
+nix build .#mixosConfigurations.fill-station.config.system.build.sdImage --out-link result-sd-hybrid
 ```
 
 The card image is `result-sd-liquid/fill-station.img` or `result-sd-hybrid/fill-station.img`.

@@ -84,21 +84,20 @@ ls -la /bin/
 
 ## Solution: Verify the Nix package installs all binaries
 
-✅ **GOOD NEWS**: The package definition in `nix/overlays/by-name/crt/fill-station/package.nix` already installs all binaries!
+✅ **GOOD NEWS**: The package definition in `nix/packages/crt/fill-station/package.nix` already installs all binaries!
 
 Current implementation:
 
 ```nix
-# In nix/overlays/by-name/crt/fill-station/package.nix
+# In nix/packages/crt/fill-station/package.nix
 {
   rustPlatform,
-  crt-software-root,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fill-station";
   version = "0.1.0";
 
-  src = crt-software-root + /fill-station;
+  src = ../../../../fill-station;
   cargoLock.lockFile = finalAttrs.src + /Cargo.lock;
 
   doCheck = false;

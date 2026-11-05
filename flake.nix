@@ -3,25 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
-    mixos = {
-      url = "github:jmbaur/mixos";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    import-tree.url = "github:denful/import-tree";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+
+    mixos.url = "github:jmbaur/mixos";
+    mixos.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs: {
-    apps = inputs.nixpkgs.lib.mapAttrs (_: pkgs: {
-      hardware-config = {
-        type = "app";
-        program = "${pkgs.writeShellScriptBin "hardware-config" ''
-          exec ${pkgs.python3}/bin/python3 ${./fill-station/hardware}/server.py "$@"
-        ''}/bin/hardware-config";
-      };
-    }) inputs.self.legacyPackages;
-    devShells = import ./nix/dev-shells inputs;
-    formatter = import ./nix/formatter inputs;
-    legacyPackages = import ./nix/legacy-packages inputs;
-    mixosConfigurations = import ./nix/mixos-configurations inputs;
-    overlays = import ./nix/overlays inputs;
-  };
+  # Every .nix file under nix/flake-modules is a flake-parts module; paths containing `/_` are skipped
+  outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./nix/flake-modules);
 }

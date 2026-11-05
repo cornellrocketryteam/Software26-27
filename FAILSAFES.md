@@ -130,8 +130,8 @@
 
 | Failsafe | Threshold | Trigger | Action | File |
 |---|---|---|---|---|
-| Process respawn | Immediate | `fill-station` process exits or crashes | busybox init restarts it (`action = "respawn"`). Actuator state on restart follows the default-safe init above | `nix/mixos-configurations/fill-station/default.nix` |
-| Kernel panic reboot | Immediate | Kernel panic | Board reboots (`panic=-1` in bootargs) | `nix/mixos-configurations/fill-station/fit/build-fit-image.nix` |
+| Process respawn | Immediate | `fill-station` process exits or crashes | busybox init restarts it (`action = "respawn"`). Actuator state on restart follows the default-safe init above | `nix/mixos-modules/fill-station-base/default.nix` |
+| Kernel panic reboot | Immediate | Kernel panic | Board reboots (`panic=-1` in bootargs) | `nix/mixos-modules/fill-station-base/fit/build-fit-image.nix` |
 | ~~Hardware watchdog (RTI)~~ | — | — | **NOT ENABLED — deferred decision, see below** | — |
 
 > **Deferred: hardware watchdog (decided 2026-10-02).**

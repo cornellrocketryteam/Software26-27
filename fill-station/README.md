@@ -13,14 +13,14 @@ cargo run --release
 ```bash
 # Build the entire system image including fill-station
 cd /path/to/Software26-27
-nix build .#mixosConfigurations.fill-station.config.system.build.sdImage        # `hybrid` feature (default)
+nix build .#mixosConfigurations.fill-station.config.system.build.sdImage        # `hybrid` feature
 nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage # `liquid` feature
-nix build .#mixosConfigurations.fill-station-hybrid.config.system.build.sdImage # `hybrid` feature
+nix build .#mixosConfigurations.fill-station-debug.config.system.build.sdImage  # hybrid + debug tools
 ```
 
 The mode is compiled in (Cargo features `liquid` / `hybrid`), not passed as a
-runtime flag. Each `-liquid` / `-hybrid` configuration just sets
-`fillStation.mode` (see `nix/mixos-configurations/fill-station/mode.nix`).
+runtime flag. Each configuration just sets `fillStation.mode` / `fillStation.debug`
+in its `nix/mixos-configurations/<name>.nix` (see `nix/mixos-modules/fill-station-base/options.nix`).
 Locally: `cargo run --release --features liquid`. The two features are
 mutually exclusive; enabling both is a compile error.
 
@@ -243,7 +243,7 @@ cargo build --release
 ### Nix-based Build
 The fill station is built as a Nix package defined in:
 ```
-nix/overlays/by-name/crt/fill-station/package.nix
+nix/packages/crt/fill-station/package.nix
 ```
 
 Build the package alone:
@@ -264,7 +264,7 @@ The fill-station runs on the **TI AM64x SK board** with a custom MixOS-based Lin
 
 **Init System**: MixOS uses a minimal init system (not systemd). The service is configured in:
 ```
-nix/mixos-configurations/fill-station/default.nix
+nix/mixos-modules/fill-station-base/default.nix
 ```
 
 **Service Configuration**:

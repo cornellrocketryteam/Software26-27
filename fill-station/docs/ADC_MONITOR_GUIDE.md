@@ -73,7 +73,7 @@ screen /dev/ttyUSB0 115200
 **Via SSH (if network is configured):**
 ```bash
 ssh root@<board-ip>
-# Default password hash is in nix/mixos-configurations/fill-station/default.nix
+# Default password hash is in nix/mixos-modules/fill-station-base/default.nix
 ```
 
 ### 3. Run the ADC Monitor

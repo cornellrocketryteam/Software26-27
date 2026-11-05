@@ -65,11 +65,11 @@ const ADC2_ADDR: u16 = 0x49;
 
 The Nix build system automatically includes the ADC monitor:
 
-1. **Package Definition**: `nix/overlays/by-name/crt/fill-station/package.nix`
+1. **Package Definition**: `nix/packages/crt/fill-station/package.nix`
    - Builds all Rust binaries in the fill-station crate
    - Includes: `fill-station`, `adc_monitor`, and any other `src/bin/*.rs` files
 
-2. **System Configuration**: `nix/mixos-configurations/fill-station/default.nix`
+2. **System Configuration**: `nix/mixos-modules/fill-station-base/default.nix`
    ```nix
    bin = [
      pkgs.crt.fill-station    # This includes ALL binaries!

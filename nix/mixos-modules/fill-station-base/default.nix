@@ -5,11 +5,9 @@
   ...
 }:
 let
-  # Debug builds add tools that are too big for the production (OSPI) image.
-  debug = false;
+  inherit (config.fillStation) debug;
 
-  # The one fill-station build used by both init and /bin, compiled with the
-  # feature selected by fillStation.mode (see ./mode.nix)
+  # The one fill-station build used by both init and /bin
   fill-station = pkgs.crt.fill-station.override {
     withHelpers = debug; # ADC CLI tools only in debug
     inherit (config.fillStation) mode;
@@ -18,7 +16,7 @@ in
 {
   imports = [
     ./fit
-    ./mode.nix
+    ./options.nix
     ./ospi-image
     ./sd-image
   ];
@@ -56,7 +54,7 @@ in
 
     wpa_supplicant = {
       action = "respawn";
-      process = "${lib.getExe' pkgs.wpa_supplicant "wpa_supplicant"} -i wlan0 -c /etc/wpa_supplicant.conf";
+      process = "${lib.getExe' pkgs.crt.wpa-supplicant-minimal "wpa_supplicant"} -i wlan0 -c /etc/wpa_supplicant.conf";
     };
 
     mount_data = {
@@ -76,7 +74,7 @@ in
     pkgs.libgpiod
     fill-station
     pkgs.iw
-    pkgs.wpa_supplicant
+    pkgs.crt.wpa-supplicant-minimal
   ]
   ++ lib.optionals debug [
     pkgs.tcpdump

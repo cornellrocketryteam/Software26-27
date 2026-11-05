@@ -17,14 +17,14 @@ The system is configured to **automatically connect** to the configured network 
 - **Configuration File**: `/etc/wpa_supplicant.conf` (generated at build time)
 
 ### How It Works
-1. **Init Process**: The `init` system spawns `wpa_supplicant` and `udhcpc` on boot (see `nix/mixos-configurations/fill-station/default.nix`).
+1. **Init Process**: The `init` system spawns `wpa_supplicant` and `udhcpc` on boot (see `nix/mixos-modules/fill-station-base/default.nix`).
 2. **Connection**: `wpa_supplicant` connects to the network defined in `/etc/wpa_supplicant.conf`.
 3. **DHCP**: `udhcpc` requests an IP address from the router.
 
 ## Changing Network Credentials
 To change the default network:
 
-1. Edit `nix/mixos-configurations/fill-station/default.nix`.
+1. Edit `nix/mixos-modules/fill-station-base/default.nix`.
 2. Locate the `wpa_supplicant.conf` generation section:
    ```nix
    etc."wpa_supplicant.conf".source = pkgs.writeText "wpa_supplicant.conf" ''

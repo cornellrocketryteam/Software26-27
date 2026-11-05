@@ -2,7 +2,6 @@
   lib,
   rustPlatform,
   buildPackages,
-  crt-software-root,
   nanopb-src,
   # Also build the ADC CLI tools from src/bin/ (adc_monitor, adc_test, ...).
   # Off by default to keep the production image small.
@@ -14,7 +13,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fill-station";
   version = "0.1.0";
 
-  src = crt-software-root + /fill-station;
+  src = ../../../../fill-station;
   cargoLock.lockFile = finalAttrs.src + /Cargo.lock;
 
   # Only build the main binary unless the helpers are wanted

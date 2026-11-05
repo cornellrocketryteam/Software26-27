@@ -21,7 +21,7 @@ The build process produces a complete bootable SD card image (`fill-station.img`
                 ▼                               ▼
 ┌───────────────────────────┐   ┌──────────────────────────────┐
 │   MixOS Configuration     │   │   Custom Overlays            │
-│   (mixos-configurations/) │   │   (overlays/by-name/crt/)    │
+│   (mixos-configurations/) │   │   (packages/crt/)            │
 └───────────┬───────────────┘   └──────────┬───────────────────┘
             │                               │
             │                               │ Provides:
@@ -69,7 +69,7 @@ The build process produces a complete bootable SD card image (`fill-station.img`
 
 ## Build Components
 
-### 1. Custom Overlay Packages (`nix/overlays/by-name/crt/`)
+### 1. Custom Overlay Packages (`nix/packages/crt/`)
 
 The system requires several custom-built packages specific to the TI AM64x platform:
 
@@ -129,7 +129,7 @@ The system requires several custom-built packages specific to the TI AM64x platf
 
 ---
 
-### 2. MixOS Configuration (`nix/mixos-configurations/fill-station/`)
+### 2. MixOS Configuration (`nix/mixos-modules/fill-station-base/`)
 
 #### **Main Configuration** (`default.nix`)
 
@@ -201,7 +201,7 @@ Defines the system configuration:
 
 ---
 
-### 3. FIT Image Build (`nix/mixos-configurations/fill-station/fit/`)
+### 3. FIT Image Build (`nix/mixos-modules/fill-station-base/fit/`)
 
 The FIT (Flattened Image Tree) image is a standard format for bundling kernel, device tree, and initrd into a single bootable image with cryptographic verification.
 
@@ -386,7 +386,7 @@ Generated from `init` in `default.nix` plus MixOS defaults:
 
 ---
 
-### 4. SD Card Image Build (`nix/mixos-configurations/fill-station/sd-image/`)
+### 4. SD Card Image Build (`nix/mixos-modules/fill-station-base/sd-image/`)
 
 #### **SD Image Entry Point** (`sd-image/default.nix`)
 
@@ -563,7 +563,7 @@ nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
 
 ### What happens:
 
-1. Nix evaluates `flake.nix` → imports `nix/mixos-configurations/default.nix`
+1. Nix evaluates `flake.nix` → imports `nix/flake-modules/mixos-configurations.nix`
 2. MixOS configuration loads `fill-station/default.nix`
 3. Overlay packages are built (or fetched from cache):
    - `fill-station-linux` (kernel)
@@ -654,28 +654,28 @@ Benefits:
 | File | Purpose |
 |------|---------|
 | `flake.nix` | Top-level Nix flake, defines all outputs |
-| `nix/mixos-configurations/default.nix` | MixOS configuration entry point |
-| `nix/mixos-configurations/fill-station/default.nix` | Fill station system configuration |
-| `nix/mixos-configurations/fill-station/fit/default.nix` | FIT image build entry |
-| `nix/mixos-configurations/fill-station/fit/build-fit-image.nix` | FIT image build script |
-| `nix/mixos-configurations/fill-station/fit/fitImage.its` | FIT image tree source |
-| `nix/overlays/by-name/crt/fillstation-dtbo/` | Device tree overlay merged into the stock SK DTB |
-| `nix/mixos-configurations/fill-station/sd-image/default.nix` | SD image build entry |
-| `nix/mixos-configurations/fill-station/sd-image/build-sd-image.nix` | SD image build script |
-| `nix/mixos-configurations/fill-station/sd-image/uEnv.txt` | U-Boot environment |
-| `nix/overlays/by-name/crt/fill-station-linux/package.nix` | Custom kernel package |
-| `nix/overlays/by-name/crt/ti-uboot-r5/package.nix` | R5 U-Boot package |
-| `nix/overlays/by-name/crt/ti-uboot-a53/package.nix` | A53 U-Boot package |
-| `nix/overlays/by-name/crt/ti-arm-trusted-firmware/package.nix` | ARM TF package |
-| `nix/overlays/by-name/crt/ti-optee/package.nix` | OP-TEE package |
-| `nix/overlays/by-name/crt/fill-station/package.nix` | Fill station binary package |
+| `nix/flake-modules/mixos-configurations.nix` | Builds one MixOS system per `nix/mixos-configurations/<name>.nix` |
+| `nix/mixos-modules/fill-station-base/default.nix` | Fill station system configuration |
+| `nix/mixos-modules/fill-station-base/fit/default.nix` | FIT image build entry |
+| `nix/mixos-modules/fill-station-base/fit/build-fit-image.nix` | FIT image build script |
+| `nix/mixos-modules/fill-station-base/fit/fitImage.its` | FIT image tree source |
+| `nix/packages/crt/fillstation-dtbo/` | Device tree overlay merged into the stock SK DTB |
+| `nix/mixos-modules/fill-station-base/sd-image/default.nix` | SD image build entry |
+| `nix/mixos-modules/fill-station-base/sd-image/build-sd-image.nix` | SD image build script |
+| `nix/mixos-modules/fill-station-base/sd-image/uEnv.txt` | U-Boot environment |
+| `nix/packages/crt/fill-station-linux/package.nix` | Custom kernel package |
+| `nix/packages/crt/ti-uboot-r5/package.nix` | R5 U-Boot package |
+| `nix/packages/crt/ti-uboot-a53/package.nix` | A53 U-Boot package |
+| `nix/packages/crt/ti-arm-trusted-firmware/package.nix` | ARM TF package |
+| `nix/packages/crt/ti-optee/package.nix` | OP-TEE package |
+| `nix/packages/crt/fill-station/package.nix` | Fill station binary package |
 
 ---
 
 ## Customization Guide
 
 ### Change Kernel Config:
-Edit `nix/overlays/by-name/crt/fill-station-linux/kernel.config`.
+Edit `nix/packages/crt/fill-station-linux/kernel.config`.
 Ensure Wi-Fi drivers are built-in for connectivity:
 ```
 CONFIG_WL18XX=y
@@ -684,7 +684,7 @@ CONFIG_MAC80211=y
 ```
 
 ### Change Boot Parameters:
-Edit `nix/mixos-configurations/fill-station/fit/build-fit-image.nix`:
+Edit `nix/mixos-modules/fill-station-base/fit/build-fit-image.nix`:
 ```nix
 env = {
   kernelParams = toString [
@@ -698,11 +698,11 @@ env = {
 ```
 
 ### Change Device Tree:
-Edit the overlay in `nix/overlays/by-name/crt/fillstation-dtbo/src/` (see [DTBO_BUILDER.md](DTBO_BUILDER.md) / [PRU_HEADER.md](PRU_HEADER.md)).
+Edit the overlay in `nix/packages/crt/fillstation-dtbo/src/` (see [DTBO_BUILDER.md](DTBO_BUILDER.md) / [PRU_HEADER.md](PRU_HEADER.md)).
 For properties an overlay can't delete, add an `fdtput -d` in `build-fit-image.nix`.
 
 ### Modify Init Processes:
-Edit `nix/mixos-configurations/fill-station/default.nix`:
+Edit `nix/mixos-modules/fill-station-base/default.nix`:
 ```nix
 init = {
   my-service = {
@@ -713,7 +713,7 @@ init = {
 ```
 
 ### Add Binaries to Image:
-Edit `nix/mixos-configurations/fill-station/default.nix`:
+Edit `nix/mixos-modules/fill-station-base/default.nix`:
 ```nix
 bin = [
   pkgs.mypackage
@@ -722,7 +722,7 @@ bin = [
 ```
 
 ### Change Partition Sizes:
-Edit `nix/mixos-configurations/fill-station/sd-image/build-sd-image.nix`:
+Edit `nix/mixos-modules/fill-station-base/sd-image/build-sd-image.nix`:
 ```nix
 gapMiB = 2;
 firmwareSizeMiB = 128;
