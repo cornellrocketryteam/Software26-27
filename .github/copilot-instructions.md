@@ -94,7 +94,7 @@ Goal: Make AI agents productive immediately in this repo by documenting actual a
 - SPI (MicroSD logging): pins and setup referenced in `fsw/src/module.rs`; ensure consistency with `RATS` pin assignments.
 - Fill station server: `fill-station/src/main.rs` (WebSocket + ADC background task); commands in `fill-station/src/command.rs`; components in `fill-station/src/components/`.
 - Hardware aggregation: `fill-station/src/hardware.rs` (collects all components).
-- Kernel config: `nix/packages/crt/fill-station-linux/kernel.config` (edit for kernel options like PWM, Wi-Fi).
+- Kernel config: `nix/packages/crt/fill-station-linux/kernel.config`. See [Linux kernel configuration](../nix/linux-kernel.md) for the `nix develop` and `menuconfig` workflow on Linux or the Darwin Linux builder VM.
 
 **Fill Station Documentation Hub**
 Comprehensive docs in `fill-station/docs/`:
@@ -102,6 +102,7 @@ Comprehensive docs in `fill-station/docs/`:
 - `ADDING_FEATURES.md` - Guide to extending the system (components, commands, tasks)
 - `ADC_STREAMING.md` - Background ADC monitoring and WebSocket protocol
 - `LINUX_IMAGE_BUILD_PROCESS.md` - Complete Nix/FIT/U-Boot build system guide
+- `nix/linux-kernel.md` - Kernel configuration editing on Linux or the Darwin Linux builder VM
 - `WIFI_SETUP.md` - Wi-Fi configuration, auto-connect, and debugging guide
 - `DTBO_BUILDER.md` - Automated device tree overlay builder
 - `QUICKSTART_ADC.md`, `ADC_MONITOR_GUIDE.md`, `TROUBLESHOOTING.md`

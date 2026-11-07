@@ -287,6 +287,7 @@ nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
 ```
 
 See [LINUX_IMAGE_BUILD_PROCESS.md](docs/LINUX_IMAGE_BUILD_PROCESS.md) for complete build system documentation.
+For kernel options, see [Editing the Linux kernel config](../nix/linux-kernel.md).
 
 ## Troubleshooting
 
@@ -308,6 +309,7 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for:
 - **[UMBILICAL.md](docs/UMBILICAL.md)** - Ground-system to FSW USB serial communication
 - **[DTBO_BUILDER.md](docs/DTBO_BUILDER.md)** - Device tree overlay automation
 - **[LINUX_IMAGE_BUILD_PROCESS.md](docs/LINUX_IMAGE_BUILD_PROCESS.md)** - Complete build system guide
+- **[Linux kernel configuration](../nix/linux-kernel.md)** - Edit kernel options with `nix develop` on Linux or the Darwin Linux builder VM
 
 ## License
 

@@ -628,4 +628,5 @@ In the repository:
 - `fill-station/docs/PRU_HEADER.md`: header routing and board restrictions.
 - `ground-station/README.md`: database, broker, and dashboard rollout.
 - `fill-station/docs/LINUX_IMAGE_BUILD_PROCESS.md`: image and SD-card writing procedure.
+- `nix/linux-kernel.md`: enable or disable drivers using Linux or the Darwin Linux builder VM.
 - `fill-station/docs/WEBSOCKET_API.md`: existing application commands; consult current Rust code for the added availability responses.

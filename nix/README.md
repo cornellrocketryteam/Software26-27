@@ -1,5 +1,7 @@
 # Nix infrastructure
 
-This directory is reserved for Nix development environments, NixOS deployment configuration, image caching, and network-boot support.
+This directory contains the development environments, fill-station kernel and
+firmware packages, and MixOS image builds.
 
-Add reproducible configuration only after its target hardware, cache source, fallback behavior, and verification procedure are documented.
+- [Editing the Linux kernel config](linux-kernel.md): use `nix develop` on Linux
+  or inside the Darwin Linux builder VM on macOS.

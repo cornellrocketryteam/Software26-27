@@ -75,7 +75,7 @@ The system requires several custom-built packages specific to the TI AM64x platf
 
 #### **fill-station-linux** (`fill-station-linux/package.nix`)
 - Custom Linux kernel with AM64x-specific configuration
-- Based on `linux_latest` from nixpkgs
+- Based on `linux_7_2` from the pinned nixpkgs
 - Uses manual kernel configuration from `kernel.config`
 - Outputs: kernel `Image` file (uncompressed ARM64 kernel)
 
@@ -678,13 +678,13 @@ Benefits:
 ## Customization Guide
 
 ### Change Kernel Config:
-Edit `nix/packages/crt/fill-station-linux/kernel.config`.
-Ensure Wi-Fi drivers are built-in for connectivity:
-```
-CONFIG_WL18XX=y
-CONFIG_WLCORE=y
-CONFIG_MAC80211=y
-```
+
+Follow [Linux kernel configuration](../../nix/linux-kernel.md) to edit
+`nix/packages/crt/fill-station-linux/kernel.config`: enter the `nix develop` shell,
+copy the saved config into the kernel build directory, run `olddefconfig`, then
+enable or disable options in `menuconfig`. Save, exit, and copy the resulting
+`.config` back before rebuilding. The guide includes the Darwin Linux builder VM
+workflow for macOS.
 
 ### Change Boot Parameters:
 Edit `nix/mixos-modules/fill-station-base/fit/build-fit-image.nix`:
@@ -765,6 +765,7 @@ secondPartitionSizeMiB = 1024;
 
 ## Further Reading
 
+- [Linux kernel configuration](../../nix/linux-kernel.md)
 - [U-Boot FIT Image Format](https://docs.u-boot.org/en/latest/usage/fit/index.html)
 - [MixOS Documentation](https://github.com/jmbaur/mixos)
 - [TI AM64x Technical Reference](https://www.ti.com/product/AM6442)

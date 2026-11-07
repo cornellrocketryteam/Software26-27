@@ -25,6 +25,10 @@ Complete documentation for the Cornell Rocketry Team fill station server.
   - Device tree management
   - SD card image assembly
 
+- **[Linux kernel configuration](../../nix/linux-kernel.md)** - Edit the fill-station kernel config
+  - Linux and macOS Darwin Linux builder workflows with `nix develop`
+  - Save, copy back, and build the updated config
+
 ## Feature Documentation
 
 - **[ADC_STREAMING.md](ADC_STREAMING.md)** - ADC background monitoring and WebSocket streaming
@@ -89,6 +93,7 @@ Complete documentation for the Cornell Rocketry Team fill station server.
 | Configure ADC sampling | [ADC_STREAMING.md](ADC_STREAMING.md#configuration-easy-to-modify) |
 | Test ADC readings | [QUICKSTART_ADC.md](QUICKSTART_ADC.md) |
 | Fix I2C permissions | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| Enable or disable kernel drivers | [Linux kernel configuration](../../nix/linux-kernel.md) |
 | Stream ADC data | [ADC_STREAMING.md](ADC_STREAMING.md#websocket-protocol) |
 
 ### File Structure

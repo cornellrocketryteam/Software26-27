@@ -22,6 +22,7 @@ This page is the starting point for software documentation in the repository.
 | [BLiMS](../blims/README.md) | BLiMS software and integration assets |
 | [Payload](../payload/README.md) | Payload-to-FSW integration requirements |
 | [Nix infrastructure](../nix/README.md) | Reproducible development and deployment configuration |
+| [Linux kernel configuration](../nix/linux-kernel.md) | Edit the fill-station kernel using Linux or the Darwin Linux builder VM |
 
 ## Where information belongs
 
