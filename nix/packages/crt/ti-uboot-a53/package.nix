@@ -1,4 +1,5 @@
 {
+  lib,
   ti-optee,
   ti-arm-trusted-firmware,
   ti-linux-firmware,
@@ -6,19 +7,43 @@
   buildPackages,
 }:
 let
-  defconfigFile = ./am64x_a53_defconfig;
-  defconfigName = baseNameOf defconfigFile;
+  # && stops each chain at the first failure.
+  sdBootCommand = lib.concatStringsSep " && " [
+    "load mmc 1:1 \${addr_fit} fitImage.itb"
+    "bootm \${addr_fit}"
+  ];
+  # ospi.rootfs partition (see ospi-image)
+  ospiFitOffset = "0x800000";
+  ospiFitMax = "0x37c0000";
+  ospiBootCommand = lib.concatStringsSep " && " [
+    "sf probe"
+    "sf read \${addr_fit} ${ospiFitOffset} 0x40"
+    "fdt addr -q \${addr_fit}"
+    "fdt header get fitsize totalsize"
+    "itest \${fitsize} -le ${ospiFitMax}"
+    "sf read \${addr_fit} ${ospiFitOffset} \${fitsize}"
+    "bootm \${addr_fit}"
+  ];
+  # bootm only returns on failure, so ; falls through to OSPI.
+  bootCommand = lib.concatStringsSep "; " [
+    "echo Booting FIT from SD..."
+    sdBootCommand
+    "echo Booting FIT from OSPI..."
+    ospiBootCommand
+  ];
 in
 buildUBoot {
-  defconfig = defconfigName;
-  preConfigure = ''
-    cp ${defconfigFile} configs/${defconfigName}
+  defconfig = "am64x_evm_a53_defconfig";
+  extraConfig = ''
+    CONFIG_BOOTCOMMAND="${bootCommand}"
+    CONFIG_BOOTDELAY=1
+    CONFIG_NO_NET=y
+    # Sets MAC addresses; won't link without net
+    # CONFIG_BOARD_LATE_INIT is not set
+    # CONFIG_EFI_LOADER is not set
+    # CONFIG_USB is not set
+    # CONFIG_CMD_UBI is not set
   '';
-  extraPatches = [
-    ./patches/ti-board-detect-fixes.patch
-    # boot_device env var + `ospiboot` (boot the FIT from OSPI at 0x800000)
-    ./patches/ospi-boot.patch
-  ];
 
   extraMeta.platforms = [ "aarch64-linux" ];
 

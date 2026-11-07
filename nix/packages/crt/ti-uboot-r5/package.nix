@@ -4,14 +4,14 @@
   buildPackages,
   python3Packages,
 }:
-let
-  defconfigFile = ./am64x_r5_defconfig;
-  defconfigName = baseNameOf defconfigFile;
-in
 (buildUBoot {
-  defconfig = defconfigName;
-  preConfigure = ''
-    cp ${defconfigFile} configs/${defconfigName}
+  defconfig = "am64x_evm_r5_defconfig";
+  # Only the R5 SPL ships (tiboot3), so only SPL options matter.
+  extraConfig = ''
+    # SK's LPDDR4 setup even if the board-ID EEPROM read fails
+    CONFIG_DEFAULT_DEVICE_TREE="k3-am642-r5-sk"
+    CONFIG_NO_NET=y
+    # CONFIG_USB is not set
   '';
   extraMeta.platforms = [ "armv7l-linux" ];
 

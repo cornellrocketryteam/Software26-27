@@ -24,7 +24,6 @@ let
     cp ${ti-uboot-r5}/tiboot3-am64x_sr2-hs-fs-evm.bin firmware/tiboot3.bin
     cp ${ti-uboot-a53}/tispl.bin firmware/tispl.bin
     cp ${ti-uboot-a53}/u-boot.img firmware/u-boot.img
-    cp ${./uEnv.txt} firmware/uEnv.txt
     cp ${fitImage} firmware/fitImage.itb
   '';
 in

@@ -5,7 +5,7 @@
 #   ospi.tiboot3 0x0       1 MiB    tiboot3.bin
 #   ospi.tispl   0x100000  2 MiB    tispl.bin
 #   ospi.u-boot  0x300000  4 MiB    u-boot.img
-#   ospi.rootfs  0x800000  0x37c0000 fitImage.itb (booted by U-Boot's `ospiboot`)
+#   ospi.rootfs  0x800000  0x37c0000 fitImage.itb (booted by U-Boot's BOOTCOMMAND)
 # ospi.env*, and ospi.phypattern at 0x3fc0000, are never written.
 #
 # dataCardImage: SD card with only the FAT32 DATA partition for
