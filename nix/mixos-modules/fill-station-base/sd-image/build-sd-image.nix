@@ -102,4 +102,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     dd conv=notrunc if=firmware_part.img of=$img seek=$START1 count=$SECTORS1
     dd conv=notrunc if=second_part.img of=$img seek=$START2 count=$SECTORS2
   '';
+
+  allowedReferences = [ ];
 })

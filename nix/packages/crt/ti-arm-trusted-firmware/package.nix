@@ -13,6 +13,7 @@ buildArmTrustedFirmware {
   filesToInstall = [
     "build/${platform}/${targetBoard}/release/bl31.bin"
   ];
+  allowedReferences = [ ];
 
   # Override and fix build issue
   rk3399-m0-oc-parameter = null;

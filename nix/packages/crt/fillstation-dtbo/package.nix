@@ -49,4 +49,6 @@ stdenvNoCC.mkDerivation {
     printf '%s\n' '${profile}' > $out/profile
     runHook postInstall
   '';
+
+  allowedReferences = [ ];
 }

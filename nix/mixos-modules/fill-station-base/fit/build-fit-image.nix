@@ -39,7 +39,6 @@ stdenvNoCC.mkDerivation {
   };
 
   __structuredAttrs = true;
-  unsafeDiscardReferences.out = true;
 
   buildCommand = ''
     cp ${kernel} kernel
@@ -91,4 +90,6 @@ stdenvNoCC.mkDerivation {
 
     install -Dm0644 -t $out fitImage.itb
   '';
+
+  outputChecks.out.allowedReferences = [ ];
 }

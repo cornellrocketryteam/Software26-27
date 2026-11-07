@@ -20,6 +20,7 @@ in
     "tiboot3-am64x_sr2-hs-fs-evm.bin"
     "tiboot3-am64x_sr2-hs-evm.bin"
   ];
+  outputChecks.out.allowedReferences = [ "out" ];
 
   extraMakeFlags = [
     "BINMAN_INDIRS=${ti-linux-firmware}"

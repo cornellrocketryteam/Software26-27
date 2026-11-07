@@ -17,13 +17,15 @@ rustPlatform.buildRustPackage (finalAttrs: {
   cargoLock.lockFile = finalAttrs.src + /Cargo.lock;
 
   # Only build the main binary unless the helpers are wanted
-  cargoBuildFlags = lib.optionals (!withHelpers) [
-    "--bin"
-    "fill-station"
-  ] ++ lib.optionals (mode != "none") [
-    "--features"
-    mode
-  ];
+  cargoBuildFlags =
+    lib.optionals (!withHelpers) [
+      "--bin"
+      "fill-station"
+    ]
+    ++ lib.optionals (mode != "none") [
+      "--features"
+      mode
+    ];
 
   # build.rs generates the telemetry protobuf code with nanopb (Python + protoc,
   # both run on the build machine) and binds it with bindgen (needs libclang).
@@ -53,6 +55,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
       fi
     done
   '';
+
+  disallowedReferences = [
+    nanopb-src
+    buildPackages.protobuf
+    (buildPackages.python3.withPackages (ps: [ ps.protobuf ]))
+    buildPackages.stdenv.cc
+  ];
 
   meta = {
     description = "Fill Station Binary and Utilities";

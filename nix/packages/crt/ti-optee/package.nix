@@ -29,4 +29,6 @@ buildOptee {
     "CROSS_COMPILE32=${pkgsCross32.stdenv.cc.targetPrefix}"
     "CFG_USER_TA_TARGETS=ta_arm32 ta_arm64"
   ];
+
+  outputChecks.out.allowedReferences = [ ];
 }

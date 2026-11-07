@@ -28,6 +28,8 @@ buildUBoot {
     "tispl.bin_unsigned" # For GP
     "u-boot.img_unsigned" # For GP
   ];
+  outputChecks.out.allowedReferences = [ "out" ];
+
   extraMakeFlags = [
     "BINMAN_INDIRS=${ti-linux-firmware}"
     "TEE=${ti-optee}/tee-raw.bin"
