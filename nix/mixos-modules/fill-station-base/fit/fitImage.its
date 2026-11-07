@@ -51,11 +51,6 @@
                         kernel = "kernel";
                         fdt = "fdt-0";
                         ramdisk = "initrd";
-                        signature {
-                                algo = "crc32";
-                                key-name-hint = "dev";
-                                sign-images = "fdt-0", "kernel", "ramdisk";
-                        };
                 };
         };
 };

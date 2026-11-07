@@ -39,13 +39,14 @@ stdenvNoCC.mkDerivation {
   };
 
   __structuredAttrs = true;
+  outputChecks.out.allowedReferences = [ ];
 
   buildCommand = ''
     cp ${kernel} kernel
     xz --format=lzma kernel
 
     cp ${dtb} dtb
-    chmod u+w dtb
+    chmod +w dtb
 
     # Apply the overlay to the base DTB
     fdtoverlay -i dtb -o dtb-merged ${dtbOverlay}
@@ -90,6 +91,4 @@ stdenvNoCC.mkDerivation {
 
     install -Dm0644 -t $out fitImage.itb
   '';
-
-  outputChecks.out.allowedReferences = [ ];
 }
