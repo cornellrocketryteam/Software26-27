@@ -33,6 +33,8 @@ mod flight_sim;
 mod module;
 mod packet;
 mod state;
+mod ereg;
+mod ereg_test;
 pub mod umbilical;
 mod watchdog;
 
@@ -47,6 +49,13 @@ async fn main(spawner: Spawner) {
     // Initialize USB subsystem first so the logger is ready before Core 1 starts.
     let usb_driver = module::init_usb_driver(p.USB);
     umbilical::setup(&spawner, usb_driver);
+
+    #[cfg(feature = "test_ereg")]
+{
+    log::info!("Starting E-REG PWM Test...");
+    let ereg = module::init_ereg(p.PWM_SLICE5, p.PIN_10);
+    ereg_test::run(ereg).await;
+}
 
     // Give logger a moment to attach in debug mode
     if cfg!(debug_assertions) {
@@ -101,7 +110,17 @@ async fn main(spawner: Spawner) {
     let mut led = Output::new(p.PIN_25, Level::Low);
 
     // Arming Switch
-    let arming_switch = embassy_rp::gpio::Input::new(p.PIN_10, embassy_rp::gpio::Pull::Down);
+    #[cfg(feature = "test_ereg")]
+    let arming_switch = embassy_rp::gpio::Input::new(
+    p.PIN_11,
+    embassy_rp::gpio::Pull::Down,
+    );
+
+    #[cfg(not(feature = "test_ereg"))]
+    let arming_switch = embassy_rp::gpio::Input::new(
+    p.PIN_10,
+    embassy_rp::gpio::Pull::Down,
+    );
 
     // CFC_ARM (GPIO 41): off-board arming signal, input with pull-down
     let cfc_arm = embassy_rp::gpio::Input::new(p.PIN_41, embassy_rp::gpio::Pull::Down);
@@ -258,7 +277,8 @@ async fn main(spawner: Spawner) {
             feature = "test_ssa",
             feature = "test_sensors",
             feature = "test_buzzer",
-            feature = "test_all"
+            feature = "test_all",
+            feature="test_ereg"
         )))]
         {
             log::info!("All Simulations Complete.");
@@ -773,6 +793,7 @@ async fn main(spawner: Spawner) {
         feature = "test_airbrakes",
         feature = "test_blims",
         feature = "test_watchdog",
+        feature = "test_ereg",
         feature = "sim_simple",
         feature = "sim_fault",
         feature = "sim_stability",

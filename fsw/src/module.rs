@@ -8,7 +8,7 @@ use embassy_rp::i2c::{Config as I2cConfig, I2c, InterruptHandler as I2cInterrupt
 use embassy_rp::peripherals::{
     DMA_CH0, DMA_CH1, DMA_CH2, DMA_CH3, DMA_CH4, DMA_CH5, DMA_CH6, I2C0, PIN_0, PIN_1, PIN_2,
     PIN_3, PIN_4, PIN_8, PIN_9, PIN_21, PIN_32, PIN_33, PIN_34, PIN_35, PIN_36, PIN_37, PIN_38,
-    PIN_39, PIN_40, PIN_47, PWM_SLICE2, PWM_SLICE9, PWM_SLICE8, PWM_SLICE11, SPI0, UART0, UART1, USB,
+    PIN_39, PIN_40, PIN_47, PIN_10, PWM_SLICE2, PWM_SLICE5, PWM_SLICE9, PWM_SLICE8, PWM_SLICE11, SPI0, UART0, UART1, USB,
 };
 use embassy_rp::spi::{Config as SpiConfig, Spi};
 use embassy_rp::uart::{Config as UartConfig, InterruptHandler as UartInterruptHandler, Uart};
@@ -284,4 +284,28 @@ pub fn init_onboard_flash(
 ) -> crate::driver::onboard_flash::OnboardFlash<'static> {
     let spi_device = SharedSpiDevice::new(spi_bus, cs);
     crate::driver::onboard_flash::OnboardFlash::new(spi_device)
+}
+
+use crate::ereg::{Ereg, EregConfig};
+
+pub fn init_ereg(
+    slice: Peri<'static, PWM_SLICE5>,
+    pin: Peri<'static, PIN_10>,
+) -> Ereg<'static> {
+    let mut config = PwmConfig::default();
+
+    config.top = 59999;
+    config.divider = 50.into();
+
+    let pwm = Pwm::new_output_a(slice, pin, config);
+
+    let ereg_config = EregConfig {
+        period_us: 20_000,
+        min_pulse_us: 1_000,
+        max_pulse_us: 2_000,
+        min_angle_deg: 0.0,
+        max_angle_deg: 90.0,
+    };
+
+    Ereg::new(pwm, ereg_config)
 }
