@@ -163,10 +163,6 @@ Defines the system configuration:
       action = "respawn";
       process = "${lib.getExe' pkgs.wpa_supplicant "wpa_supplicant"} -i wlan0 -c /etc/wpa_supplicant.conf";
     };
-    mount_data = {
-      action = "wait";  # mounts the DATA partition at /tmp/data (CSV logs)
-      process = "sh -c 'mkdir -p /tmp/data && (mount -t vfat -L DATA /tmp/data || ...)'";
-    };
     dhcp = {
       action = "respawn";
       process = "${lib.getExe' pkgs.busybox "udhcpc"} -f -i wlan0";
@@ -184,8 +180,8 @@ Defines the system configuration:
     pkgs.util-linux            # mount -L etc.
   ];
 
-  # wl18xx Wi-Fi firmware, found via firmware_class.path=/etc/lib/firmware
-  etc."lib/firmware".source = ...;
+  # wl18xx Wi-Fi firmware, installed under /lib/firmware by MixOS
+  boot.firmware = [ ... ];
   etc."wpa_supplicant.conf".source = ...;  # SSID/PSK baked into the image
   etc."shadow".source = ...;               # root password hash baked in
 }
@@ -245,7 +241,7 @@ python3 ${pinmuxVerifier} dtb-merged ${pinmuxExpectations}
 
 # 5. Write kernel boot parameters into /chosen/bootargs
 fdtput --auto-path --verbose --type=s dtb-merged /chosen bootargs \
-  "quiet console=ttyS2,115200n8 panic=-1 firmware_class.path=/etc/lib/firmware"
+  "quiet console=ttyS2,115200n8 panic=-1"
 mv dtb-merged dtb
 
 # 6. Copy initrd (already xz-compressed)
@@ -261,7 +257,7 @@ mkimage -f fitImage.its fitImage.itb
 - `quiet` (or `debug` if debug=true): Controls verbosity
 - `console=ttyS2,115200n8`: Serial console configuration
 - `panic=-1`: Reboot immediately on kernel panic
-- `firmware_class.path=/etc/lib/firmware`: Where the kernel looks for the wl18xx Wi-Fi firmware
+- `boot.firmware` installs XZ-compressed wl18xx firmware under the standard `/lib/firmware` path; the kernel enables XZ firmware loading.
 
 **Load address**: `0x82000000` - Memory address where U-Boot loads the FIT image
 
@@ -344,14 +340,21 @@ The EROFS root contains:
   iw, wpa_supplicant, tcpdump, util-linux, musl, …)
 - `/bin` — merged `bin` packages + busybox applets
 - `/etc/*` — symlinks into the store (`inittab`, `mdev.conf`, `passwd`,
-  `shadow`, `wpa_supplicant.conf`, `lib/firmware`, …)
+  `shadow`, `wpa_supplicant.conf`, …)
+- `/lib/firmware` — compressed Wi-Fi firmware from `boot.firmware`
 - `/lib/modules/<version>/` — **all** `=m` kernel modules (see below)
 
 Runtime storage:
 - `/` is read-only; `/tmp` (and `/run` → `/tmp`) is tmpfs
-- `/state` (and `/var`) is a tmpfs — **nothing persists across reboots**
-- The only persistent storage is the SD card's `DATA` partition, mounted at
-  `/tmp/data` by the `mount_data` init entry (CSV logs go here)
+- MixOS mounts the VFAT SD card partition labeled `DATA` at `/state` using
+  `state.enable`, `state.fsType`, `state.source`, and a label-resolving `state.init`.
+- `/var`, `/root`, and `/home` are backed by `/state`; `/etc` has a persistent
+  writable overlay. CSV logs go to `/var/log/fill-station` (on the card at
+  `var/log/fill-station`). SSH host keys also persist across reboots.
+- **Boot limitation:** the images now format DATA as FAT32 and `state.fsType`
+  is `vfat`, but MixOS requires an overlay-compatible state filesystem for its
+  writable `/etc`. VFAT cannot supply that overlay, so this state configuration
+  cannot complete boot. No formatting runs at boot.
 
 #### Kernel modules
 
@@ -380,7 +383,6 @@ Generated from `init` in `default.nix` plus MixOS defaults:
 | Action | Process |
 |--------|---------|
 | `sysinit` | `mixos sysinit` — mounts, module loading, `mdev -s`, hostname, `/state` |
-| `wait` | `mount_data` — DATA partition → `/tmp/data` |
 | `respawn` | `fill-station`, `dropbear`, `wpa_supplicant`, `udhcpc`, `syslogd`, `klogd`, `crond`, `mdev -d` |
 | `askfirst` | `/bin/sh` on `ttyS2` |
 
@@ -414,15 +416,16 @@ Creates a bootable SD card with DOS partition table:
 │  - uEnv.txt         (U-Boot environment/config)       │
 │  - fitImage.itb     (Kernel + DTB + initrd)           │
 ├────────────────────────────────────────────────────────┤
-│  Partition 2: DATA (1024 MiB, FAT32)                  │
-│  - Mounted at /tmp/data; CSV logs                     │
-│  - Ships with only a placeholder README.txt           │
+│  Partition 2: DATA (1024 MiB, FAT32)                   │
+│  - Mounted at /state; logs in var/log/fill-station    │
+│  - Persists /var, /root, /home, and the /etc overlay   │
 └────────────────────────────────────────────────────────┘
 Total: ~1.2 GiB
 ```
 
 > ⚠️ Flashing the image with `dd` overwrites the **whole card, including
-> DATA**. Copy any logs off `/tmp/data` before reflashing.
+> DATA**. Copy logs off `/var/log/fill-station` before reflashing
+> (`/tmp/data` on older images).
 
 **Build process:**
 
@@ -440,7 +443,7 @@ Total: ~1.2 GiB
 2. **Filesystem Creation:**
    ```bash
    mkfs.vfat --invariant -i 0x2178694e -n FIRMWARE firmware_part.img
-   mkfs.vfat --invariant -n DATA second_part.img
+   mkfs.vfat --invariant -F 32 -n DATA second_part.img
    ```
    - `--invariant`: Produces deterministic/reproducible filesystems
 
@@ -458,6 +461,7 @@ Total: ~1.2 GiB
 4. **Verification & Assembly:**
    ```bash
    fsck.vfat -vn firmware_part.img  # Verify filesystem integrity
+   fsck.vfat -vn second_part.img
    dd conv=notrunc if=firmware_part.img of=$img seek=$START1 count=$SECTORS1
    dd conv=notrunc if=second_part.img of=$img seek=$START2 count=$SECTORS2
    ```
@@ -536,8 +540,7 @@ uenvcmd=echo "Booting FIT from mmc 1:1..."; load mmc 1:1 ${addr_fit} fitImage.it
    ▼
 9. Busybox init (/etc/inittab)
    - sysinit: `mixos sysinit` — mounts tmpfs/cgroups/etc., runs
-     `mdev -s` (coldplug + module autoload), sets up /state (tmpfs)
-   - wait: mount DATA partition at /tmp/data
+     `mdev -s` (coldplug + module autoload), mounts the VFAT DATA partition at /state
    - respawn: fill-station, dropbear, wpa_supplicant, udhcpc,
      syslogd, klogd, crond, mdev -d
    - askfirst: shell on ttyS2
@@ -580,7 +583,7 @@ nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
    - All components packaged with `mkimage`
 6. SD image is built:
    - Partition table created
-   - FAT32 filesystems created
+   - FAT32 firmware and DATA filesystems created
    - Bootloaders and FIT image copied to firmware partition
    - Image assembled with `dd`
 
@@ -691,7 +694,6 @@ env = {
     "debug"  # or "quiet"
     "console=ttyS2,115200n8"
     "panic=-1"
-    "firmware_class.path=/etc/lib/firmware" # Location of Wi-Fi firmware
     # Add more parameters here
   ];
 };

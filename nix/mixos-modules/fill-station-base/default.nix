@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 let
@@ -21,15 +22,35 @@ in
     ./sd-image
   ];
 
-  nixpkgs.buildPlatform = "aarch64-linux"; # TODO: Replace and sense current build platform
-  nixpkgs.hostPlatform.config = "aarch64-unknown-linux-musl";
+  # AM64x (Cortex-A53) musl userland, cross-built on aarch64-linux (CI and our remote builder)
+  nixpkgs.pkgs = import inputs.nixpkgs {
+    localSystem = "aarch64-linux";
+    crossSystem = {
+      config = "aarch64-unknown-linux-musl";
+      gcc.cpu = "cortex-a53";
+    };
+    overlays = [
+      inputs.self.overlays.default
+      inputs.mixos.overlays.default
+    ];
+  };
 
-  boot.kernel = pkgs.crt.fill-station-linux;
+  boot.kernelPackages = pkgs.linuxPackagesFor pkgs.crt.fill-station-linux;
+  boot.firmware = [ pkgs.crt.wl18xx-firmware ];
 
-  etc."hosts".source = pkgs.writeText "etc-hosts" ''
-    127.0.0.1      localhost
-    ::1            localhost
-  '';
+  state = {
+    enable = true;
+    fsType = "vfat";
+    options = [ "noatime" ];
+    source = "/dev/fill-station-state";
+    # MixOS mounts the device directly, so resolve the label before mounting.
+    init = pkgs.writeScript "fill-station-state-init" ''
+      #!/bin/sh
+      set -eu
+      device=$(findfs LABEL=DATA)
+      ln -sf "$device" /dev/fill-station-state
+    '';
+  };
 
   init = {
     shell = {
@@ -37,14 +58,13 @@ in
       action = "askfirst";
       process = "/bin/sh";
     };
+
     sshd = {
       action = "respawn";
-      # -R writes the host key under /etc/dropbear, which must be a real
-      # directory in the writable /etc overlay (an etc."dropbear" entry would
-      # be a symlink into the read-only store). The key is regenerated each boot.
-      # -D reads ./authorized_keys from there too; root's home (/) is read-only.
-      # -s: key login only (password login never worked here; serial is the fallback).
-      process = "sh -c 'mkdir -p /etc/dropbear && ln -sf ${./authorized_keys} /etc/dropbear/authorized_keys && exec ${lib.getExe' pkgs.crt.dropbear-minimal "dropbear"} -F -R -s -D /etc/dropbear'";
+      # -R: generate missing host keys; state preserves them.
+      # -D: read authorized_keys from /etc/dropbear.
+      # -s: disable password login.
+      process = "${lib.getExe' pkgs.dropbear "dropbear"} -F -R -s -D /etc/dropbear";
     };
 
     fill-station = {
@@ -57,34 +77,26 @@ in
       process = "${lib.getExe' pkgs.crt.wpa-supplicant-minimal "wpa_supplicant"} -i wlan0 -c /etc/wpa_supplicant.conf";
     };
 
-    mount_data = {
-      action = "wait";
-      # busybox mount has no -L; resolve the label with busybox findfs instead
-      process = "sh -c 'mkdir -p /tmp/data && (mount -t vfat \"$(findfs LABEL=DATA)\" /tmp/data || mount -t vfat /dev/mmcblk1p2 /tmp/data || mount -t vfat /dev/mmcblk0p2 /tmp/data)'";
-    };
-
     dhcp = {
       action = "respawn";
       process = "${lib.getExe' pkgs.busybox "udhcpc"} -f -i wlan0";
     };
   };
 
-  bin = [
-    pkgs.crt.dropbear-minimal
-    pkgs.libgpiod
+  packages = [
     fill-station
     pkgs.iw
-    pkgs.crt.wpa-supplicant-minimal
   ]
   ++ lib.optionals debug [
+    pkgs.libgpiod
+    pkgs.crt.wpa-supplicant-minimal
     pkgs.tcpdump
-    pkgs.util-linux
   ];
 
-  etc."lib/firmware".source = pkgs.runCommand "wl18xx-firmware" { } ''
-    mkdir -p $out/ti-connectivity
-    cp ${pkgs.crt.ti-linux-firmware}/ti-connectivity/wl18xx-fw-4.bin $out/ti-connectivity/wl18xx-fw-4.bin
-  '';
+  etc."dropbear/authorized_keys" = {
+    source = ./authorized_keys;
+    mode = "0600";
+  };
 
   etc."wpa_supplicant.conf".source = pkgs.writeText "wpa_supplicant.conf" ''
     network={
@@ -97,11 +109,7 @@ in
     uid = 0;
     gid = 0;
     shell = "/bin/sh";
-    home = "/";
+    home = "/root";
   };
   groups.root.id = 0;
-
-  etc."shadow".source = pkgs.writeText "fill-station-shadow" ''
-    ${config.users.root.name}:$6$cy4JUqDYWZowMaLn$oefiZuEJvrHqU3zB33WKrLxaBrsh8mdYqLvtZHP8X1b48E3MYGAYJ3vXtL9x83AI8H6TVO9rvBcsq7bu11li20:1::::::
-  '';
 }

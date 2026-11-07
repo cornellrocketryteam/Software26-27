@@ -21,6 +21,16 @@
             "ac_cv_func_realloc_0_nonnull=yes"
           ];
       });
+
+      # TODO: remove once NixOS/nixpkgs#582577 reaches nixpkgs-unstable
+      tzdata = prev.tzdata.overrideAttrs (
+        final.lib.optionalAttrs final.stdenv.hostPlatform.isMusl { doCheck = false; }
+      );
+
+      # Test suite fails wholesale on musl cross builds.
+      sqlite = prev.sqlite.overrideAttrs (
+        final.lib.optionalAttrs final.stdenv.hostPlatform.isMusl { doCheck = false; }
+      );
     }
     # pkgs.crt.<name> from nix/packages/crt/<name>/package.nix (not exported as flake `packages`)
     // prev.lib.packagesFromDirectoryRecursive {

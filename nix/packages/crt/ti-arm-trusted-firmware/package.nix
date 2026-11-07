@@ -15,7 +15,7 @@ buildArmTrustedFirmware {
   ];
 
   # Override and fix build issue
-  rk3399-m0-oc = null;
+  rk3399-m0-oc-parameter = null;
   nativeBuildInputs = [
     openssl
   ];

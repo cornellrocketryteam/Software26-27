@@ -1,51 +1,32 @@
 {
   pkgsCross,
-  stdenv,
+  buildOptee,
   buildPackages,
   fetchFromGitHub,
 }:
 let
   pkgsCross32 = pkgsCross.armv7l-hf-multiplatform;
-in
-stdenv.mkDerivation (finalAttrs: {
-  pname = "optee";
   version = "4.8.0";
+in
+buildOptee {
+  inherit version;
+  platform = "k3-am64x";
 
   src = fetchFromGitHub {
     owner = "OP-TEE";
     repo = "optee_os";
-    rev = finalAttrs.version;
+    rev = version;
     hash = "sha256-eefwfjSkDMFubKk+tIzTqe7h+v3VYxV6gzpzFxuJsyU=";
   };
 
-  postPatch = ''
-    patchShebangs scripts/ ta/pkcs11/scripts/
-  '';
-
-  strictDeps = true;
-  enableParallelBuilding = true;
-
-  depsBuildBuild = [ pkgsCross32.stdenv.cc ];
-  nativeBuildInputs = [
-    (buildPackages.python3.withPackages (p: [
-      p.cryptography
-      p.pyelftools
-    ]))
+  # Preserve ARM32 TAs alongside the builder's default ARM64 target.
+  depsBuildBuild = [
+    buildPackages.stdenv.cc
+    pkgsCross32.stdenv.cc
   ];
 
-  makeFlags = [
-    "CROSS_COMPILE=${pkgsCross32.stdenv.cc.targetPrefix}"
-    "CROSS_COMPILE64=${stdenv.cc.targetPrefix}"
-    "CFG_ARM64_core=y"
-    "PLATFORM=k3-am64x"
+  extraMakeFlags = [
+    "CROSS_COMPILE32=${pkgsCross32.stdenv.cc.targetPrefix}"
+    "CFG_USER_TA_TARGETS=ta_arm32 ta_arm64"
   ];
-
-  installPhase = ''
-    runHook preInstall
-
-    mkdir -p $out
-    cp out/arm-plat-k3/core/tee-raw.bin $out/
-
-    runHook postInstall
-  '';
-})
+}

@@ -1,6 +1,5 @@
 {
   inputs,
-  self,
   lib,
   ...
 }:
@@ -17,11 +16,8 @@
           (
             { pkgs, ... }:
             {
-              nixpkgs.nixpkgs = inputs.nixpkgs;
-              nixpkgs.overlays = [
-                self.overlays.default
-                inputs.mixos.overlays.default
-              ];
+              # Each machine module sets its own nixpkgs.pkgs (target platform) from inputs
+              _module.args.inputs = inputs;
               etc."hostname".source = lib.mkDefault (pkgs.writeText "hostname" name);
             }
           )

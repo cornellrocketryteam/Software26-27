@@ -1,4 +1,8 @@
-{ linuxKernel, linux_6_18 }:
+args@{
+  linuxManualConfig,
+  linux_7_2,
+  ...
+}:
 let
   configfile = ./kernel.config;
 
@@ -20,20 +24,25 @@ let
     fi
   '';
 
-  kernel = linuxKernel.manualConfig {
-    inherit (linux_6_18) src version modDirVersion;
+  kernel = linuxManualConfig {
+    inherit (linux_7_2) src version;
     inherit configfile;
+    # Keep callPackage from injecting the unrelated pkgs.kernelPatches set.
+    kernelPatches = args.kernelPatches or [ ];
   };
 in
 kernel.overrideAttrs (old: {
-  postConfigure = (old.postConfigure or "") + checkRequired + ''
-    # kernel.config should already be fully resolved; warn if the build changed it
-    if ! diff -u \
-        <(grep -E '^(CONFIG_|# CONFIG_)' ${configfile}) \
-        <(grep -E '^(CONFIG_|# CONFIG_)' "$buildRoot/.config") >&2; then
-      echo "warning: kernel.config is not fully resolved; regenerate it with resolvedConfig" >&2
-    fi
-  '';
+  postConfigure =
+    (old.postConfigure or "")
+    + checkRequired
+    + ''
+      # kernel.config should already be fully resolved; warn if the build changed it
+      if ! diff -u \
+          <(grep -E '^(CONFIG_|# CONFIG_)' ${configfile}) \
+          <(grep -E '^(CONFIG_|# CONFIG_)' "$buildRoot/.config") >&2; then
+        echo "warning: kernel.config is not fully resolved; regenerate it with resolvedConfig" >&2
+      fi
+    '';
 
   passthru = old.passthru // {
     # Configure-only build: merge am64x.fragment into kernel.config, resolve it

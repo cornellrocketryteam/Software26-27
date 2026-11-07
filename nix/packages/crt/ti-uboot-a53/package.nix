@@ -22,7 +22,6 @@ buildUBoot {
 
   extraMeta.platforms = [ "aarch64-linux" ];
 
-  BL31 = "${ti-arm-trusted-firmware}/bl31.bin";
   filesToInstall = [
     "tispl.bin" # For HS-FS and HS-SE
     "u-boot.img" # For HS-FS and HS-SE
@@ -32,6 +31,7 @@ buildUBoot {
   extraMakeFlags = [
     "BINMAN_INDIRS=${ti-linux-firmware}"
     "TEE=${ti-optee}/tee-raw.bin"
+    "BL31=${ti-arm-trusted-firmware}/bl31.bin"
   ];
 
   # Add library path for libfdt so that it does not look in /usr for libfdt

@@ -85,7 +85,7 @@ Complete documentation for the Cornell Rocketry Team fill station server.
 | Add a new sensor/actuator | [ADDING_FEATURES.md](ADDING_FEATURES.md#adding-a-new-hardware-component) |
 | Add a WebSocket command | [ADDING_FEATURES.md](ADDING_FEATURES.md#adding-a-new-websocket-command) |
 | Create a background task | [ADDING_FEATURES.md](ADDING_FEATURES.md#adding-background-tasks) |
-| View CSV logs | Logs are saved to `/tmp/data` (Linux) or `logs/` (macOS/Windows) |
+| View CSV logs | Logs are saved to `/var/log/fill-station` (Linux) or `logs/` (macOS/Windows) |
 | Configure ADC sampling | [ADC_STREAMING.md](ADC_STREAMING.md#configuration-easy-to-modify) |
 | Test ADC readings | [QUICKSTART_ADC.md](QUICKSTART_ADC.md) |
 | Fix I2C permissions | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |

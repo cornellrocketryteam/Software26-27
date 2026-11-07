@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1767039857,
+        "narHash": "sha256-vNpUSpF5Nuw8xvDLj2KCwwksIbjua2LZCqhV1LNRDns=",
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "rev": "5edf11c44bc78a0d334f6334cdaf7d60d732daab",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -35,16 +51,18 @@
     },
     "mixos": {
       "inputs": {
+        "flake-compat": "flake-compat",
         "nixpkgs": [
           "nixpkgs"
-        ]
+        ],
+        "pyproject-nix": "pyproject-nix"
       },
       "locked": {
-        "lastModified": 1764743871,
-        "narHash": "sha256-NVRG9IpTD8w5uB1GD+j4ATXWIlxeRFDlwS0qOwzXgOc=",
+        "lastModified": 1792119427,
+        "narHash": "sha256-DZHkxmOUK0sKOux1HNEuZsQMcEYfAIeCxtUvgNLvj1k=",
         "owner": "jmbaur",
         "repo": "mixos",
-        "rev": "3d7c265534df7ad44f6f3b92a584ec4aa24bb65e",
+        "rev": "be7bce2e55a9ccdf8e4b980f2804b4a67b17849e",
         "type": "github"
       },
       "original": {
@@ -55,16 +73,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1764808777,
-        "narHash": "sha256-ZOdvsYqu3dE0Fi849sTyFEzE2Ze2qE+LPAnqzzFk5PM=",
+        "lastModified": 1793826729,
+        "narHash": "sha256-D5H7H+qMoTGI/jJtxKP4u7BdjkFnUyhOovTrf3pTOr0=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "a0f9c25704f22036c2e64b6ff62709fad7ed5e33",
+        "rev": "6dadaf4375be35033e1c84395adbd53ff5fded96",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "release-25.11",
+        "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -97,6 +115,27 @@
         "owner": "nixos",
         "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "pyproject-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "mixos",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791657700,
+        "narHash": "sha256-vcCAvhtA7hG+/gOge29hYHy7I/dLkIsr5nLx4sFEQic=",
+        "owner": "pyproject-nix",
+        "repo": "pyproject.nix",
+        "rev": "ddc400a6883b042646d0940e65971bb7f7e96107",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pyproject-nix",
+        "repo": "pyproject.nix",
         "type": "github"
       }
     },

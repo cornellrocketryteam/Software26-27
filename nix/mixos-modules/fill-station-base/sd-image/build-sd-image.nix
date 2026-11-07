@@ -77,7 +77,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     truncate -s $((SECTORS2 * 512)) second_part.img
 
     mkfs.vfat --invariant -i ${label-id} -n FIRMWARE firmware_part.img
-    mkfs.vfat --invariant -n ${toString secondPartitionLabel} second_part.img
+    mkfs.vfat --invariant -F 32 -n ${secondPartitionLabel} second_part.img
 
     # Populate firmware files into first partition image
     mkdir -p firmware
@@ -94,21 +94,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     done
     cd ..
 
-    # Populate second partition image with a small test file
-    mkdir -p data
-    echo "Test partition 2" > data/README.txt
-    find data -exec touch --date=2000-01-01 {} +
-
-    cd data
-    for d in $(find . -type d -mindepth 1 | sort); do
-      faketime "2000-01-01 00:00:00" mmd -i ../second_part.img "::/$d"
-    done
-    for f in $(find . -type f | sort); do
-      mcopy -pvm -i ../second_part.img "$f" "::/$f"
-    done
-    cd ..
-
-    # Verify the FAT partitions before copying them into the disk image.
+    # Verify both filesystems before copying them into the disk image.
     fsck.vfat -vn firmware_part.img
     fsck.vfat -vn second_part.img
 

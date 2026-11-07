@@ -2,7 +2,7 @@
   description = "Cornell Rocketry Nix";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     import-tree.url = "github:denful/import-tree";
     treefmt-nix.url = "github:numtide/treefmt-nix";

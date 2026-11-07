@@ -100,7 +100,6 @@ CONFIG_DEBUG_INFO_NONE=y
 # CONFIG_SERIO is not set
 # Filesystems: keep vfat, erofs, overlay, tmpfs, proc, sysfs, devtmpfs,
 # configfs (MixOS mounts it) and debugfs (until pass 3)
-# CONFIG_EXT4_FS is not set
 # CONFIG_SQUASHFS is not set
 # CONFIG_AUTOFS_FS is not set
 # CONFIG_QUOTA is not set

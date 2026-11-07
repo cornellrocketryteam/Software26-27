@@ -8,8 +8,8 @@
 #   ospi.rootfs  0x800000  0x37c0000 fitImage.itb (booted by U-Boot's `ospiboot`)
 # ospi.env*, and ospi.phypattern at 0x3fc0000, are never written.
 #
-# dataCardImage: SD card with only the FAT32 DATA partition (CSV logs) for
-# running from flash; mount_data finds it by LABEL=DATA.
+# dataCardImage: SD card with only the FAT32 DATA partition for
+# running from flash; state.init finds it by LABEL=DATA.
 { config, pkgs, ... }:
 let
   inherit (pkgs.pkgsCross.armv7l-hf-multiplatform.crt) ti-uboot-r5;
@@ -53,14 +53,12 @@ in
     {
       stdenvNoCC,
       dosfstools,
-      mtools,
       util-linux,
     }:
     stdenvNoCC.mkDerivation {
       name = "fill-station-data-card.img";
       nativeBuildInputs = [
         dosfstools
-        mtools
         util-linux
       ];
       buildCommand = ''

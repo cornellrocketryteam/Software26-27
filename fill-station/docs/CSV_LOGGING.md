@@ -4,7 +4,7 @@
 The fill station automatically logs all system states to a CSV file on startup. This includes state information from actuators (SVs), the ADCs, and any connected Flight Software (FSW) received over the Umbilical. The logger runs continuously in the background at **100 Hz**.
 
 ## File Management
-- **Location:** Logs are saved to `/tmp/data` on Linux (the TI board), or `logs/` on macOS/Windows.
+- **Location:** Logs are saved to `/var/log/fill-station` on Linux (the TI board), or `logs/` on macOS/Windows.
 - **Naming Convention:** `fill_station_log_<UNIX_TIMESTAMP>.csv`
 - **File Continuation:** To prevent data loss from accidental overwrites, consecutive runs started within the same second will append a suffix (e.g., `_1`, `_2`) so that every new run gets its own brand-new CSV file.
 - **Persistence:** The file flushes (syncs to disk) every 10 seconds (1,000 samples) to ensure data is preserved even in the event of an abrupt power cycle.
