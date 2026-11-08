@@ -294,15 +294,15 @@ pub fn init_ereg(
 ) -> Ereg<'static> {
     let mut config = PwmConfig::default();
 
-    config.top = 59999;
-    config.divider = 50.into();
+    config.top = 3030;
+    config.divider = 150.into();
 
     let pwm = Pwm::new_output_a(slice, pin, config);
 
     let ereg_config = EregConfig {
-        period_us: 20_000,
-        min_pulse_us: 1_000,
-        max_pulse_us: 2_000,
+        period_us: (3030) as u16,
+        min_pulse_us: 800,
+        max_pulse_us: 2_200,
         min_angle_deg: 0.0,
         max_angle_deg: 90.0,
     };
