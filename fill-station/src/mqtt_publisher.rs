@@ -15,7 +15,7 @@ use fill_station::telemetry_pb::{self, TelemetryPayload};
 // ============================================================================
 
 /// IP address of the EMQX MQTT broker
-const BROKER_HOST: &str = "192.168.8.191";
+const BROKER_HOST: &str = "192.168.1.206";
 
 /// MQTT broker port
 const BROKER_PORT: u16 = 1883;
