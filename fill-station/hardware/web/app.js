@@ -100,9 +100,9 @@ function renderEditor() {
     pane.append(el('label',{class:'toggle'},el('input',{type:'checkbox',checked:item.enabled,onchange:e=>{item.enabled=e.target.checked;markChanged();renderEditor();}}),'Enable device'));
     pane.append(el('p',{class:'muted'},item.role?`Application role: ${item.role}. Commands depend on this role, not the instance ID.`:'This device initializes at startup. Add a Rust application binding before controlling or publishing it.'));
     if(!item.enabled)pane.append(el('div',{class:'notice'},'Disabled devices do not initialize. Their connections are available for reassignment; otherwise available header pins return to their idle input state.'));
-    if(item.type==='ads1015') {
+    if(['ads1015','ads7128'].includes(item.type)) {
       pane.append(field('I²C bus',chooseSelect([{value:'',label:'Choose an I²C bus…'},...state.profile.buses.map(b=>({value:b.id,label:`${b.id} · ${names[b.controller]||b.controller}`}))],item.bus,v=>{item.bus=v;markChanged();},'I2C bus')));
-      pane.append(field('I²C address',chooseSelect([72,73,74,75].map(n=>({value:n,label:`0x${n.toString(16)}`})),item.address,v=>{item.address=Number(v);markChanged();},'I2C address')));
+      pane.append(field('I²C address',chooseSelect((item.type==='ads7128'?[16,17,18,19,20,21,22,23]:[72,73,74,75]).map(n=>({value:n,label:`0x${n.toString(16)}`})),item.address,v=>{item.address=Number(v);markChanged();},'I2C address')));
     }
     for(const [setting,definition]of Object.entries(meta?.settings||{})){
       item.settings ||= {};
@@ -112,7 +112,7 @@ function renderEditor() {
     }
     const ports=el('div',{class:'ports'});for(const [port,definition]of Object.entries(meta?.ports||{}))ports.append(connectionEditor(item,port,definition,`${item.id}.${port}`));pane.append(ports);
   } else {
-    if(sharedBus(item))pane.append(el('div',{class:'notice'},'Always enabled in Liquid, including with no external devices. PRU 6 = SCL; PRU 8 = SDA. Shared with onboard devices: addresses 0x30, 0x50 and 0x51 are reserved. Disconnect the old QD enable wire from PRU 6. New ADC types require separate driver integration.'));
+    if(sharedBus(item))pane.append(el('div',{class:'notice'},'Always enabled in Liquid, including with no external devices. PRU 6 = SCL; PRU 8 = SDA. Shared with onboard devices: addresses 0x30, 0x50 and 0x51 are reserved. Disconnect the old QD enable wire from PRU 6. ADS1015 and ADS7128 support shared bus selection. Telemetry roles adc1/adc2 require ADS1015.'));
     else pane.append(field('Controller',chooseSelect(controllerChoices().filter(([value])=>value!=='main_i2c0').map(([value,label])=>({value,label})),item.controller,v=>{item.controller=v;item.connections={};markChanged();renderEditor();},'I2C controller')));
     const users=state.profile.devices.filter(d=>d.bus===item.id).map(d=>d.id);
     pane.append(el('p',{class:'muted'},users.length?`Devices on this bus: ${users.join(', ')}`:sharedBus(item)?'No external device instances currently use this bus. Onboard devices still share it.':'No devices currently use this bus.'));
@@ -171,7 +171,7 @@ $('add-form').addEventListener('submit',event=>{
   if(event.submitter?.value!=='add')return;event.preventDefault();const id=$('new-id').value;const type=$('new-type').value;
   if([...state.profile.devices,...state.profile.buses].some(item=>item.id===id)){$('new-id').setCustomValidity('Choose a unique instance ID');$('new-id').reportValidity();return;}
   if(state.addBus){state.profile.buses.push({id,controller:type,connections:{}});state.selected=`bus:${state.profile.buses.length-1}`;}
-  else {const meta=state.bootstrap.catalog[type];const settings=Object.fromEntries(Object.entries(meta.settings||{}).map(([name,s])=>[name,s.default]));const item={id,type,role:null,enabled:true,connections:{},settings};if(type==='ads1015'){item.bus=state.profile.buses[0]?.id||'';item.address=72;}state.profile.devices.push(item);state.selected=`device:${state.profile.devices.length-1}`;}
+  else {const meta=state.bootstrap.catalog[type];const settings=Object.fromEntries(Object.entries(meta.settings||{}).map(([name,s])=>[name,s.default]));const item={id,type,role:null,enabled:true,connections:{},settings};if(['ads1015','ads7128'].includes(type)){item.bus=state.profile.buses[0]?.id||'';item.address=type==='ads7128'?16:72;}state.profile.devices.push(item);state.selected=`device:${state.profile.devices.length-1}`;}
   $('add-dialog').close();markChanged();renderNav();renderEditor();
 });
 $('new-id').addEventListener('input',()=> $('new-id').setCustomValidity(''));

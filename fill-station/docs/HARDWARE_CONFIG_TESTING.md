@@ -253,10 +253,38 @@ Record the Git revision, selected profile, board revision, test results, and any
 
 ## Liquid shared-I²C0 checks
 
+For ADS7128, launch `nix run .#hardware-config -- --repo .`, add an ADS7128
+instance, select `main_i2c0` and the strapped address, then validate and save.
+This does not replace either existing ADS1015. Build the normal Liquid image:
+
+```sh
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage --out-link result-sd-liquid
+```
+
+Write `result-sd-liquid/fill-station.img` using the SD-card procedure in
+`LINUX_IMAGE_BUILD_PROCESS.md`. Back up old logs first: the current system
+requires a fresh ext4 DATA partition. The boot firmware partition remains FAT.
+Boot with serial at 115200 8N1. For an enabled, connected ADS7128, look for
+`ADS7128 connected on /dev/i2c-0 at 0x10` (with the chosen address) in the boot
+output. This confirms the initial register probe, not channel accuracy.
+Initial read-only checks on the board are:
+
+```sh
+uname -r
+mount | grep ' /state '
+ls -l /dev/i2c-0
+ls -ld /var/log/fill-station
+```
+
+The state mount should report ext4. There is no separate ADC-only image or
+automatic ADS7128 telemetry sampling. Both normal variants retain their
+existing startup behavior.
+
 - In Liquid, select `main_i2c0`. Check PRU6=SCL, PRU8=SDA, board address reservations and the always-enabled notice. There must be no Remove bus or controller-switch control for this bus.
 - QD starts disabled. Temporarily enable it without saving: validation must report the pin-6 conflict. Discard the draft.
 - Disable both ADS1015 devices in a draft: I²C0 must still be enabled, while the unused I²C2 bus becomes disabled. Discard.
 - Switch to Hybrid: QD is enabled and no I²C0 bus is offered.
 - The merged-tree tests check I²C0 status per profile, stable alias 0, EEPROM address 0x51, original board I²C1 preservation, selected registers and pinctrl attachment.
 - Before bench power, disconnect the old QD enable wire from PRU6. With external devices disconnected, boot a rebuilt Liquid image and inspect `/proc/device-tree` controller status, `/dev/i2c-0`, and pinctrl ownership. Do not use a broad I²C scan on a live PMIC bus. Test only the future ADC's known address with a model-appropriate read after its driver and electrical wiring are reviewed.
-- No new ADC model is implemented by this change. Full image and physical bus validation remain separate from host tests.
+- Add an ADS7128 in a draft, select `main_i2c0`, and verify that the address list is `0x10`–`0x17`, initially `0x10`. It must be marked Initialized only. Duplicate enabled addresses must fail validation; disabling the duplicate must clear the conflict. Discard the draft unless the matching device is connected.
+- ADS7128 startup probes use the existing userspace driver. Capture its connection message on serial after booting a matching profile; an address/wiring failure must report a probe error. No automatic sampling or telemetry binding is added. Full image and physical bus validation remain separate from host tests.

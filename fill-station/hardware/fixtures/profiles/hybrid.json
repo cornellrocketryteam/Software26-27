@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "profile": "hybrid",
+  "devices": [
+    {
+      "id": "ig1",
+      "type": "igniter",
+      "role": "ig1",
+      "enabled": true,
+      "connections": {
+        "continuity": {
+          "pin": "main:0x00a0",
+          "function": "GPIO0_39",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "signal": {
+          "pin": "main:0x009c",
+          "function": "GPIO0_38",
+          "bias": "pull-down",
+          "schmitt": true
+        }
+      },
+      "settings": {}
+    },
+    {
+      "id": "ig2",
+      "type": "igniter",
+      "role": "ig2",
+      "enabled": true,
+      "connections": {
+        "continuity": {
+          "pin": "main:0x0208",
+          "function": "GPIO1_42",
+          "bias": "none",
+          "schmitt": true
+        },
+        "signal": {
+          "pin": "main:0x00a4",
+          "function": "GPIO0_40",
+          "bias": "pull-down",
+          "schmitt": true
+        }
+      },
+      "settings": {}
+    },
+    {
+      "id": "adc1",
+      "type": "ads1015",
+      "role": "adc1",
+      "enabled": true,
+      "connections": {},
+      "settings": {},
+      "bus": "main_i2c2",
+      "address": 72
+    },
+    {
+      "id": "adc2",
+      "type": "ads1015",
+      "role": "adc2",
+      "enabled": true,
+      "connections": {},
+      "settings": {},
+      "bus": "main_i2c2",
+      "address": 73
+    },
+    {
+      "id": "sv1",
+      "type": "solenoid_valve",
+      "role": "sv1",
+      "enabled": true,
+      "connections": {
+        "control": {
+          "pin": "main:0x00ac",
+          "function": "GPIO0_42",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "sense": {
+          "pin": "main:0x022c",
+          "function": "GPIO1_51",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {
+        "valve_type": "normally_closed"
+      }
+    },
+    {
+      "id": "sv2",
+      "type": "solenoid_valve",
+      "role": "sv2",
+      "enabled": true,
+      "connections": {
+        "control": {
+          "pin": "main:0x0084",
+          "function": "GPIO0_32",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "sense": {
+          "pin": "main:0x0090",
+          "function": "GPIO0_35",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {
+        "valve_type": "normally_closed"
+      }
+    },
+    {
+      "id": "sv3",
+      "type": "solenoid_valve",
+      "role": "sv3",
+      "enabled": true,
+      "connections": {
+        "control": {
+          "pin": "main:0x0210",
+          "function": "GPIO1_44",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "sense": {
+          "pin": "main:0x0098",
+          "function": "GPIO0_37",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {
+        "valve_type": "normally_closed"
+      }
+    },
+    {
+      "id": "sv4",
+      "type": "solenoid_valve",
+      "role": "sv4",
+      "enabled": true,
+      "connections": {
+        "control": {
+          "pin": "main:0x00a8",
+          "function": "GPIO0_41",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "sense": {
+          "pin": "main:0x0094",
+          "function": "GPIO0_36",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {
+        "valve_type": "normally_closed"
+      }
+    },
+    {
+      "id": "sv5",
+      "type": "solenoid_valve",
+      "role": "sv5",
+      "enabled": true,
+      "connections": {
+        "control": {
+          "pin": "main:0x0220",
+          "function": "GPIO1_48",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "sense": {
+          "pin": "main:0x0218",
+          "function": "GPIO1_46",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {
+        "valve_type": "normally_closed"
+      }
+    },
+    {
+      "id": "mav",
+      "type": "mav_servo",
+      "role": "mav",
+      "enabled": true,
+      "connections": {
+        "pwm": {
+          "pin": "main:0x008c",
+          "function": "EHRPWM4_B",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {}
+    },
+    {
+      "id": "ball_valve",
+      "type": "ball_valve",
+      "role": "ball_valve",
+      "enabled": true,
+      "connections": {
+        "on_off": {
+          "pin": "main:0x025c",
+          "function": "GPIO1_63",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "signal": {
+          "pin": "main:0x0258",
+          "function": "GPIO1_62",
+          "bias": "pull-down",
+          "schmitt": true
+        }
+      },
+      "settings": {}
+    },
+    {
+      "id": "qd_stepper",
+      "type": "qd_stepper",
+      "role": "qd_stepper",
+      "enabled": true,
+      "connections": {
+        "step": {
+          "pin": "main:0x0248",
+          "function": "GPIO1_58",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "direction": {
+          "pin": "main:0x020c",
+          "function": "GPIO1_43",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "enable": {
+          "pin": "main:0x0260",
+          "function": "GPIO1_64",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {}
+    }
+  ],
+  "buses": [
+    {
+      "id": "main_i2c2",
+      "controller": "main_i2c2",
+      "connections": {
+        "scl": {
+          "pin": "main:0x00b0",
+          "function": "I2C2_SCL",
+          "bias": "none",
+          "schmitt": true
+        },
+        "sda": {
+          "pin": "main:0x00b4",
+          "function": "I2C2_SDA",
+          "bias": "none",
+          "schmitt": true
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # Fill-station integration implementation plan
 
+Historical validation record: the standalone ADC diagnostic was subsequently removed; `2026-11-09-ads7128-builder.md` describes its replacement. The image paths and measurements below describe this earlier integration, not the latest source.
+
 **Goal:** Combine Max's Nix branch, Kaleb's existing fill-station changes, and the local ADS7128 diagnostic into buildable Hybrid and Liquid images for bench testing.
 
 **Architecture:** Fast-forward `kaleb_branch` to `origin/ml/nix-improvements`, retaining its shared fill-station base and upstream U-Boot configuration. Restore the local diagnostic as an opt-in Liquid machine using the same binary; normal images retain normal startup.

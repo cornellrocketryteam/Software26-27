@@ -1,5 +1,6 @@
 use crate::components::{
     ads1015::Ads1015,
+    ads7128::Ads7128,
     ball_valve::BallValve,
     igniter::Igniter,
     mav::Mav,
@@ -88,6 +89,7 @@ pub struct Hardware {
     pub igniters: BTreeMap<String, Igniter>,
     pub solenoids: BTreeMap<String, SolenoidValve>,
     pub adcs: BTreeMap<String, Ads1015>,
+    pub ads7128s: BTreeMap<String, Ads7128>,
     pub mavs: BTreeMap<String, Mav>,
     pub ball_valves: BTreeMap<String, BallValve>,
     pub steppers: BTreeMap<String, QdStepper>,
@@ -150,6 +152,15 @@ impl Hardware {
                     hw.adcs.insert(
                         d.id.clone(),
                         Ads1015::new(
+                            d.bus.as_deref().context("missing ADC bus")?,
+                            d.address.context("missing ADC address")?,
+                        )?,
+                    );
+                }
+                "ads7128" => {
+                    hw.ads7128s.insert(
+                        d.id.clone(),
+                        Ads7128::new(
                             d.bus.as_deref().context("missing ADC bus")?,
                             d.address.context("missing ADC address")?,
                         )?,
@@ -242,6 +253,30 @@ impl Hardware {
 #[cfg(test)]
 mod configuration_tests {
     use super::*;
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    #[test]
+    fn selectable_ads7128_initializes_without_claiming_telemetry_roles() {
+        smol::block_on(async {
+            let config = HardwareConfig::parse(r#"{"version":1,"profile":"liquid","configured_devices_mask":0,"devices":[{"id":"extra_adc","type":"ads7128","role":null,"connections":{},"settings":{},"bus":"/dev/i2c-0","address":16}]}"#).unwrap();
+            let hw = Hardware::from_config(config).await.unwrap();
+            assert_eq!(hw.ads7128s.len(), 1);
+            assert_eq!(hw.ads7128s["extra_adc"].address(), 0x10);
+            assert!(hw.adcs.is_empty());
+            assert!(!hw.has_role("adc1"));
+            assert!(!hw.has_role("adc2"));
+            assert_eq!(hw.configured_devices_mask, 0);
+        });
+    }
+
+    #[test]
+    fn ads7128_requires_bus_and_address() {
+        for fields in [r#", "address":16"#, r#", "bus":"/dev/i2c-0""#] {
+            let json = format!(r#"{{"version":1,"profile":"liquid","configured_devices_mask":0,"devices":[{{"id":"extra_adc","type":"ads7128","role":null,"connections":{{}},"settings":{{}}{fields}}}]}}"#);
+            let error = smol::block_on(Hardware::from_config(HardwareConfig::parse(&json).unwrap()))
+                .err().expect("incomplete ADC config must fail");
+            assert!(error.to_string().contains("missing ADC"), "{error}");
+        }
+    }
     #[test]
     fn configured_roles_do_not_include_unbound_extra_instances() {
         let config = HardwareConfig::parse(r#"{"version":1,"profile":"liquid","configured_devices_mask":1,"devices":[{"id":"firing","type":"igniter","role":"ig1","connections":{},"settings":{}},{"id":"extra","type":"igniter","role":null,"connections":{},"settings":{}}]}"#).unwrap();

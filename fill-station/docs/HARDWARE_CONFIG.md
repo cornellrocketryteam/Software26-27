@@ -195,7 +195,7 @@ Liquid's QD stepper is disabled. Its old enable connection uses PRU pin 6, so tr
 
 The PROC100A(002) board shares I²C0 with onboard devices. The compiler reserves `0x30` for the PMIC, `0x51` for the board EEPROM, and `0x50` for expansion EEPROM use. It preserves the base board's EEPROM node. External devices must use compatible 3.3 V I²C electrical levels, suitable pull-ups and unused addresses. Dedicated SCL/SDA pads use no internal pull; do not assume a GUI bias setting replaces external pull-ups.
 
-The existing `adc1` and `adc2` stay on I²C2 at `0x48` and `0x49`. No new ADC has been added. Future ADC models need a catalog definition and a Rust driver before they can be added as working instances. Do not select ADS1015 for a different ADC model. Bus access will be `/dev/i2c-0` after building, deploying and booting the matching Liquid image. Saving in the editor alone does not enable hardware.
+The existing `adc1` and `adc2` stay on I²C2 at `0x48` and `0x49`. ADS7128 is also selectable as an additional device, with addresses `0x10`–`0x17`. In Liquid, choose `main_i2c0` to use PRU6/8 and `/dev/i2c-0`. Saving in the editor alone does not enable hardware: build and boot the matching image. ADS7128 uses the existing Rust userspace driver; the generated device tree configures its shared I²C controller and pins, not a kernel ADC driver.
 
 Board references: [TI SK-AM64B guide, I²C section](https://www.ti.com/lit/ug/spruj64/spruj64.pdf), [TPS6522053 register reference](https://www.ti.com/lit/ug/slvucj3/slvucj3.pdf).
 
@@ -208,6 +208,7 @@ Click **+ Add** under Devices, choose a supported type, and enter an instance ID
 | Igniter | Continuity input and firing signal output. |
 | Solenoid valve | Control output, sense input, and normally-open/normally-closed behavior. |
 | ADS1015 ADC | Shared I²C bus and one of the supported addresses. |
+| ADS7128 ADC | Shared I²C bus and address `0x10`–`0x17` (default `0x10`). |
 | MAV servo | A supported PWM output. |
 | Ball valve | `on_off` and `signal` outputs. |
 | QD stepper | `step`, `direction`, and `enable` outputs. |
@@ -246,6 +247,23 @@ Several devices can share those same two lines. Each enabled device on that bus 
 The initial ADCs use `0x48` and `0x49` on Main I²C2. A third ADC on that same bus needs another address, such as `0x4a`. The same address can be used on a different bus.
 
 Changing the address in the editor does not change a chip's address wiring. Also, changing an ADC's role or wiring does not change the application's sensor scaling or channel assignments.
+
+### Add an ADS7128
+
+Choose **ADS7128 ADC**, enter a unique instance ID, choose an existing I²C bus,
+and select the strapped address (`0x10`–`0x17`). For the Liquid PRU6/8 connection,
+select `main_i2c0`. Validate and save, then build the normal Liquid image.
+Both default profiles remain unchanged until you save an edit.
+
+An enabled ADS7128 is opened and probed at startup and stored in
+`Hardware.ads7128s` by instance ID. Its existing driver reads raw counts from
+channels 0–7. Probe failure stops normal hardware initialization. A disabled
+instance is not opened. New instances are **Initialized only**: they do not
+publish new readings, apply voltage calibration, or take over `adc1`/`adc2`.
+Those existing four-channel telemetry roles remain ADS1015-only.
+
+The separate ADC-only image and `--ads7128-test` command have been removed.
+Use normal Hybrid/Liquid images and the hardware editor.
 
 ### Add a new bus
 

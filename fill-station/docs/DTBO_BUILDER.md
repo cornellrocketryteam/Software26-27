@@ -34,7 +34,7 @@ changes the file, saving is rejected; reload/discard and reapply the intended ed
 
 ## Devices, roles, and disabling
 
-Supported types are igniter, solenoid valve, ADS1015, MAV servo, ball valve, and QD stepper.
+Supported types are igniter, solenoid valve, ADS1015, ADS7128, MAV servo, ball valve, and QD stepper. ADS7128 supports I²C addresses `0x10`–`0x17` as an initialized-only extra device; `adc1`/`adc2` telemetry bindings remain ADS1015-only.
 Existing devices have application roles (`ig1`, `sv1`, `adc1`, etc.). Their instance IDs
 may change without changing the role. Roles determine which existing commands and
 telemetry fields use a device. New instances are **initialized only**: they have no new

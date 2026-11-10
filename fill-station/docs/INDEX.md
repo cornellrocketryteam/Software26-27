@@ -6,7 +6,6 @@ Complete documentation for the Cornell Rocketry Team fill station server.
 
 - **[Main README](../README.md)** - Project overview, quick start, architecture
 - **[QUICKSTART_ADC.md](QUICKSTART_ADC.md)** - Quick guide to testing ADC hardware
-- **[ADS7128_BOOT_TEST.md](ADS7128_BOOT_TEST.md)** - Liquid ADC-only serial image and integrated SD/OSPI test notes
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common problems and solutions
 
 ## Developer Guides

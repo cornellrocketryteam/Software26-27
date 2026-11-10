@@ -46,6 +46,11 @@
     "ports": {},
     "settings": {}
   },
+  "ads7128": {
+    "label": "ADS7128 ADC",
+    "ports": {},
+    "settings": {}
+  },
   "mav_servo": {
     "label": "MAV servo",
     "ports": {

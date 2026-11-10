@@ -136,20 +136,24 @@ def compile_profile(profile):
             value = connection(device['connections'][port], definition['kind'], definition['direction'], f'{name}.{port}', claim=enabled)
             if definition['kind'] == 'pwm': resolved['pwm'] = value
             else: resolved['connections'][port] = value
-        if dtype == 'ads1015':
+        if dtype in ('ads1015', 'ads7128'):
             bus_id = device.get('bus')
             if not isinstance(bus_id, str) or bus_id not in buses: raise ValueError(f'{name}: select a defined I2C bus')
             address = device.get('address')
+            if type(address) is not int:
+                raise ValueError(f'{name}: {dtype.upper()} address must be an integer')
             if buses[bus_id]['controller']=='main_i2c0' and address in BOARD['shared_i2c0']['reserved_addresses']:
                 raise ValueError(f'{name}: address {address:#x} is reserved for onboard devices')
-            if type(address) is not int or not 0x48 <= address <= 0x4b: raise ValueError(f'{name}: ADS1015 address must be 0x48–0x4b')
+            low, high = (0x48, 0x4b) if dtype == 'ads1015' else (0x10, 0x17)
+            if not low <= address <= high:
+                raise ValueError(f'{name}: {dtype.upper()} address must be {low:#x}–{high:#x}')
             if enabled:
                 pair = bus_id, address
                 if pair in addresses: raise ValueError(f'duplicate I2C address {address:#x} on {bus_id}')
                 addresses.add(pair); active_buses.add(bus_id)
             resolved.update(bus=f'/dev/i2c-{BUSES[buses[bus_id]["controller"]]}', address=address)
         elif 'bus' in device or 'address' in device:
-            raise ValueError(f'{name}: bus/address are only supported for ADS1015')
+            raise ValueError(f'{name}: bus/address are only supported for ADS1015 and ADS7128')
         if enabled: runtime.append(resolved)
 
     for bus_id in sorted(active_buses):
