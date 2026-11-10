@@ -7,9 +7,11 @@ let
   inherit (buildPackages)
     stdenvNoCC
     dtc
-    clang
     python3
     ;
+  # We only preprocess DTS with -nostdinc. A target-aware compiler wrapper
+  # unnecessarily pulls target libc/GCC into a native device-tree build.
+  clang = buildPackages.llvmPackages.clang-unwrapped;
 in
 assert lib.assertMsg (builtins.elem profile [
   "liquid"

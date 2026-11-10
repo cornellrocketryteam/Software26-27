@@ -22,9 +22,10 @@ in
     ./sd-image
   ];
 
-  # AM64x (Cortex-A53) musl userland, cross-built on aarch64-linux (CI and our remote builder)
+  # Keep the tested ARM64 builder default; explicit variants can cross-build
+  # from the x86 ground station without changing the board's target platform.
   nixpkgs.pkgs = import inputs.nixpkgs {
-    localSystem = "aarch64-linux";
+    localSystem = config.fillStation.buildSystem;
     crossSystem = {
       config = "aarch64-unknown-linux-musl";
       gcc.cpu = "cortex-a53";
