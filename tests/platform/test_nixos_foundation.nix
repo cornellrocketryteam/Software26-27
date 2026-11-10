@@ -96,6 +96,38 @@ let
       aarch64 = { enable = true; validated = true; };
     };
   } ];
+  remoteSettings = {
+    groundStation = {
+      fieldMode = false;
+      cache = {
+        enable = false;
+        signingKeyFile = "/run/keys/cache-signing-key";
+      };
+      builder = {
+        enable = true;
+        validated = true;
+        remote = {
+          enable = true;
+          authorizedKeys = [ ingestionTestKey ];
+          workerId = "test-worker-v1";
+        };
+      };
+    };
+  };
+  remote = evaluateVM [ remoteSettings ];
+  remoteOverride = override: evaluateVM [ remoteSettings override ];
+  remoteNoKeys = remoteOverride { groundStation.builder.remote.authorizedKeys = lib.mkForce [ ]; };
+  remoteBadKey = key: remoteOverride { groundStation.builder.remote.authorizedKeys = lib.mkForce [ key ]; };
+  remoteNoIdentity = remoteOverride { groundStation.builder.remote.workerId = lib.mkForce null; };
+  remoteBadIdentity = id: remoteOverride { groundStation.builder.remote.workerId = lib.mkForce id; };
+  remoteNoBuilder = remoteOverride { groundStation.builder.enable = lib.mkForce false; };
+  remoteUnvalidated = remoteOverride { groundStation.builder.validated = lib.mkForce false; };
+  remoteUnsigned = remoteOverride { groundStation.cache.signingKeyFile = lib.mkForce null; };
+  remoteField = remoteOverride { groundStation.fieldMode = lib.mkForce true; };
+  remoteSsh = remote.system.build.groundWorkerSsh.text;
+  remoteTimeout = value: builtins.tryEval (builtins.deepSeq
+    (remoteOverride { groundStation.builder.remote.sessionTimeoutSeconds = lib.mkForce value; })
+      .groundStation.builder.remote.sessionTimeoutSeconds true);
   unvalidated = evaluate [ {
     groundStation.builder.enable = true;
     groundStation.builder.aarch64.enable = true;
@@ -151,8 +183,77 @@ let
     heavyBuildsDisabled = base.nix.settings.max-jobs == 0;
     noUnvalidatedArm = base.boot.binfmt.emulatedSystems == [ ];
     noRemoteWorker = !base.nix.sshServe.enable;
+    remoteAdmissionOffByDefault = !(base.groundStation.builder.remote.enable or true)
+      && !(base.users.users ? ground-builder);
+    remoteOptionsDefault = base.groundStation.builder.remote.authorizedKeys == [ ]
+      && base.groundStation.builder.remote.workerId == null
+      && base.groundStation.builder.remote.sessionTimeoutSeconds == 14400;
+    remoteRequiresValidatedBuilder = hasFailure "remote builder requires an enabled validated builder" remoteNoBuilder
+      && hasFailure "remote builder requires an enabled validated builder" remoteUnvalidated;
+    remoteRequiresKeys = hasFailure "remote builder requires explicit nonempty public keys" remoteNoKeys;
+    remoteRequiresOutputSigning = hasFailure "remote builder requires a daemon runtime signing key" remoteUnsigned;
+    remoteSigningIndependentOfHttp = !remote.services.harmonia.cache.enable
+      && remote.nix.settings.secret-key-files == [ "/run/keys/cache-signing-key" ]
+      && remote.nix.settings.require-sigs;
+    remoteRejectsKeyOptionsAndControls = lib.all
+      (key: hasFailure "remote builder accepts only bare single-line public keys" (remoteBadKey key))
+      [ "restrict ${ingestionTestKey}" "${ingestionTestKey}\n" "${ingestionTestKey} a\rb" "${ingestionTestKey} a\nb" ];
+    remoteAllowsKeyComments = failed (remoteBadKey "${ingestionTestKey} runner ronit literal\\r\\n") == [ ];
+    remoteRequiresWorkerId = hasFailure "remote builder requires an explicit stable worker ID" remoteNoIdentity
+      && lib.all (id: hasFailure "remote builder requires an explicit stable worker ID" (remoteBadIdentity id))
+        [ "../worker" "worker\n" "worker; injected" ];
+    remoteSessionTimeoutBounded = !(remoteTimeout 0).success && !(remoteTimeout 86401).success
+      && (remoteTimeout 1).success && (remoteTimeout 86400).success;
+    remoteAccountUntrusted = remote.users.users.ground-builder.isSystemUser
+      && remote.users.users.ground-builder.hashedPassword == "!"
+      && remote.users.users.ground-builder.extraGroups == [ ]
+      && remote.nix.settings.trusted-users == base.nix.settings.trusted-users
+      && remote.nix.settings.allowed-users == base.nix.settings.allowed-users;
+    remoteLockRootControlled = builtins.elem
+      "d /run/ground-station-builder 0750 root ground-builder - -" remote.systemd.tmpfiles.rules
+      && builtins.elem "f /run/ground-station-builder/session.lock 0660 root ground-builder - -"
+        remote.systemd.tmpfiles.rules;
+    remoteForcedKey = lib.all (key: lib.hasPrefix "restrict,command=\"/nix/store/" key
+      && lib.hasInfix "/bin/ground-builder-ssh\" ssh-ed25519 " key)
+        remote.users.users.ground-builder.openssh.authorizedKeys.keys;
+    remoteForcedAccountCommand = lib.hasInfix "Match User ground-builder" remote.services.openssh.extraConfig
+      && lib.hasInfix "ForceCommand /nix/store/" remote.services.openssh.extraConfig
+      && lib.hasInfix "AllowStreamLocalForwarding no" remote.services.openssh.extraConfig
+      && lib.hasInfix "PermitUserRC no" remote.services.openssh.extraConfig;
+    remoteExactCommands = lib.hasInfix "case \"\${SSH_ORIGINAL_COMMAND-}\" in" remoteSsh
+      && lib.hasInfix "'crt-platform-builder-health-v1')" remoteSsh
+      && lib.hasInfix "'nix-daemon --stdio')" remoteSsh
+      && lib.hasInfix "command denied" remoteSsh && lib.hasInfix "exit 126" remoteSsh
+      && !(lib.hasInfix "eval " remoteSsh);
+    remoteFixedHelperArguments = lib.hasInfix "--policy /nix/store/" remoteSsh
+      && lib.hasInfix "--lock /run/ground-station-builder/session.lock" remoteSsh
+      && lib.hasInfix "--field-marker /run/ground-station/field-mode" remoteSsh
+      && lib.hasInfix "--store-path /nix/store" remoteSsh
+      && lib.hasInfix "--binfmt-root /proc/sys/fs/binfmt_misc" remoteSsh
+      && lib.hasInfix "--daemon-program /nix/store/" remoteSsh
+      && lib.hasInfix " health" remoteSsh && lib.hasInfix " guard" remoteSsh;
+    remoteCleanDaemonEnvironment = lib.hasInfix "/bin/env -i" remoteSsh
+      && lib.hasInfix "NIX_REMOTE=unix:///nix/var/nix/daemon-socket/socket" remoteSsh
+      && lib.hasInfix "NIX_USER_CONF_FILES=/dev/null" remoteSsh
+      && !(lib.hasInfix "--force-trusted" remoteSsh) && !(lib.hasInfix "--process-ops" remoteSsh);
+    sharedBuildAdmission = lib.hasInfix "crt-platform-worker-v1" remote.system.build.groundWorkerAdmission.text
+      && lib.hasInfix " admit" remote.system.build.groundWorkerAdmission.text
+      && !(lib.hasInfix " guard\n" remote.system.build.groundWorkerAdmission.text)
+      && !(lib.hasInfix " health\n" remote.system.build.groundWorkerAdmission.text);
+    workerHelperIsolated = lib.hasInfix "/bin/python -I" remote.system.build.groundWorkerHelper.text
+      && lib.hasInfix "tools.platform.worker" remote.system.build.groundWorkerHelper.text;
+    remotePreservesFieldAndContainment = remoteField.nix.settings.max-jobs == 0
+      && remoteField.boot.binfmt.emulatedSystems == [ ]
+      && remote.systemd.services.nix-daemon.serviceConfig.MemoryMax == "6G"
+      && remote.systemd.services.nix-daemon.serviceConfig.CPUQuota == "300%"
+      && !remote.nix.sshServe.enable && !remote.groundStation.cache.ingestion.enable;
+    remoteValidProfileEvaluates = failed remote == [ ] && builtins.isString remote.system.build.toplevel.drvPath;
     validatedWorker = worker.nix.settings.max-jobs == 1
       && builtins.elem "aarch64-linux" worker.boot.binfmt.emulatedSystems;
+    armBinfmtMatchesRuntimeProbe = worker.boot.binfmt.registrations.aarch64-linux.fixBinary
+      && !worker.boot.binfmt.registrations.aarch64-linux.wrapInterpreterInShell
+      && worker.boot.binfmt.registrations.aarch64-linux.preserveArgvZero
+      && lib.any (lib.hasPrefix "L+ /run/binfmt/aarch64-linux ") worker.systemd.tmpfiles.rules;
     fieldInhibitsWorker = field.nix.settings.max-jobs == 0
       && field.boot.binfmt.emulatedSystems == [ ];
     validationGate = hasFailure "builder validation" unvalidated

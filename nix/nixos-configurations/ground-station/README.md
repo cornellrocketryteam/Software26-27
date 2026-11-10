@@ -27,7 +27,8 @@ Clients need the matching trusted public key. No key is generated or committed.
 
 Station builds and ARM emulation are disabled until explicitly validated, and
 field mode inhibits new heavy builds. CPU/RAM limits apply to the daemon actually
-building; direct SSH stdio-worker endpoints are not provisioned in this increment.
+building. An opt-in untrusted SSH worker endpoint now exists, disabled by default;
+see [worker setup and acceptance](../../../docs/operations/build-worker.md).
 Changing field mode does not terminate builds already running. Live containment
 and scheduling checks remain required before enabling remote builds.
 
@@ -37,7 +38,8 @@ offline tiles and kiosk startup remain pending. Commanding is disabled until an
 inspected device and endpoint are configured; legacy button firmware is limited
 to monitoring. See [the listener gate](../../../ground-station/LaunchButton/README.md).
 
-No remote health helper, automatic updates or deployment is installed. An opt-in
+No automatic updates or deployment is installed. Remote health/admission is
+available through the disabled-by-default worker module. An opt-in
 SSH ingestion/receipt module is available but disabled by default. It requires
 explicit public keys, an archive ID, enabled signed cache and review of effectively
 administrative Nix access. See [cache setup and acceptance](../../../docs/operations/build-cache.md).

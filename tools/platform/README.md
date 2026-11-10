@@ -7,6 +7,7 @@ standard library `platform` module remains available. Nix, nix-store, Git and
 
 ```sh
 ./scripts/platform check
+./scripts/platform check --station --build-platform x86_64-linux
 ./scripts/platform build fill-station --vehicle liquid --artifact release --builder auto
 ./scripts/platform build fill-station --vehicle hybrid --artifact fit --builder local --offline
 ./scripts/platform build fill-station --vehicle liquid --artifact fit --build-platform x86_64-linux --builder station
@@ -49,9 +50,10 @@ existing, independently verified known_hosts file, optional configuration is:
   "station": {
     "validated": false,
     "platforms": ["aarch64-linux"],
-    "store": "ssh-ng://builder@groundstation.example.org",
-    "sshTarget": "builder@groundstation.example.org",
+    "store": "ssh-ng://ground-builder@groundstation.example.org",
+    "sshTarget": "ground-builder@groundstation.example.org",
     "knownHosts": "/absolute/path/to/verified_known_hosts",
+    "workerId": "reviewed-station-worker-v1",
     "minFreeBytes": 100000000000
   },
   "cache": {
@@ -124,10 +126,10 @@ retained log; no compiler error, missing attribute or invalid derivation trigger
 another compilation elsewhere. Mid-build infrastructure failover is deliberately
 not implemented in this foundation.
 
-## Health command contract for the NixOS owner
+## Station health and admission
 
-Install a controlled `crt-platform-builder-health-v1` command for the configured
-builder SSH account before marking the station validated. Invocation is exactly:
+The opt-in NixOS worker module now provides the fixed health command for its
+separate untrusted builder account. It is disabled by default. Invocation is exactly:
 
 ```text
 ssh [strict pinned options] -- user@host crt-platform-builder-health-v1
@@ -136,15 +138,29 @@ ssh [strict pinned options] -- user@host crt-platform-builder-health-v1
 Return one JSON object on stdout, diagnostics on stderr, nonzero on failure:
 
 ```json
-{"protocol":1,"platforms":["aarch64-linux"],"available":true,"operationalMode":"maintenance","freeBytes":200000000000}
+{"protocol":1,"workerId":"reviewed-station-worker-v1","platforms":["x86_64-linux"],"available":true,"operationalMode":"maintenance","freeBytes":200000000000,"reason":"remote session slot and runtime capability available"}
 ```
 
-The station must calculate available/freeBytes and advertise only exercised
-platforms. Field mode, busy workers, insufficient disk, unknown platforms, invalid
-JSON, command failure and timeout all reject the worker. A future health helper
-must enforce the same availability policy when work is actually scheduled; a
-probe alone cannot reserve resources or enforce cgroup isolation. This repository
-foundation defines the client; it does not install the command or a receipt server.
+The helper calculates actual free space, probes the local daemon and native/extra
+platform declarations, checks active ARM binfmt and tests the remote-session lock.
+Field mode, busy sessions, insufficient disk, malformed responses, unsupported
+platforms, command failure and timeout reject routing. The client strictly checks
+protocol/types and optional `station.workerId` pinning. Legacy protocol-1 replies
+without an identity are supported only when the client has not pinned one.
+
+`check --station` explicitly makes a read-only health request, including while
+the client validation flag is false; it does not enable routing or build anything.
+It can report local unavailability alongside station observations. Exit zero means
+the probe completed; inspect the returned availability, reason, platforms and
+`stationValidated`. Plain `check` remains local-only.
+
+The actual guarded stdio connection rechecks admission and holds a root-controlled
+lock for its lifetime. The daemon's pre-build hook separately enforces field/free
+space policy at every derivation start. Health is not a reservation; busy covers
+guarded remote sessions, not all local daemon jobs. Active builds are not cancelled
+by entering field mode. See [worker setup and live acceptance](../../docs/operations/build-worker.md)
+for signing, untrusted import, Linux containment and remote retention gaps. None
+of those hardware properties is proven by a successful health probe.
 
 ## Durable source, release and outbox
 

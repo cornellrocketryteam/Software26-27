@@ -36,6 +36,9 @@ def load_config(path, *, explicit=False):
     if 'receiptArchiveId' in config.get('cache', {}):
         from .receipts import identity
         identity(config['cache']['receiptArchiveId'], 'cache receipt archive ID')
+    if 'workerId' in config.get('station', {}):
+        from .receipts import identity
+        identity(config['station']['workerId'], 'station worker identity')
     return config
 
 

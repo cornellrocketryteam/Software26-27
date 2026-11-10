@@ -17,6 +17,7 @@ This page is the starting point for software documentation in the repository.
 | [Ground-platform checklist](superpowers/plans/2026-11-09-ground-platform.md) | Implementation order and measurable acceptance criteria |
 | [Build/cache CLI](../tools/platform/README.md) | Current commands, routing, source snapshots, release retention and pending publication |
 | [Cache publication and acceptance](operations/build-cache.md) | Signed cache setup, receipt configuration, SSH ingestion and live acceptance |
+| [Build-worker setup and acceptance](operations/build-worker.md) | Runtime health, guarded sessions, field admission and pending hardware validation |
 | [Ground-station NixOS foundation](../nix/nixos-configurations/ground-station/README.md) | Existing targets, configuration gates, and pending hardware/service work |
 | [Fill-station deployment](operations/fill-station-deployment.md) | Current SD/OSPI build, network update, and manual recovery procedure |
 | [Development readiness](operations/development-readiness.md) | Evidence and signoff required before operational use |

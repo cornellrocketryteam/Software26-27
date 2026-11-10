@@ -27,8 +27,10 @@ for commands that exist today.
   requires firmware session-protocol changes and owner-reviewed mappings.
 
 The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
-see [cache acceptance](../operations/build-cache.md) before enabling it. Remote
-build admission, live cache/signing acceptance, prepared offline rebuilds,
+see [cache acceptance](../operations/build-cache.md) before enabling it. A separate
+disabled-by-default [worker endpoint](../operations/build-worker.md) now provides
+runtime health and guarded admission. Live worker/containment and cache/signing
+acceptance, remote output retention, prepared offline rebuilds,
 deployment orchestration and CI cutover remain unfinished. Existing
 FlakeHub-related CI remains until the replacement passes its acceptance tests.
 

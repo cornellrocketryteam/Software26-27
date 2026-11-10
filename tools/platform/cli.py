@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import sys
 from . import build, cache
-from .builders import local_health
+from .builders import local_health, probe_station
 from .config import load_config, state_directory
 from .runtime import PlatformError
 
@@ -13,7 +13,9 @@ def parser():
     cli = argparse.ArgumentParser(description='Ground platform build/cache foundation; never deploys.')
     cli.add_argument('--config', type=Path, help='explicit user JSON (default: STATE/config.json)')
     commands = cli.add_subparsers(dest='command', required=True)
-    commands.add_parser('check', help='check local Nix capabilities; no image builds or SSH')
+    check = commands.add_parser('check', help='check local Nix; optional read-only station probe')
+    check.add_argument('--station', action='store_true', help='explicitly probe configured pinned station; never build')
+    check.add_argument('--build-platform', choices=('aarch64-linux', 'x86_64-linux'), default='aarch64-linux')
     builds = commands.add_parser('build', help='build and queue publication; never deploy')
     hosts = builds.add_subparsers(dest='host', required=True)
     for host in ('fill-station', 'ground-station'):
@@ -54,9 +56,19 @@ def main(argv=None, *, repo=None):
                       'receiptReceiver': 'protocol 1; requires pinned archive identity and installed receiver',
                       'tested': 'not tracked by this foundation', 'active': 'deployment owner tracks activation'}
         else:
-            result = {'local': local_health(config, 'aarch64-linux'),
+            try:
+                local = local_health(config, args.build_platform)
+            except PlatformError as exc:
+                if not args.station:
+                    raise
+                local = f'unavailable: {exc}'
+            result = {'local': local,
                       'station': 'not probed; explicit validated configuration required',
                       'scope': 'build/outbox/cache only'}
+            if args.station:
+                result.update(station=probe_station(config),
+                              stationValidated=config.get('station', {}).get('validated') is True,
+                              requestedBuildPlatform=args.build_platform)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except (PlatformError, OSError, ValueError) as exc:

@@ -39,9 +39,11 @@ if name == 'ssh':
         if scenario == 'not-retained': receipt['retained'] = False
         print(json.dumps(receipt)); sys.exit(0)
     scenario = os.environ.get('STATION_HEALTH')
-    print(json.dumps({'protocol': 1, 'platforms': ['aarch64-linux', 'x86_64-linux'],
+    health = {'protocol': 1, 'workerId': 'fixture-worker', 'platforms': ['aarch64-linux', 'x86_64-linux'],
                       'available': scenario != 'busy', 'operationalMode': 'field' if scenario == 'field' else 'maintenance',
-                      'freeBytes': 0 if scenario == 'full' else 200_000_000_000}))
+                      'freeBytes': 0 if scenario == 'full' else 200_000_000_000}
+    if os.environ.get('HEALTH_OVERRIDE'): health.update(json.loads(os.environ['HEALTH_OVERRIDE']))
+    print(json.dumps(health))
 elif name == 'nix-store':
     if args == ['--gc']:
         import shutil

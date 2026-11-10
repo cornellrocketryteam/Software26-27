@@ -15,6 +15,12 @@ x86 cross-build graphs have overlay-build evidence, not complete image validatio
 `.github/workflows/nix.yml` still builds through FlakeHub on branch pushes until
 the replacement workflow is implemented and tested.
 
+An opt-in untrusted [station worker](../docs/operations/build-worker.md) now has
+runtime health, guarded SSH sessions and daemon-side field/capacity admission.
+It remains disabled. The Linux lifecycle/policy check can run through the existing
+Mac Linux builder without the mini PC; full remote transport and image validation
+still require that machine.
+
 Normal fill-station operation should use local OSPI boot with network-delivered
 updates and SD recovery. Existing commands are in the
 [deployment runbook](../docs/operations/fill-station-deployment.md). No actual

@@ -35,6 +35,14 @@ preserved its manifest bytes and returned a stable receipt on retry. Station LAN
 signing/substitution, daemon containment and power-loss tests remain unchecked.
 See [cache setup and acceptance](../../operations/build-cache.md).
 
+The worker increment adds runtime health, strict client checks/worker-ID pinning,
+a separate untrusted forced-command SSH account, serialized sessions and shared
+daemon-side admission. Its endpoint stays disabled. Host tests cover field/disk/
+busy/capability failures and session lifecycle. All 15 worker tests also passed
+inside the existing ARM64 Linux builder, including parent-death cleanup. This is
+process/policy evidence using modeled Nix, not full remote station acceptance.
+See [worker setup and acceptance](../../operations/build-worker.md).
+
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
 ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
 contains an 18,727,192-byte FIT with SHA256
@@ -46,8 +54,9 @@ complete offline rebuild input set.
 
 Next milestone: inspect the powered-on UM560, back up the current data/services,
 and supply actual hardware/boot configuration. Validate the cache/receipt setup
-on that machine and implement remote build admission before enabling station
-builds. Preserve the current Compose deployment until the NixOS service migration passes. Existing
+on that machine, complete remote output retention and validate the worker endpoint
+before routine station builds. Preserve the current Compose deployment until the
+NixOS service migration passes. Existing
 button firmware is monitoring-only with the new listener; session-protocol
 firmware and command mapping review remain required.
 
@@ -151,6 +160,12 @@ Planned file: `nix/nixos-modules/ground-station/builder.nix`; tests under
 
 - [ ] Enable and verify ARM64 Linux QEMU/binfmt; do not merely advertise support.
 - [ ] Establish daemon-side SSH worker credentials and pinned host identity.
+- [x] Implement the opt-in untrusted worker account, immutable policy, fixed health
+  command and guarded daemon-backed stdio endpoint. Check policy/capacity again
+  inside the actual pre-build hook; preserve default-off and field restrictions.
+- [x] Exercise real lock/process/signal/parent-death behavior with modeled Nix on
+  the Mac and its Linux builder. Actual station transport, trust and cgroups remain
+  unvalidated; do not treat declaration or host tests as execution benchmarks.
 - [ ] Build both vehicle binaries, kernel, bootloaders, overlays, FITs, and images
   on the UM560 worker; record emulation time, peak RAM, and image sizes.
 - [ ] Boot one generated release on the board and compare peripheral behavior.

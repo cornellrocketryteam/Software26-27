@@ -24,6 +24,8 @@ in
   perSystem = { system, pkgs, ... }: {
     checks = lib.optionalAttrs (system == "x86_64-linux") {
       ground-station-vm = import ../../tests/platform/test_nixos_vm.nix { inherit pkgs; };
+    } // lib.optionalAttrs (builtins.elem system [ "aarch64-linux" "x86_64-linux" ]) {
+      ground-worker-admission = import ../../tests/platform/test_worker_linux.nix { inherit pkgs; };
     };
   };
 }
