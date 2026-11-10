@@ -19,6 +19,8 @@ The foundation enables key-only non-root administrator SSH, scoped networking,
 persistent journals, and a local offline landing page. Its `/healthz` is liveness;
 `/readyz` deliberately returns 503 because the operational stack is not provisioned.
 LAN interfaces must be explicitly configured; default SSH/web listeners are loopback.
+The intended physical LAN interface is the mini PC's Ethernet NIC. Its exact name,
+MAC and addressing are pending inventory; normal startup will not require Wi-Fi.
 
 The cache is off until a runtime signing-key path is configured. Harmonia signs
 HTTP metadata; `nix.settings.secret-key-files` also signs newly built store outputs

@@ -39,6 +39,10 @@ FlakeHub-related CI remains until the replacement passes its acceptance tests.
 - Ground station: user-reported MINISFORUM UM560 XT, Ryzen 5 5600H,
   16 GB RAM, 512 GB SSD; x86-64 NixOS, on the same LAN as the fill station.
   It is not available for live inspection yet.
+- Both endpoints use Ethernet for normal networking. Migrate the fill station
+  from its current Wi-Fi startup configuration to Ethernet; the mini PC gets
+  network access over Ethernet, with no Wi-Fi association required. Exact wired
+  interface names, MACs, switch ports and addresses are inventory work.
 - Ground station starts Grafana, telemetry infrastructure, the operator UI,
   and the physical-command listener at boot without manual terminal commands.
 - Both machines boot and run without internet or another machine being online.
@@ -131,6 +135,34 @@ Database files, Grafana state, broker state, SSH host keys, and configuration
 secrets persist outside immutable packages. Backups cover database-consistent
 exports, service configuration, and restore instructions, not just the Nix store.
 NixOS generation rollback does not roll back database migrations.
+
+## Ethernet connections for the fill station and mini PC
+
+Configure the mini PC's inspected wired NIC as its normal LAN/network connection;
+scope NixOS addressing, routes and LAN service/firewall configuration to that
+interface. Do not configure a required Wi-Fi connection or wait for wireless
+association during startup. The fill station likewise moves normal SSH,
+telemetry, commanding and network-delivered updates onto its inspected Ethernet
+interface, for both Liquid and Hybrid profiles.
+
+Current shared fill-station startup explicitly runs `wpa_supplicant` and DHCP on
+`wlan0` in `nix/mixos-modules/fill-station-base/default.nix`. This is still current
+code, not an implemented Ethernet migration. Verify the Ethernet driver/PHY,
+carrier and actual interface name; configure wired addressing and prove SSH/data
+connectivity before retiring Wi-Fi startup as the default. Keep serial recovery
+and persistent keys/state intact. Any optional Wi-Fi recovery workflow is explicit
+and separate from normal operation, rather than an automatic route dependency.
+
+Record Ethernet MAC-based DHCP reservations/local DNS on the existing LAN, plus
+the reviewed recovery addressing plan. Update service endpoints and SSH identity
+records for the wired addresses without inventing IPs or interface names. Neither
+machine's local boot may hang on cable absence, DHCP failure or an unavailable peer.
+Verify cable unplug/replug, link recovery and operation without WAN or Wi-Fi.
+
+Ethernet at each endpoint can still traverse an EAP215 wireless bridge between
+LAN segments. Inventory the real topology before fixing that path in configuration;
+the bridge-metrics requirement remains. Linux Ethernet networking does not require
+enabling U-Boot network boot: the agreed SD/OSPI local-boot plan is unchanged.
 
 ## Network and power controls in the operator UI
 

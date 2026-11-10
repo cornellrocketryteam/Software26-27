@@ -7,7 +7,8 @@ Architecture and confirmed requirements:
 **Goal:** Reproducible offline NixOS ground-station startup, LAN caching and
 optional builds, deferred artifact publication, and straightforward local-boot
 fill-station deployment with tested recovery. The operator UI also provides local
-network/power controls and wireless-bridge health monitoring.
+network/power controls and wireless-bridge health monitoring. Both the mini PC
+and fill station use Ethernet for normal network access.
 
 **Architecture:** Keep the fill station on MixOS with OSPI boot and ext4 DATA;
 manage the x86-64 ground station with NixOS. Implement one build/release interface
@@ -66,6 +67,8 @@ firmware and command mapping review remain required.
 - Preserve Hybrid/Liquid separation, current profiles, ext4 state, SSH keys,
   `/` permission fix, and local failsafes.
 - No mandatory internet/ground-station dependency for fill-station startup.
+- Ethernet is the normal network attachment for both machines; mini PC startup
+  does not depend on Wi-Fi. Wired endpoints may still use an inter-site bridge hop.
 - No automatic commanding, flashing, arming, release activation, or reboot as a
   side effect of building, caching, syncing, or service startup.
 - No network-device power action on UI/service startup, reconnect or stale metrics.
@@ -90,6 +93,8 @@ Network boot is a separate optional final task.
   Capture user-reported SD/OSPI/persistence results with board/release identity.
 - [ ] Obtain `lscpu`, memory, storage, NIC names, firmware/boot mode, display and
   USB serial identities from the UM560; record hardware configuration outside secrets.
+- [ ] Inventory the Ethernet interface names/MACs on both machines and map their
+  switch ports, LAN segments and any EAP215 bridge hop. User provides IPs later.
 - [ ] Inventory existing broker/database/Grafana data, versions, schema/rules,
   camera/Home Assistant use, and installed command-button firmware.
 - [ ] Restore a test database backup into an isolated instance; record pass/fail.
@@ -128,6 +133,43 @@ This attribute exists but rejects a physical system build until inspected hardwa
 and boot configuration are supplied. A separate `ground-station-vm` target exists
 for virtual testing. Initial installation must first make a matching x86-64
 builder available; the ARM64 Mac VM is not an x86 native builder.
+
+## 1a. Move fill-station networking to Ethernet and configure wired mini PC access
+
+Status: user-confirmed requirement; migration is not implemented. See the
+[Ethernet architecture](../../architecture/ground-platform.md#ethernet-connections-for-the-fill-station-and-mini-pc).
+The shared fill-station image currently starts Wi-Fi association and DHCP on
+`wlan0`; the mini PC's actual wired interface is not inventoried yet.
+
+- [ ] Verify the fill-station Ethernet driver/PHY, carrier and actual interface
+  name on the board. Do not assume `eth0` or change vehicle wiring to test it.
+- [ ] Configure Ethernet addressing/DHCP in the shared MixOS module for both
+  Liquid and Hybrid, with bounded retries and visible link/address state.
+- [ ] Configure the mini PC's inspected Ethernet interface, routing and LAN
+  firewall/service scope in NixOS. Normal operation requires no Wi-Fi connection.
+- [ ] Reserve wired addresses by Ethernet MAC and configure stable LAN names on
+  the existing router/DHCP service; document recovery addressing. Do not invent
+  IPs or deploy a competing DHCP server.
+- [ ] Update SSH aliases/verified host identity records and application/broker/UI
+  endpoints to the wired addresses or LAN names. Preserve persistent authorized
+  keys, root-permission fix, ext4 state and Liquid/Hybrid profile separation.
+- [ ] Establish SSH over Ethernet and verify telemetry/command connectivity
+  before retiring fill-station `wpa_supplicant`/`wlan0` DHCP as normal startup.
+  Retain serial recovery and document any optional manual Wi-Fi recovery policy.
+- [ ] Test wired cold boot and connectivity on SD and OSPI, including persistent
+  SSH and both relevant vehicle configurations. Keep boot media/recovery behavior
+  unchanged; this task does not require U-Boot network boot.
+- [ ] Test mini PC wired access to local devices, cache/build endpoints and the
+  router/network when available. Confirm Wi-Fi is not needed for normal startup.
+- [ ] Test unplug/replug and DHCP/peer absence: local boot completes, the UI
+  reports disconnected/stale state, and wired connectivity recovers predictably.
+- [ ] With WAN and Wi-Fi unavailable, verify local wired SSH, telemetry and UI
+  paths; separately test the actual inter-site bridge path if present. Record
+  which segment failed instead of treating Ethernet carrier as end-to-end health.
+
+Acceptance: both machines use their wired interfaces for normal network traffic;
+the fill station's Wi-Fi startup is no longer required, local SD/OSPI boot and SSH
+persistence still work, and missing cables/peers cannot block independent startup.
 
 ## 2. Package and autostart the telemetry and command stack
 
@@ -397,6 +439,8 @@ These are not prerequisites for the agreed offline OSPI/network-update baseline.
 | Scenario | Required result | Evidence |
 | --- | --- | --- |
 | WAN absent, both machines cold boot | Local UI/services and fill-station application start | Boot logs + readiness timings |
+| Both endpoint Wi-Fi connections unavailable | Normal wired SSH/data paths work | Ethernet interface/MAC + route/connectivity evidence |
+| Ethernet cable/DHCP absent, then restored | Local boot completes; link/address/connectivity recovers visibly | Boot + unplug/replug log |
 | Ground station powered off | Fill station boots locally; laptop prepared build works | Serial log + build manifest |
 | Fill station absent | Ground station boots, records service health, displays disconnected | UI + service logs |
 | Cache absent with online laptop | Build uses allowed alternatives; publication queues | Outbox + builder log |

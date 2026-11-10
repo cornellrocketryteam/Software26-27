@@ -18,6 +18,12 @@ existing firmware; review its compatibility gate before changing its deployment.
 
 Ground Station software covers operator presentation, recording, network-device control, and non-time-critical commands. Keep time-critical Fill Station behavior independent of the Ground Station.
 
+The mini PC will use Ethernet for normal network access; the fill station will
+also migrate to Ethernet. Interface/address inventory and the fill-station
+configuration change remain planned work. An EAP215 wireless bridge may still
+connect the LAN segments. Follow the
+[wired-network checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md#1a-move-fill-station-networking-to-ethernet-and-configure-wired-mini-pc-access).
+
 Planned operator features now include Omada ES205GP PoE-port controls,
 EAP215-Bridge KIT wireless-link metrics and two Shelly Plug US Gen4 controls.
 These are not implemented or connected; IPs, firmware/API compatibility and
