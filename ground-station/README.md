@@ -18,6 +18,12 @@ existing firmware; review its compatibility gate before changing its deployment.
 
 Ground Station software covers operator presentation, recording, network-device control, and non-time-critical commands. Keep time-critical Fill Station behavior independent of the Ground Station.
 
+Planned operator features now include Omada ES205GP PoE-port controls,
+EAP215-Bridge KIT wireless-link metrics and two Shelly Plug US Gen4 controls.
+These are not implemented or connected; IPs, firmware/API compatibility and
+port/load mapping are pending. Follow the
+[network/power checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md#2a-add-networkpower-controls-and-bridge-metrics-to-the-operator-ui).
+
 ## EMQX telemetry rules
 
 Telemetry is written to TimescaleDB by two rules that share one action (`emqx_action.sql`). The topic prefix says which format the payload uses:

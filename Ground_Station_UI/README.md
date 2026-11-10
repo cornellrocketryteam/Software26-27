@@ -27,8 +27,8 @@ or internet. Do not require it during field startup.
 ## Current integration boundaries
 
 `src/App.tsx` currently contains a literal fill-station WebSocket endpoint.
-The physical-command listener has a separate literal endpoint in
-`ground-station/LaunchButton/pc_listener.py`; the broker address also exists in
+The physical-command listener accepts a separately configured endpoint via
+`--uri`/`CRT_FILL_STATION_WS`; the broker address also exists in
 `fill-station/src/mqtt_publisher.rs`. These are not yet one deployment configuration.
 Changing the UI endpoint does not configure the listener or broker.
 
@@ -36,6 +36,20 @@ The map has local tile support, but currently chooses remote tiles using
 `navigator.onLine`. LAN connectivity alone can make this true without usable
 internet. Explicit offline field mode and prepared tile coverage are required
 implementation work.
+
+## Planned network and power panel
+
+The approved scope now includes named PoE-port controls for Omada ES205GP
+switches, wireless-link health/metrics for EAP215-Bridge KIT equipment and
+individual controls plus available metering for two Shelly Plug US Gen4 units.
+These controls are not implemented. Device addresses, firmware, controller/API
+capabilities and port/load mappings will be inventoried later; no IPs are assumed.
+
+Use a local backend with runtime credentials, explicit operator power actions,
+observed-state read-back and stale/unavailable indicators. Boot/reconnect must
+never replay power commands. See the
+[network/power checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md#2a-add-networkpower-controls-and-bridge-metrics-to-the-operator-ui)
+and [architecture](../docs/architecture/ground-platform.md#network-and-power-controls-in-the-operator-ui).
 
 ## Planned NixOS operation
 

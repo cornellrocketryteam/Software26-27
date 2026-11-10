@@ -6,7 +6,8 @@ Architecture and confirmed requirements:
 
 **Goal:** Reproducible offline NixOS ground-station startup, LAN caching and
 optional builds, deferred artifact publication, and straightforward local-boot
-fill-station deployment with tested recovery.
+fill-station deployment with tested recovery. The operator UI also provides local
+network/power controls and wireless-bridge health monitoring.
 
 **Architecture:** Keep the fill station on MixOS with OSPI boot and ext4 DATA;
 manage the x86-64 ground station with NixOS. Implement one build/release interface
@@ -67,6 +68,8 @@ firmware and command mapping review remain required.
 - No mandatory internet/ground-station dependency for fill-station startup.
 - No automatic commanding, flashing, arming, release activation, or reboot as a
   side effect of building, caching, syncing, or service startup.
+- No network-device power action on UI/service startup, reconnect or stale metrics.
+  Missing device endpoints remain unconfigured; IP addresses are supplied later.
 - Preserve unrelated local work. Historical plans are evidence, not current runbooks.
 - Tests and hardware evidence have separate status; unchecked means unfinished.
 - New commands/paths below are specified interfaces until their task is complete.
@@ -152,6 +155,84 @@ and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
 
 Acceptance: documented cold boot to usable operator screen; expected services
 healthy or explicitly degraded; no accidental command on service startup.
+
+## 2a. Add network/power controls and bridge metrics to the operator UI
+
+Status: new user-requested scope, planned only. Full behavior and vendor references
+are in [the architecture](../../architecture/ground-platform.md#network-and-power-controls-in-the-operator-ui).
+Missing IP addresses do not block design, adapter fixtures or UI work.
+
+Inventory supplied by the user:
+
+| Device family | Count | Requested integration |
+| --- | --- | --- |
+| Omada ES205GP, 5-port Gigabit Easy Managed PoE switch | Confirm later | PoE controls in the ground-station UI |
+| Omada EAP215-Bridge KIT, 5 GHz AC867 wireless bridge | Confirm kits/endpoints later | Wireless-link metrics in the UI |
+| Shelly Plug US Gen4 | Two | Individually named smart-plug controls and available metering |
+
+Planned implementation locations: `Ground_Station_UI/src/` for the panel,
+`ground-station/network-control/` for device adapters and a local backend,
+`nix/nixos-modules/ground-station/network-control.nix` for supervision/secrets,
+and `tests/platform/` for simulated device/command tests. These paths are planned
+interfaces, not claims that the service or controls exist.
+
+- [ ] Inventory each unit's exact model, hardware revision, firmware, MAC/device
+  identity, management address and access mode. User will provide IPs later;
+  record DHCP reservation/local DNS choices then, without hard-coded guesses.
+- [ ] Record the number of switches and bridge pairs, both ends/roles of each
+  bridge, existing Omada controller/adoption state and any Home Assistant use.
+  Verify actual Ethernet/Wi-Fi management topology rather than assuming that
+  all devices use Ethernet because their loads are physically wired.
+- [ ] Map named switch ports and both Shelly plugs to loads. Identify power and
+  management-path dependencies, especially bridge/uplink/ground-station power.
+- [ ] Prove the ES205GP's supported local PoE read/write interface for the installed
+  revision. Verify local controller compatibility/version and actual control
+  endpoints; do not assume SNMP, an Open API or undocumented web writes work.
+- [ ] Select the bridge metrics interface on the installed revision: supported
+  local controller API or verified SNMP/MIBs. Capture redacted sample responses
+  from both ends and identify exposed fields before defining capability flags.
+- [ ] Validate Shelly local RPC, authentication and operating mode for both units.
+  Inventory schedules/timers and power-restore behavior; choose the adapter without
+  introducing cloud dependence or competing automatic controllers.
+- [ ] Define one device inventory/configuration with stable IDs, labels, endpoint
+  overrides, port/load mappings, supported capabilities and runtime secret refs.
+  Device credentials stay out of Git, immutable Nix store and browser code.
+- [ ] Implement a supervised local backend with allowlisted device actions,
+  bounded polling/timeouts and independent per-device degraded state. If a local
+  Omada controller is needed, pin/package its offline startup and persistent data.
+- [ ] Add ES205GP UI port cards/table: observed PoE/link state, named load, explicit
+  on/off and power-cycle buttons, and available per-port/total power readings.
+  Keep PoE power, data-port disabling and whole-switch reboot distinct; expose
+  only validated capabilities and avoid a blanket power-off action.
+- [ ] Add two individually named Shelly UI controls with observed relay state and
+  explicit on/off/cycle, plus available power/energy/voltage/current/fault readings.
+- [ ] Add a bridge panel for both ends: link/peer state, RSSI, available SNR/noise,
+  TX/RX negotiated rates, traffic rates, channel/width, uptime and disconnects.
+  Missing fields show unavailable, not zero; include sample age and last contact.
+- [ ] Add separately labeled, bounded LAN RTT/loss probes; keep RF statistics,
+  negotiated rates and actual traffic distinct. Active throughput testing remains
+  an explicit maintenance action and is not run during startup/normal monitoring.
+- [ ] Store infrastructure time series separately and provision Grafana trends.
+  Set polling/load budgets and test that monitoring does not degrade telemetry
+  recording, operator UI latency or commanding.
+- [ ] Require an explicit operator action and affected-load confirmation for
+  disruptive writes. Verify a device-local restore timer or independent recovery
+  before permitting a cycle that removes its own management link.
+- [ ] Implement action IDs/duplicate suppression, bounded results and an audit
+  trail with requested vs observed state. After timeout, read status and report
+  uncertainty; do not blindly retry toggles/cycles or queue writes for reconnect.
+- [ ] Simulator tests: missing config, unsupported capabilities, unavailable/stale
+  metrics, partial failures, delayed/lost replies, duplicate clicks and reconnection.
+  No power command may run during boot, page load or connection recovery.
+- [ ] Bench tests on labeled noncritical loads: compare UI state/metrics to vendor
+  management, on/off/cycle behavior, failure/read-back handling and local recovery.
+  Keep autonomous PoE recovery/power automations unchanged during manual tests.
+- [ ] Disconnect WAN and restart services: controls/metrics work over LAN, missing
+  devices degrade visibly, and the rest of the station boots and records normally.
+
+Acceptance: the operator can identify and control the intended PoE port/plug and
+see actual bridge health without cloud access, invented metrics or replayed power
+commands. Record firmware, controller/API version, port/load map and tested revision.
 
 ## 3. Prove the x86 PC can build the current ARM64 graph
 
@@ -324,6 +405,10 @@ These are not prerequisites for the agreed offline OSPI/network-update baseline.
 | Reconnect after local build | Queue syncs once; second client substitutes | Transfer record + cache log |
 | Heavy build while collecting telemetry | Measured accepted latency, or builds paused | Resource/latency trace |
 | Listener restarts with held/noisy input | No spontaneous command or replay | Simulator transcript |
+| PoE/Shelly UI start or reconnect | No power action; observed states/freshness shown | Adapter/UI test log |
+| Requested port/plug action on a bench load | Correct named load changes; result read back or explicitly unknown | Port/load map + action record |
+| Bridge degrades/disconnects | RF/traffic/probe metrics distinguished; stale/unavailable visible | Both-end comparison + time series |
+| WAN absent with local devices reachable | Network/power panel works over LAN without cloud | Offline control/monitoring test |
 | New FIT update | Correct vehicle/release boots and state persists | Manifest + post-boot checks |
 | Broken FIT in isolated recovery test | Manual SD restoration succeeds | Recovery log |
 | NixOS rollback after data migration | Compatible services/data or explicit restore path | Restore test |

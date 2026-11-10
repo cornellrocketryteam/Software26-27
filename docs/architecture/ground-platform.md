@@ -58,6 +58,11 @@ FlakeHub-related CI remains until the replacement passes its acceptance tests.
 - Ext4 DATA and the root-directory permission correction are required parts of
   the current image. Standalone ADC diagnostics were retired; ADS7128 is an
   initialized-only selectable device, not a new telemetry channel mapping.
+- Added user requirements: ground-station UI controls for Omada ES205GP PoE
+  switches, wireless-link metrics for EAP215-Bridge KIT equipment, and controls
+  for two Shelly Plug US Gen4 units. Device IPs will be supplied later. Switch
+  count, bridge-kit count, hardware/firmware revisions and power/port topology
+  have not been inspected; none of these integrations is implemented yet.
 
 ## Recommended division of responsibility
 
@@ -126,6 +131,67 @@ Database files, Grafana state, broker state, SSH host keys, and configuration
 secrets persist outside immutable packages. Backups cover database-consistent
 exports, service configuration, and restore instructions, not just the Nix store.
 NixOS generation rollback does not roll back database migrations.
+
+## Network and power controls in the operator UI
+
+Add a network/power panel to `Ground_Station_UI`, backed by a local supervised
+service on the ground station. Keep device credentials in runtime secrets, with
+device identities, endpoints and capability flags in the deployment configuration.
+The browser uses the station backend; it does not hold device administrator
+passwords or depend on cloud access. Unknown addresses remain unconfigured and
+visibly unavailable, without blocking the rest of station startup.
+
+| User-reported equipment | Planned UI behavior | Verification before implementation |
+| --- | --- | --- |
+| Omada ES205GP PoE switches; count pending | Named ports, observed PoE/link state, on/off and power-cycle buttons; power usage/budget where exposed | Actual revision/firmware, PoE-capable port mapping, local management interface and supported write API |
+| Omada EAP215-Bridge KIT equipment; count pending | Both bridge ends, peer/link state, RF metrics and time-series trends; LAN latency/loss separately | Pair identities, roles, firmware, controller adoption and actual available metrics/MIBs |
+| Two Shelly Plug US Gen4 units | Individually named on/off/power-cycle controls, observed relay state and available power/energy measurements | Exact model/mode, firmware, local API/authentication, load mapping and power-restore behavior |
+
+The [ES205GP product documentation](https://www.omadanetworks.com/us/business-networking/omada-switch-agile/es205gp/)
+lists four PoE-capable ports and web/controller management. That does not establish
+a supported programmatic PoE-write interface for the installed units. Inventory
+the hardware revision first; controller support/version requirements can differ.
+Prefer a supported local controller interface when compatible; verify the actual
+PoE endpoints before committing to an adapter. Do not assume this switch supports
+SNMP writes or a generic API, and do not make undocumented web scraping the default.
+If a local Omada controller is needed, package/pin it and retain its adoption data
+as part of the offline station, rather than requiring an internet/cloud service.
+
+The [EAP215-Bridge KIT documentation](https://www.omadanetworks.com/us/business-networking/omada-wifi-wireless-bridge/eap215-bridge-kit/v1/)
+lists local/controller management and SNMP for the documented revision. Verify
+availability on the installed revision and identify which local interface exposes
+the bridge's peer statistics. Target RSSI/signal strength at both ends, SNR/noise,
+negotiated TX/RX rates, traffic rates/counters, channel/width, uptime and disconnects
+where exposed. Show unavailable fields explicitly. Label RF/negotiated rates
+separately from measured traffic and from low-rate end-to-end RTT/packet-loss probes;
+advertised 867 Mbps is not a measured link throughput. Active bandwidth tests are
+maintenance actions, not an automatic startup or monitoring load.
+
+The [Shelly Plug US Gen4 device documentation](https://shelly-api-docs.shelly.cloud/gen2/Devices/Gen4/ShellyPlugUSG4/)
+identifies a local switch component and power meter. Prefer the documented local
+[Switch RPC](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch/)
+for explicit desired-state control and status, after validating firmware/mode and
+authentication. Surface available power, energy, voltage/current and device faults
+with units and freshness. The user reports the equipment is installed/hardwired;
+verify management connectivity separately. These are Wi-Fi smart plugs, so do not
+infer Ethernet management from mains/load wiring. Reuse an existing local Home
+Assistant integration only if that becomes the reviewed adapter choice.
+
+Before enabling writes, map every port/plug to its load and identify which ones
+power the bridges, switch uplinks, ground station or control path. Distinguish
+PoE power control from Ethernet-port administration and whole-device restart.
+Clearly label the affected load and confirm disruptive off/cycle actions. A cycle
+that cuts its own management path requires a verified device-local restore timer
+or another recovery path; a browser-delayed follow-up `on` request is insufficient.
+
+Commands originate from explicit operator actions, with bounded timeouts, duplicate
+suppression and an audit/result record. Show requested and observed states
+separately. If an acknowledgement is lost, show unknown/pending and read status;
+do not blindly retry a cycle or toggle. No power action runs on boot, reconnect,
+page load or stale telemetry. Do not enable autonomous PoE recovery rules while
+adding manual controls. Offline/stale measurements never appear as healthy zeros.
+Persist infrastructure metrics separately from fill-station/flight telemetry and
+make them available to Grafana without changing the vehicle command protocol.
 
 ## Cache and builder are separate services
 
