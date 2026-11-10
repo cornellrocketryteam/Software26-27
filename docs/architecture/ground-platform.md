@@ -25,6 +25,11 @@ for commands that exist today.
 - [Command listener](../../ground-station/LaunchButton/README.md): packaged,
   noninteractive, monitoring-only with current firmware. Operational commanding
   requires firmware session-protocol changes and owner-reviewed mappings.
+- [Operator UI](../operations/operator-ui.md): packaged static React assets and
+  opt-in NixOS nginx startup now exist. Validated public runtime settings replace
+  the browser's fixed board address; missing settings show disconnected status.
+  Browser and nginx routing checks passed. Offline tile preparation, kiosk and
+  complete telemetry-stack startup remain pending; `/readyz` still returns 503.
 
 The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
 see [cache acceptance](../operations/build-cache.md) before enabling it. A separate

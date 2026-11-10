@@ -141,6 +141,28 @@ let
     };
   } ];
   missingGrafanaKey = evaluate [ { groundStation.grafana.enable = true; } ];
+  operatorSettings = {
+    groundStation.operatorUi = {
+      enable = true;
+      package = (import nixpkgs { system = "x86_64-linux"; }).writeTextDir "index.html" "fixture UI";
+    };
+  };
+  operator = evaluateVM [ operatorSettings ];
+  operatorOverride = extra: evaluateVM [ operatorSettings extra ];
+  operatorLocations = operator.services.nginx.virtualHosts.ground-station.locations;
+  operatorConfig = builtins.fromJSON operator.system.build.groundOperatorUiConfig.text;
+  operatorGrafana = evaluateVM [ operatorSettings {
+    groundStation.grafana = {
+      enable = true;
+      secretKeyFile = "/run/keys/grafana-secret-key";
+    };
+    groundStation.operatorUi = {
+      fillStationWebSocketUrl = "wss://fill.test/socket";
+      tilesDirectory = "/var/lib/ground-station/tiles";
+    };
+    groundStation.cache.signingKeyFile = "/run/keys/cache-signing-key";
+  } ];
+  configuredOperator = builtins.fromJSON operatorGrafana.system.build.groundOperatorUiConfig.text;
   hardwareClaimOnly = evaluate [ { groundStation.hardwareConfigured = true; } ];
   listenerModule = {
     groundStation.commandListener = {
@@ -173,6 +195,79 @@ let
   failed = c: map (a: a.message) (lib.filter (a: !a.assertion) c.assertions);
   hasFailure = needle: c: lib.any (lib.hasInfix needle) (failed c);
   checks = {
+    operatorUiOffByDefault = !(base.groundStation.operatorUi.enable or true)
+      && !(base.system.build ? groundOperatorUiConfig);
+    operatorUiDefaultsToLockedPackage = base.groundStation.operatorUi.package.pname == "ground-operator-ui"
+      && base.groundStation.operatorUi.package.npmBuildScript == "build"
+      && base.groundStation.operatorUi.package.npmDepsHash == "sha256-ZrG5fJ2GSmAXYCy3QbzSIy0+w7jB9+zD8Bdh6HVwLg8=";
+    operatorUiRunsPublicConfigTests = (base.groundStation.operatorUi.package.doCheck or false)
+      && lib.hasInfix "npm test" base.groundStation.operatorUi.package.checkPhase;
+    operatorUiSourceExcludesGeneratedTrees = let
+      source = base.groundStation.operatorUi.package.src;
+      accepts = name: type: source.filter "${toString source.origSrc}/${name}" type;
+    in !(accepts "node_modules" "directory") && !(accepts "dist" "directory")
+      && !(accepts ".git" "directory") && !(accepts "nested/node_modules" "directory")
+      && accepts "package-lock.json" "regular" && accepts "src" "directory" && accepts "public" "directory";
+    operatorUiSafeConfig = operatorConfig == {
+      schemaVersion = 1;
+      fillStationWebSocketUrl = null;
+      grafanaUrl = null;
+      fieldMode = true;
+      map = { tileUrl = "/tiles/{z}/{x}/{y}.png"; tilesConfigured = false; };
+    };
+    operatorUiRootAndSpa = toString operator.services.nginx.virtualHosts.ground-station.root
+      == toString operator.groundStation.operatorUi.package
+      && operatorLocations."/".tryFiles == "$uri $uri/ /index.html";
+    operatorUiMissingAssets404 = operatorLocations."^~ /assets/".tryFiles == "$uri =404";
+    operatorUiMissingTiles404 = operatorLocations."^~ /tiles/".return == "404";
+    operatorUiExactUncachedConfig = toString operatorLocations."= /station-config.json".alias
+      == toString operator.system.build.groundOperatorUiConfig
+      && lib.hasInfix "no-store" operatorLocations."= /station-config.json".extraConfig;
+    operatorUiLivenessSeparate = operatorLocations."= /ui-healthz".tryFiles == "/index.html =503"
+      && operatorLocations."= /readyz".return == base.services.nginx.virtualHosts.ground-station.locations."= /readyz".return
+      && operatorLocations."= /healthz".return == base.services.nginx.virtualHosts.ground-station.locations."= /healthz".return;
+    operatorUiConfiguredEndpoints = configuredOperator.fillStationWebSocketUrl == "wss://fill.test/socket"
+      && configuredOperator.grafanaUrl == "/grafana/"
+      && configuredOperator.map.tilesConfigured
+      && operatorGrafana.services.nginx.virtualHosts.ground-station.locations."^~ /tiles/".alias
+        == "/var/lib/ground-station/tiles/";
+    operatorUiPreservesProxies = operatorGrafana.services.nginx.virtualHosts.ground-station.locations."/grafana/".proxyPass
+      == "http://127.0.0.1:3000"
+      && operatorGrafana.services.nginx.virtualHosts.ground-station.locations."/cache/".proxyPass
+        == "http://127.0.0.1:5000/";
+    operatorUiRejectsBadWs = lib.all (url: hasFailure "operator UI WebSocket URL" (operatorOverride {
+      groundStation.operatorUi.fillStationWebSocketUrl = url;
+    })) [ "http://fill.test" "ws://user:secret@fill.test/" "ws://fill.test\n" "ws:///socket" ];
+    operatorUiRejectsWsFragments = lib.all (url: hasFailure "operator UI WebSocket URL" (operatorOverride {
+      groundStation.operatorUi.fillStationWebSocketUrl = url;
+    })) [ "ws://fill.test/socket#fragment" "ws://fill.test/socket#" ];
+    operatorUiRejectsBadGrafana = lib.all (url: hasFailure "operator UI Grafana URL" (operatorOverride {
+      groundStation.operatorUi.grafanaUrl = url;
+    })) [ "javascript:alert(1)" "https://user:secret@station.test/grafana/" "//station.test/grafana/" ];
+    operatorUiRejectsRemoteFieldTiles = lib.all (url: hasFailure "operator UI tile URL" (operatorOverride {
+      groundStation.operatorUi.tileUrl = url;
+    })) [ "https://tiles.test/{z}/{x}/{y}.png" "//tiles.test/{z}/{x}/{y}.png" "/tiles/../{z}/{x}/{y}.png" "/tiles/{z}/{x}/{y}.png?remote=1" "/tiles/{x}/{y}.png" "/\\tiles/{z}/{x}/{y}.png" ];
+    operatorUiNonFieldRemoteTiles = !hasFailure "operator UI tile URL" (operatorOverride {
+      groundStation.fieldMode = false;
+      groundStation.operatorUi.tileUrl = "https://tiles.test/{z}/{x}/{y}.png";
+    });
+    operatorUiExplicitRemoteTilesConfigured = (builtins.fromJSON (operatorOverride {
+      groundStation.fieldMode = false;
+      groundStation.operatorUi = {
+        tileUrl = "https://tiles.test/{z}/{x}/{y}.png";
+        tilesDirectory = null;
+      };
+    }).system.build.groundOperatorUiConfig.text).map.tilesConfigured;
+    operatorUiRejectsRelativeDirectory = hasFailure "operator UI tilesDirectory" (operatorOverride {
+      groundStation.operatorUi.tilesDirectory = "relative/tiles";
+    });
+    operatorUiRejectsDirectoryInjection = lib.all (path: hasFailure "operator UI tilesDirectory" (operatorOverride {
+      groundStation.operatorUi.tilesDirectory = path;
+    })) [ "/tiles/../private" "/tiles; autoindex on;" "/tiles\nmalicious" "/tiles$remote_addr" ];
+    operatorUiUsesHostFieldMode = !(builtins.fromJSON (operatorOverride {
+      groundStation.fieldMode = false;
+    }).system.build.groundOperatorUiConfig.text).fieldMode;
+    operatorUiProfilesEvaluate = failed operator == [ ] && failed operatorGrafana == [ ];
     x86Host = base.nixpkgs.hostPlatform.system == "x86_64-linux";
     physicalInstallGated = hasFailure "hardware installation prerequisite" base;
     hardwareFlagAloneInsufficient = hasFailure "hardware installation prerequisite" hardwareClaimOnly;

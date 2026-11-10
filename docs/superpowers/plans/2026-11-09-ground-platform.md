@@ -27,7 +27,8 @@ changes remain in the branch; these commits do not imply hardware acceptance.
 The initial 52 host tests passed for the CLI/outbox and listener parser. Nix evaluation checks the
 NixOS configuration gates and both vehicles on both build platforms. Both x86
 device-tree overlays and the macOS listener package built successfully. The VM
-test exists but has not been built/run; the UM560 remains uninspected.
+foundation test exists but has not been built/run; the UM560 remains uninspected.
+The later UI-specific VM check is tracked separately below.
 
 The receipt increment adds a bounded cache receiver, client acknowledgement state
 and an opt-in forced-command SSH importer. It is disabled by default. The expanded
@@ -44,6 +45,17 @@ busy/capability failures and session lifecycle. All 15 worker tests also passed
 inside the existing ARM64 Linux builder, including parent-death cleanup. This is
 process/policy evidence using modeled Nix, not full remote station acceptance.
 See [worker setup and acceptance](../../operations/build-worker.md).
+
+The operator UI increment adds a locked static package, opt-in nginx startup,
+validated public runtime settings, bundled images and explicit local map behavior.
+Fourteen UI unit tests and production-browser checks passed, including missing
+configuration, mocked connection/reconnect and tile failure/retry. Actual nginx
+routing checks and Darwin/x86 Linux package builds passed. A separate UI-specific
+x86 NixOS VM boot passed with all non-loopback network interfaces removed, using
+software emulation on the ARM64 Linux builder;
+see [UI startup acceptance](../../operations/operator-ui.md) for its exact scope.
+The existing Python platform suite also passed (93 tests, one Linux-only skip).
+This does not complete telemetry, prepared map coverage, kiosk or UM560 acceptance.
 
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
 ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
@@ -116,7 +128,9 @@ Keep existing MixOS configurations and attributes intact.
   SSH, LAN firewall rules, clock/RTC handling, and journal retention.
 - [ ] Install from prepared local media; boot without WAN, without a laptop,
   and without the fill station. Record NixOS generation and hardware identity.
-- [ ] Package the static operator UI and offline tile assets; start the kiosk
+- [x] Package the static operator UI; provide optional NixOS nginx startup with
+  public runtime settings, SPA refresh and separate asset liveness checks.
+- [ ] Prepare offline tile assets and start the kiosk
   without requiring public DNS, internet, or npm downloads.
 - [ ] Test local-console recovery and selecting a previous NixOS generation.
 - [ ] Verify unattended kiosk startup, field-mode suspend prevention, intended
@@ -184,6 +198,10 @@ and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
 - [ ] Provision broker protobuf schema, both topic rules, and shared SQL action.
 - [ ] Provision Grafana datasource and dashboard; test NULL/unavailable vs zero.
 - [ ] Replace hard-coded UI/listener/broker addresses with one deployment config.
+- [x] Remove the UI's fixed board address and load validated public settings
+  before connecting; missing settings render a disconnected local UI.
+- [ ] Revoke/rotate the previously committed legacy Home Assistant prototype
+  token before re-enabling that integration through a local credentials backend.
 - [x] Package Python listener dependencies in Nix; replace interactive serial
   selection with configured stable device identity and controlled retries.
 - [ ] Add dependency/readiness checks and restart policies, visible service status,

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { interactionType } from "../PropulsionPage";
 import { useAppContext } from "../App";
+import crtLogo from '../assets/CRT_LOGO.png';
 
 interface HeaderProps {
     pageTitle: string;          // required, always needed
@@ -34,7 +35,7 @@ export default function Header({
                 {/* LEFT: Logo + Page Name */}
                 <div className="flex items-center gap-4 flex-1">
                     <button onClick={() => navigate("/")} className="focus:outline-none" aria-label="Go to home">
-                        <img src="/src/assets/CRT_LOGO.png" alt="CRT Logo" className="h-16"/>
+                        <img src={crtLogo} alt="CRT Logo" className="h-16"/>
                     </button>
                     <h1 className="text-4xl font-inter">{pageTitle}</h1>
                 </div>

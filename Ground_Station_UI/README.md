@@ -17,6 +17,7 @@ Production assets and linting:
 
 ```sh
 npm run build
+npm test
 npm run lint
 ```
 
@@ -26,16 +27,20 @@ or internet. Do not require it during field startup.
 
 ## Current integration boundaries
 
-`src/App.tsx` currently contains a literal fill-station WebSocket endpoint.
+The UI loads a validated public `/station-config.json` before opening a device
+socket. The committed default is explicitly unconfigured, with no board IP and
+no prepared tile coverage. During development edit `public/station-config.json`
+for an inspected endpoint; NixOS serves generated deployment configuration instead.
+See [packaging, configuration and testing](../docs/operations/operator-ui.md).
+
 The physical-command listener accepts a separately configured endpoint via
 `--uri`/`CRT_FILL_STATION_WS`; the broker address also exists in
 `fill-station/src/mqtt_publisher.rs`. These are not yet one deployment configuration.
 Changing the UI endpoint does not configure the listener or broker.
 
-The map has local tile support, but currently chooses remote tiles using
-`navigator.onLine`. LAN connectivity alone can make this true without usable
-internet. Explicit offline field mode and prepared tile coverage are required
-implementation work.
+The map now uses explicit configuration and local tiles in field mode, without
+`navigator.onLine` or a public-server fallback. Tile assets/coverage still need
+preparation and field testing. Missing tiles show a recoverable unavailable state.
 
 ## Planned network and power panel
 
@@ -59,6 +64,7 @@ is a prebuilt static UI served locally, an automatically opened kiosk, provision
 Grafana, and an independently supervised command listener. The station must boot
 with WAN/laptop/fill station absent and show disconnected peers clearly.
 
-No startup code should install packages or replay launch/arm/wipe commands. NixOS
-packaging, centralized endpoint configuration, offline assets and kiosk startup
-are proposed work, not features established by this README.
+No startup code should install packages or replay launch/arm/wipe commands. The
+static Nix package and optional nginx/runtime-configuration integration now exist.
+Full telemetry provisioning, shared backend endpoint configuration, offline map
+coverage and kiosk startup remain pending. Overall station readiness stays false.

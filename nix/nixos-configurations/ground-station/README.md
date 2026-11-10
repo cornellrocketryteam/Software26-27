@@ -34,9 +34,14 @@ see [worker setup and acceptance](../../../docs/operations/build-worker.md).
 Changing field mode does not terminate builds already running. Live containment
 and scheduling checks remain required before enabling remote builds.
 
+The operator UI has an optional prebuilt static package served by nginx, with
+generated public configuration and explicit disconnected defaults. See
+[operator UI startup](../../../docs/operations/operator-ui.md). `/readyz` remains
+503 even when UI assets are available. No npm or device discovery runs at boot.
+
 Grafana has an optional native module requiring a runtime secret and reviewed
 URL, but database/broker/datasource/dashboard provisioning, pinned OCI archives,
-offline tiles and kiosk startup remain pending. Commanding is disabled until an
+prepared tile coverage and kiosk startup remain pending. Commanding is disabled until an
 inspected device and endpoint are configured; legacy button firmware is limited
 to monitoring. See [the listener gate](../../../ground-station/LaunchButton/README.md).
 

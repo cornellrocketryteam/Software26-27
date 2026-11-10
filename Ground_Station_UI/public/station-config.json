@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "fillStationWebSocketUrl": null,
+  "grafanaUrl": null,
+  "fieldMode": true,
+  "map": {
+    "tileUrl": "/tiles/{z}/{x}/{y}.png",
+    "tilesConfigured": false
+  }
+}

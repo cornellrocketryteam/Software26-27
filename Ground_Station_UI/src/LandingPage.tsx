@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import crtLogo from './assets/CRT_LOGO.png';
 
 type StationCard = {
     title: string;
@@ -31,7 +32,7 @@ export function LandingPage() {
             <header className="bg-[#F9F9EB] px-8 py-4">
               <div className="flex items-center justify-center gap-4">
                 <button onClick={() => navigate("/")} className="focus:outline-none">
-                    <img src="/src/assets/CRT_LOGO.png" alt="CRT Logo" className="h-16" />
+                    <img src={crtLogo} alt="CRT Logo" className="h-16" />
                 </button>
                 <h1 className="text-4xl font-inter font-semibold">Landing Page</h1>
               </div>

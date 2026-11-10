@@ -16,7 +16,7 @@ export function RecoveryPage() {
     const [latitudeTar3, setLatitudeTar3] = useState("");
     const [longitudeTar3, setLongitudeTar3] = useState("");
     const [confirmedCoords, setConfirmedCoords] = useState<{lat_1: string, lng_1: string, lat_2: string, lng_2: string, lat_3: string, lng_3: string} | null>(null);
-    const { wsRef, wsReady, currFlightMode } = useAppContext();
+    const { wsRef, wsReady, currFlightMode, stationConfig } = useAppContext();
 
     const toggleAction = (action: BasicAction) => {
         setPendingAction(action);
@@ -134,7 +134,7 @@ export function RecoveryPage() {
                     <h2 className="text-2xl font-inter font-semibold">
                         Target Map:
                     </h2>
-                    <TargetMap coords={confirmedCoords} />
+                    <TargetMap coords={confirmedCoords} mapConfig={stationConfig?.map} />
                 </div>
 
                 {/* Input Flight Info */}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-const HA_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIzZTdmMzY4NWNjYWI0MjcyOTVmNzg2Zjg2NTJkYWMwNCIsImlhdCI6MTc3NzAzMDYxOCwiZXhwIjoyMDkyMzkwNjE4fQ.BgmgDVTUse5TIe1OYRaZ6J2el0khu_FYGu4ZtFHlzh8";
+// Legacy prototype stays disabled until a local credentials backend is available.
+const HA_TOKEN: string | null = null;
 const ENTITIES = ["switch.tankheater1", "switch.tankheater2", "switch.tankheater3"];
 
 export default function HeaterPanelComponent() {
@@ -15,6 +16,7 @@ export default function HeaterPanelComponent() {
     const msgIdRef = useRef(1);
 
     useEffect(() => {
+        if (!HA_TOKEN) return;
         let reconnectTimeout: ReturnType<typeof setTimeout>;
 
         const connect = () => {

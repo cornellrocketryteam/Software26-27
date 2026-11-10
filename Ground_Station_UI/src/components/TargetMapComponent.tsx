@@ -1,7 +1,9 @@
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { DEFAULT_STATION_CONFIG } from '../runtimeConfig';
+import type { StationConfig } from '../runtimeConfig';
 
 export type TargetCoords = {
     lat_1: string;
@@ -65,13 +67,16 @@ type TargetMapProps = {
     coords: TargetCoords | null;
     /** Tailwind height class for the map container. */
     heightClass?: string;
+    mapConfig?: StationConfig['map'];
 };
 
 /**
  * Renders confirmed recovery target coordinates on an interactive map
  * Self-contained and prop-driven — it is simple to drop it into any page (or remove it) freely.
  */
-export function TargetMap({ coords, heightClass = "h-96" }: TargetMapProps) {
+export function TargetMap({ coords, heightClass = "h-96", mapConfig = DEFAULT_STATION_CONFIG.map }: TargetMapProps) {
+    const [tileLoadFailed, setTileLoadFailed] = useState(false);
+    const tileLayer = useRef<L.TileLayer | null>(null);
     const targets: ParsedTarget[] = [
         { label: "U", lat: coords?.lat_1, lng: coords?.lng_1, color: "#5A87FF" }, //Upwind Location
         { label: "D", lat: coords?.lat_2, lng: coords?.lng_2, color: "#FF6B5A" }, //Downwind Location
@@ -94,8 +99,21 @@ export function TargetMap({ coords, heightClass = "h-96" }: TargetMapProps) {
         );
     }
 
+    if (!mapConfig.tilesConfigured) {
+        return <div className={`${heightClass} flex items-center justify-center rounded-2xl border-[3px] border-black bg-white font-inter text-lg text-gray-500`}>
+            Offline map tiles are not configured.
+        </div>;
+    }
+
     return (
-        <div className={`${heightClass} overflow-hidden rounded-2xl border-[3px] border-black`}>
+        <div className={`${heightClass} relative overflow-hidden rounded-2xl border-[3px] border-black`}>
+            {tileLoadFailed && <div role="status" className="absolute inset-x-0 top-0 z-[500] flex items-center justify-center gap-3 bg-white px-4 py-2 text-sm">
+                <span>Some map tiles could not be loaded.</span>
+                <button type="button" className="rounded border border-black px-2 py-1" onClick={() => {
+                    setTileLoadFailed(false);
+                    tileLayer.current?.redraw();
+                }}>Retry map tiles</button>
+            </div>}
             <MapContainer
                 center={targets[0].position}
                 zoom={15}
@@ -103,8 +121,10 @@ export function TargetMap({ coords, heightClass = "h-96" }: TargetMapProps) {
                 style={{ height: "100%", width: "100%" }}
             >
                 <TileLayer
+                    ref={tileLayer}
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url={navigator.onLine ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" : "/tiles/{z}/{x}/{y}.png"}
+                    url={mapConfig.tileUrl}
+                    eventHandlers={{ tileerror: () => setTileLoadFailed(true) }}
                 />
                 {targets.map((t) => (
                     <Marker

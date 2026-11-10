@@ -16,6 +16,11 @@ remain current until their replacement passes. The updated
 [physical-command listener](LaunchButton/README.md) is monitoring-only with
 existing firmware; review its compatibility gate before changing its deployment.
 
+The React UI now has a [static package and optional local startup integration](../docs/operations/operator-ui.md),
+with explicit runtime endpoints and disconnected defaults. Broker/database/Grafana
+provisioning and kiosk startup are still pending; a served UI is not complete
+station readiness.
+
 Ground Station software covers operator presentation, recording, network-device control, and non-time-critical commands. Keep time-critical Fill Station behavior independent of the Ground Station.
 
 The mini PC will use Ethernet for normal network access; the fill station will
