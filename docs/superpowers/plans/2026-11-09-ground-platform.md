@@ -1,6 +1,7 @@
 # Ground-platform implementation plan and acceptance checklist
 
-Status: proposed, not implemented. Architecture and confirmed requirements:
+Status: implementation started; foundation committed on 2026-11-10.
+Architecture and confirmed requirements:
 [ground-platform.md](../../architecture/ground-platform.md).
 
 **Goal:** Reproducible offline NixOS ground-station startup, LAN caching and
@@ -13,6 +14,34 @@ over Nix, backed by a signed cache and durable laptop outbox.
 
 **Tech stack:** Nix/NixOS/MixOS, systemd, pinned OCI images, Python command
 listener, built React assets, Harmonia, SSH, QEMU/binfmt, existing FIT updater.
+
+## Current evidence and next milestone
+
+Baseline commit `1518d86` preserves the verified SSH fix, keys and offline dashboard
+instructions. Foundation commit `0078f82` adds the NixOS targets, build/cache CLI,
+experimental x86 build graph and packaged command listener. Other contributors'
+changes remain in the branch; these commits do not imply hardware acceptance.
+
+All 52 host tests passed for the CLI/outbox and listener parser. Nix evaluation checks the
+NixOS configuration gates and both vehicles on both build platforms. Both x86
+device-tree overlays and the macOS listener package built successfully. The VM
+test exists but has not been built/run; the UM560 remains uninspected.
+
+A real Liquid FIT build through `scripts/platform` completed using the Mac's
+ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
+contains an 18,727,192-byte FIT with SHA256
+`9f105acda9180e87b8f6a706df4aa9d1a33d9b6dce815bb38cc490c7e4eae736`.
+Its manifest records a development snapshot based on `1518d86`; it is rooted
+locally and pending publication because no cache is configured. This release
+has not been deployed or tested on the board. Its roots protect outputs, not a
+complete offline rebuild input set.
+
+Next milestone: inspect the powered-on UM560, back up the current data/services,
+and supply actual hardware/boot configuration. In parallel, implement durable
+cache receipts and remote admission before enabling station builds. Preserve the
+current Compose deployment until the NixOS service migration passes. Existing
+button firmware is monitoring-only with the new listener; session-protocol
+firmware and command mapping review remain required.
 
 ## Global constraints
 
@@ -35,7 +64,7 @@ Network boot is a separate optional final task.
 
 ## 0. Freeze and inventory the working baseline
 
-- [ ] Record a reviewed commit including the pending SSH root-mode fix, all three
+- [x] Record a reviewed commit including the pending SSH root-mode fix, all three
   authorized keys, and offline dashboard documentation; do not lose these changes.
 - [ ] Archive the working Liquid/Hybrid release manifests and recovery SD image.
   Capture user-reported SD/OSPI/persistence results with board/release identity.
@@ -57,7 +86,7 @@ Planned files: `nix/flake-modules/nixos-configurations.nix`,
 and `nix/nixos-modules/ground-station/{network,operator,storage}.nix`.
 Keep existing MixOS configurations and attributes intact.
 
-- [ ] Add `nixosConfigurations.ground-station` for `x86_64-linux` using locked inputs.
+- [x] Add `nixosConfigurations.ground-station` for `x86_64-linux` using locked inputs.
 - [ ] Configure disks/filesystems, persistent service directories, named users,
   SSH, LAN firewall rules, clock/RTC handling, and journal retention.
 - [ ] Install from prepared local media; boot without WAN, without a laptop,
@@ -75,8 +104,10 @@ Planned raw build interface:
 nix build .#nixosConfigurations.ground-station.config.system.build.toplevel
 ```
 
-This attribute does not exist yet. Initial installation must first make a matching
-x86-64 builder available; the ARM64 Mac VM is not an x86 native builder.
+This attribute exists but rejects a physical system build until inspected hardware
+and boot configuration are supplied. A separate `ground-station-vm` target exists
+for virtual testing. Initial installation must first make a matching x86-64
+builder available; the ARM64 Mac VM is not an x86 native builder.
 
 ## 2. Package and autostart the telemetry and command stack
 
@@ -91,7 +122,7 @@ and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
 - [ ] Provision broker protobuf schema, both topic rules, and shared SQL action.
 - [ ] Provision Grafana datasource and dashboard; test NULL/unavailable vs zero.
 - [ ] Replace hard-coded UI/listener/broker addresses with one deployment config.
-- [ ] Package Python listener dependencies in Nix; replace interactive serial
+- [x] Package Python listener dependencies in Nix; replace interactive serial
   selection with configured stable device identity and controlled retries.
 - [ ] Add dependency/readiness checks and restart policies, visible service status,
   device permissions, and logs. Browser failure must not stop recording.
@@ -123,8 +154,9 @@ Planned file: `nix/nixos-modules/ground-station/builder.nix`; tests under
   initial one-job concurrency and proposed 6 GiB/three-core ceiling; ensure the
   Nix daemon doing the work is inside that boundary. Keep heavy field builds
   disabled until the team sets numeric latency budgets and stress tests pass.
-- [ ] Evaluate a native x86-to-ARM cross-build configuration alongside emulation;
-  make the build-platform selection explicit and validate both vehicle images.
+- [x] Evaluate a native x86-to-ARM cross-build configuration alongside the default
+  ARM graph and make build-platform selection explicit. Both x86 overlays built.
+- [ ] Validate complete images from both x86 vehicle graphs, including board tests.
 - [ ] Benchmark identical source/lock/profile across station and laptop: clean
   compile with prepared dependencies, incremental app build, and cached build.
   Include queue/copy overhead, peak RAM and operator-service load. Do not guess
@@ -170,6 +202,8 @@ Planned files: `scripts/platform`, `tools/platform/{build,cache,manifest}.py`,
 The CLI can be a thin Python implementation behind the shell entry point.
 
 - [ ] Implement the interface in the architecture doc; add help and validation.
+- [x] Implement `check`, `build`, `cache-sync` and local `status`, with help and
+  validation. Deployment and `prepare-offline` remain separate unchecked work.
 - [ ] Test host/vehicle/artifact selection and bounded cache/SSH probes before
   enabling an optional cache/worker. Implement `auto`, explicit local, explicit
   station, and offline modes with visible selection reasons.
@@ -180,7 +214,10 @@ The CLI can be a thin Python implementation behind the shell entry point.
   bounded infrastructure-only failover, never blind retries of compiler failures.
 - [ ] Record manifest before publication, including commit/dirty source snapshot,
   input/profile digests, platform, worker, artifacts, hashes, and tests.
-- [ ] Persist outbox record and real GC roots transactionally; local build success
+- [x] Record source snapshot, commit/dirty state, lock/profile digests, platform,
+  selected worker, artifact inventory and hashes before publication. Do not infer
+  test outcomes; bootloader version/test evidence integration remains pending.
+- [x] Persist outbox record and real GC roots transactionally; local build success
   must remain success if station upload fails.
 - [ ] Make next build and `cache-sync` retry pending records idempotently. Test
   station absent, laptop restart, partial copy, concurrent sync and duplicate IDs.

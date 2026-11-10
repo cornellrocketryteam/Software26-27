@@ -7,9 +7,13 @@ For the intended x86-64 NixOS ground station, signed LAN cache, optional ARM64
 build worker, durable offline publication queue and reduced GitHub CI, see the
 [ground-platform architecture](../docs/architecture/ground-platform.md) and
 [checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md).
-They are planned work: the current configuration still uses an ARM64 Linux
-build host, and `.github/workflows/nix.yml` still builds through FlakeHub on
-branch pushes until the replacement workflow is implemented and tested.
+The [NixOS foundation](nixos-configurations/ground-station/README.md) and
+[build/cache CLI](../tools/platform/README.md) now exist. Full station services,
+remote cache acknowledgements and hardware acceptance remain pending. The default
+fill-station graph still uses an ARM64 Linux build host; explicit experimental
+x86 cross-build graphs have overlay-build evidence, not complete image validation.
+`.github/workflows/nix.yml` still builds through FlakeHub on branch pushes until
+the replacement workflow is implemented and tested.
 
 Normal fill-station operation should use local OSPI boot with network-delivered
 updates and SD recovery. Existing commands are in the

@@ -9,8 +9,12 @@ The intended NixOS service startup, LAN cache/build worker, offline fallback,
 and local-boot deployment architecture is described in
 [ground-platform.md](../docs/architecture/ground-platform.md). Work against its
 [implementation and acceptance checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md).
-These are proposed modules/workflows, not deployed services. The Compose stack
-and manual provisioning below remain current until their replacement passes.
+The [NixOS foundation](../nix/nixos-configurations/ground-station/README.md) and
+[build/cache CLI](../tools/platform/README.md) are implemented. They are not a
+deployed operational stack. The Compose stack and manual provisioning below
+remain current until their replacement passes. The updated
+[physical-command listener](LaunchButton/README.md) is monitoring-only with
+existing firmware; review its compatibility gate before changing its deployment.
 
 Ground Station software covers operator presentation, recording, network-device control, and non-time-critical commands. Keep time-critical Fill Station behavior independent of the Ground Station.
 

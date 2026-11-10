@@ -41,6 +41,7 @@ existing, independently verified known_hosts file, optional configuration is:
   "policy": {
     "preferStation": false,
     "probeTimeoutSeconds": 10,
+    "evaluationTimeoutSeconds": 300,
     "copyTimeoutSeconds": 120,
     "buildTimeoutSeconds": 14400
   },
@@ -69,6 +70,9 @@ substituters or signature trust. Configure the signed HTTP cache/trust separatel
 SSH uses batch mode, strict host verification, no user SSH config, explicit host
 and username, bounded connection/keepalive settings and an outer process timeout.
 Existing SSH-agent authentication is used; no private key is copied or recorded.
+Evaluation/preflight has its own 300-second default (maximum 3600), separate from
+the 10-second health-probe default (maximum 60), so normal Nix evaluation is not
+cut off by a network probe deadline.
 
 ## Routing and current build graphs
 
@@ -83,8 +87,8 @@ Explicit `--build-platform x86_64-linux` selects the parent's
 The manifest records the selected build platform. Neither this option nor a
 successful evaluation establishes that an image works on hardware.
 Ground station always uses x86 and
-`nixosConfigurations.ground-station.config.system.build.toplevel`; if that
-attribute has not been provided by the parent, preflight fails normally.
+`nixosConfigurations.ground-station.config.system.build.toplevel`; that physical
+target is gated until inspected hardware and boot configuration are supplied.
 
 Local preflight checks the Nix store daemon and configured native/extra platforms
 or external-builder system declarations. This preserves the signed-in Determinate

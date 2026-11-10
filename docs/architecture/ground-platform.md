@@ -1,11 +1,32 @@
 # Ground station, build cache, and fill-station deployment
 
-Status: proposed implementation baseline, 2026-11-09. Requirements below were
-confirmed with the user; technology choices are recommendations for review.
-This document is the intended architecture, not a claim that it is deployed.
+Status: approved architecture; initial implementation committed, 2026-11-10.
+Requirements below were confirmed with the user. The NixOS foundation and
+build/cache CLI exist; the operational stack and station deployment remain pending.
+This document describes the intended architecture, not a deployed system.
 Use [the implementation checklist](../superpowers/plans/2026-11-09-ground-platform.md)
 to track delivery and [the current deployment procedure](../operations/fill-station-deployment.md)
 for commands that exist today.
+
+## Implementation available now
+
+- [Build/cache CLI](../../tools/platform/README.md): local build selection, frozen
+  source snapshots, release manifests, registered GC roots and a durable pending
+  publication queue. A real Liquid FIT build completed through this interface.
+- [NixOS foundation](../../nix/nixos-configurations/ground-station/README.md): gated
+  physical and VM targets, local status page, key-only SSH, optional signed cache
+  and disabled-by-default worker. Hardware configuration and service migration
+  are still required; the status page intentionally reports not ready.
+- Explicit ARM64 and experimental x86 build graphs preserve the board target.
+  Both x86 device-tree overlays built; complete x86 images and worker performance
+  have not been validated.
+- [Command listener](../../ground-station/LaunchButton/README.md): packaged,
+  noninteractive, monitoring-only with current firmware. Operational commanding
+  requires firmware session-protocol changes and owner-reviewed mappings.
+
+Remote build admission, cache receipt/retention acknowledgement, prepared offline
+rebuilds, deployment orchestration and CI cutover remain unfinished. Existing
+FlakeHub-related CI remains until the replacement passes its acceptance tests.
 
 ## Confirmed requirements and evidence
 
@@ -154,14 +175,22 @@ build inputs. Database storage must not be evicted to make room for cache entrie
 
 ## One build interface and an explicit outbox
 
-Proposed public interface (not implemented yet):
+Implemented commands (see the CLI guide for configuration and limitations):
 
 ```text
 ./scripts/platform check
 ./scripts/platform build fill-station --vehicle liquid --artifact release --builder auto
 ./scripts/platform build ground-station --builder auto
-./scripts/platform prepare-offline --vehicle liquid
 ./scripts/platform cache-sync
+./scripts/platform status
+```
+
+The physical ground-station build requires inspected hardware configuration first.
+`status` currently reports the local queue; it does not query a board. Planned
+extensions, which are not commands yet:
+
+```text
+./scripts/platform prepare-offline --vehicle liquid
 ./scripts/platform deploy fill-station --vehicle liquid --target fillstation --release RELEASE
 ./scripts/platform deploy ground-station --target groundstation --release RELEASE
 ./scripts/platform status --target fillstation

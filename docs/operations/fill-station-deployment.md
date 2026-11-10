@@ -2,10 +2,30 @@
 
 This is the current procedure. The [ground-platform architecture](../architecture/ground-platform.md)
 and [roadmap](../superpowers/plans/2026-11-09-ground-platform.md) describe future
-orchestration; `scripts/platform` does not exist yet. The board boots locally;
-SSH is used for deployment, not network boot.
+deployment orchestration. The [build CLI](../../tools/platform/README.md) now
+handles builds and the local publication queue; deployment still uses the
+procedure below. The board boots locally; SSH is used for deployment, not network
+boot.
 
 ## Build one vehicle from the working checkout
+
+The unified build command records a frozen tracked source snapshot, manifest and
+GC roots. Include new intended source files in Git before building:
+
+```sh
+./scripts/platform check
+./scripts/platform build fill-station --vehicle liquid --artifact release --builder local
+./scripts/platform status
+```
+
+Find the artifact links under `outputs/platform/RELEASE_ID/`; `release` produces
+`sd`, `ospi` and `data` links from one source snapshot. Use `--artifact fit` for
+a FIT-only build. `status` reports pending publication, not board test results.
+No station is needed for local builds; absent cache configuration leaves artifacts
+locally rooted and pending. Prepared offline input retention is not implemented.
+
+The raw attributes below also remain supported. Unlike the CLI, they do not create
+its manifest or publication record.
 
 Liquid:
 
@@ -17,9 +37,11 @@ nix build .#mixosConfigurations.fill-station-liquid.config.system.build.dataCard
 
 For Hybrid, use `mixosConfigurations.fill-station` and corresponding `-hybrid`
 output names. The current full build requires an ARM64 Linux worker; the Mac's
-Linux VM is the established fallback. Ground-station cache/build selection is
-future work. Finish local profile changes and include new files in the Git-backed
-flake before building. Never change vehicle wiring just to make tests pass.
+Linux VM is the established fallback. Optional station routing exists in the CLI,
+but no station worker has been provisioned or validated. The experimental x86
+graph has component-build evidence only. Finish local profile changes and include
+new files in the Git-backed flake before building. Never change vehicle wiring
+just to make tests pass.
 
 ## SD provisioning and recovery
 
