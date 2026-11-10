@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Durable cache receipt protocol 1",
+  "type": "object",
+  "required": ["protocol", "releaseId", "manifestSha256", "storePaths", "archiveId", "archivePath", "roots", "retained"],
+  "properties": {
+    "protocol": {"const": 1, "type": "integer"},
+    "releaseId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "storePaths": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "pattern": "^/nix/store/"}},
+    "archiveId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "archivePath": {"type": "string", "pattern": "^/"},
+    "roots": {"type": "object", "minProperties": 1, "maxProperties": 64, "additionalProperties": {"type": "string", "pattern": "^/"}},
+    "retained": {"const": true, "type": "boolean"},
+    "archivedAt": {"type": "string", "format": "date-time"}
+  },
+  "$comment": "Client additionally requires exact configured archive identity, manifest digest, ordered store-path set, and deterministic archive root mapping. JSON shape alone is not acknowledgement."
+}

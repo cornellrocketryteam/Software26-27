@@ -40,7 +40,7 @@ def execute(repo, state, config, args):
     warning = None
     try:
         cache.sync(state, config, offline=args.offline)
-    except PlatformError as exc:
+    except (PlatformError, OSError) as exc:
         warning = str(exc)
     release_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex
     state.mkdir(parents=True, exist_ok=True)
@@ -109,7 +109,7 @@ def execute(repo, state, config, args):
     cache.enqueue(state, manifest_path, manifest)
     try:
         cache.sync(state, config, offline=args.offline, release_ids={release_id})
-    except PlatformError as exc:
+    except (PlatformError, OSError) as exc:
         warning = str(exc)
     return {'releaseId': release_id, 'manifest': str(manifest_path), 'worker': worker, 'reason': reason,
-            'publication': 'pending', 'warning': warning}
+            'publication': cache.publication(state, release_id), 'warning': warning}

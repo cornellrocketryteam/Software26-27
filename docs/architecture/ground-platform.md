@@ -12,7 +12,9 @@ for commands that exist today.
 
 - [Build/cache CLI](../../tools/platform/README.md): local build selection, frozen
   source snapshots, release manifests, registered GC roots and a durable pending
-  publication queue. A real Liquid FIT build completed through this interface.
+  publication queue, plus validated receipt acknowledgements. A real Liquid FIT
+  build completed through this interface. The receipt receiver was separately
+  exercised against that output using local Nix; station setup remains pending.
 - [NixOS foundation](../../nix/nixos-configurations/ground-station/README.md): gated
   physical and VM targets, local status page, key-only SSH, optional signed cache
   and disabled-by-default worker. Hardware configuration and service migration
@@ -24,8 +26,10 @@ for commands that exist today.
   noninteractive, monitoring-only with current firmware. Operational commanding
   requires firmware session-protocol changes and owner-reviewed mappings.
 
-Remote build admission, cache receipt/retention acknowledgement, prepared offline
-rebuilds, deployment orchestration and CI cutover remain unfinished. Existing
+The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
+see [cache acceptance](../operations/build-cache.md) before enabling it. Remote
+build admission, live cache/signing acceptance, prepared offline rebuilds,
+deployment orchestration and CI cutover remain unfinished. Existing
 FlakeHub-related CI remains until the replacement passes its acceptance tests.
 
 ## Confirmed requirements and evidence

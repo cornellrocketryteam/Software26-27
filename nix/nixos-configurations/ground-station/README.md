@@ -37,9 +37,12 @@ offline tiles and kiosk startup remain pending. Commanding is disabled until an
 inspected device and endpoint are configured; legacy button firmware is limited
 to monitoring. See [the listener gate](../../../ground-station/LaunchButton/README.md).
 
-No remote health helper, release-receipt service, automatic updates or deployment
-is installed. The build CLI retains pending cache records until durable remote
-receipts are implemented; a successful copy is not acknowledged retention.
+No remote health helper, automatic updates or deployment is installed. An opt-in
+SSH ingestion/receipt module is available but disabled by default. It requires
+explicit public keys, an archive ID, enabled signed cache and review of effectively
+administrative Nix access. See [cache setup and acceptance](../../../docs/operations/build-cache.md).
+The CLI acknowledges only a matching durable receipt; successful copying alone
+leaves publication pending. Local output roots remain after acknowledgement.
 
 ## Evaluation checks
 

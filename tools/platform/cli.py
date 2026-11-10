@@ -46,10 +46,12 @@ def main(argv=None, *, repo=None):
             result = build.execute(repo, state, config, args)
         elif args.command == 'cache-sync':
             records = cache.status(state) if args.dry_run else cache.sync(state, config)
-            result = {'dryRun': args.dry_run, 'pending': records, 'acknowledged': 0}
+            result = {'dryRun': args.dry_run, 'pending': records,
+                      'acknowledged': len(cache.acknowledged(state))}
         elif args.command == 'status':
             result = {'stateDirectory': str(state), 'pending': cache.status(state),
-                      'receiptReceiver': 'not implemented; pending pins retained',
+                      'acknowledged': cache.acknowledged(state),
+                      'receiptReceiver': 'protocol 1; requires pinned archive identity and installed receiver',
                       'tested': 'not tracked by this foundation', 'active': 'deployment owner tracks activation'}
         else:
             result = {'local': local_health(config, 'aarch64-linux'),

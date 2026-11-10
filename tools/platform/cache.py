@@ -1,6 +1,8 @@
-"""Durable outbox. Copy is not a receipt; keep all pins until a receiver exists."""
+"""Durable publication state. Only a matching remote receipt acknowledges a copy."""
+from datetime import datetime, timezone
 from pathlib import Path
 from .config import endpoint, number, ssh_environment
+from .receipts import MAX_REQUEST, decode_json, request_bytes, validate_receipt
 from .runtime import PlatformError, atomic_json, read_json, run, state_lock
 
 
@@ -46,7 +48,7 @@ def _records(state):
     records = []
     for path in sorted((state / 'outbox').glob('*.json')):
         record = read_json(path)
-        if (not isinstance(record, dict) or record.get('version') != 1 or record.get('state') != 'pending'
+        if (not isinstance(record, dict) or record.get('version') != 1 or record.get('state') not in ('pending', 'acknowledged')
                 or record.get('releaseId') != path.stem or not isinstance(record.get('storePaths'), list)
                 or not record['storePaths'] or not all(isinstance(p, str) and Path(p).is_absolute() for p in record['storePaths'])
                 or not isinstance(record.get('gcRoots'), list)
@@ -55,6 +57,8 @@ def _records(state):
                 or record['attempts'] < 0 or not isinstance(record.get('manifest'), str)
                 or not isinstance(record.get('manifestSha256'), str)):
             raise PlatformError(f'invalid outbox record: {path}')
+        if record['state'] == 'acknowledged':
+            validate_receipt(record.get('receipt'), record, record.get('receiptArchiveId'))
         records.append((path, record))
     return records
 
@@ -83,6 +87,8 @@ def sync(state, config, *, offline=False, release_ids=None):
             _recover(state)
             records = _records(state)
         for path, record in records:
+            if record['state'] == 'acknowledged':
+                continue
             if release_ids is not None and record['releaseId'] not in release_ids:
                 continue
             if offline:
@@ -92,18 +98,46 @@ def sync(state, config, *, offline=False, release_ids=None):
             else:
                 try:
                     _validate_for_copy(record)
-                    uri, _, options = endpoint(config['cache'])
+                    uri, target, options = endpoint(config['cache'])
                     record['attempts'] += 1
                     run(['nix', 'copy', '--to', uri, *record['storePaths']],
                         timeout=number(config, 'copyTimeoutSeconds', 120, 3600), env=ssh_environment(options))
-                    record['reason'] = 'copy complete; validated durable remote receipt required (receiver not implemented)'
+                    archive_id = config['cache'].get('receiptArchiveId')
+                    if archive_id is None:
+                        record['reason'] = 'copy complete; receiptArchiveId not configured; retention unacknowledged'
+                    else:
+                        response = run(['ssh', *options, '--', target, 'crt-platform-cache-receive-v1'],
+                                       input_data=request_bytes(record),
+                                       timeout=number(config, 'receiptTimeoutSeconds', 300, 3600))
+                        if len(response) > MAX_REQUEST:
+                            raise PlatformError('receipt response exceeds 2 MiB')
+                        receipt = validate_receipt(decode_json(response, 'receipt'), record, archive_id)
+                        record.update(state='acknowledged', receipt=receipt, receiptArchiveId=archive_id,
+                                      cacheStore=uri, acknowledgedAt=datetime.now(timezone.utc).isoformat(),
+                                      reason=f'retained by archive {archive_id}; local release roots retained')
                 except (PlatformError, OSError) as exc:
                     record['reason'] = str(exc)
             with state_lock(state):
                 atomic_json(path, record)
-        return [record for _, record in records]
+        return [record for _, record in records if record['state'] == 'pending']
 
 
 def status(state):
     # Atomic rename makes read-only status safe without creating a lock/state directory.
-    return [record for _, record in _records(state)]
+    return [record for _, record in _records(state) if record['state'] == 'pending']
+
+
+def acknowledged(state):
+    return [record for _, record in _records(state) if record['state'] == 'acknowledged']
+
+
+def publication(state, release_id):
+    # A damaged older queue entry is surfaced as the build's sync warning; it
+    # must not invalidate a newly built and durably enqueued release.
+    record = read_json(state / 'outbox' / f'{release_id}.json')
+    if (not isinstance(record, dict) or record.get('releaseId') != release_id
+            or record.get('state') not in ('pending', 'acknowledged')):
+        raise PlatformError('invalid publication record for completed build')
+    if record['state'] == 'acknowledged':
+        validate_receipt(record.get('receipt'), record, record.get('receiptArchiveId'))
+    return record['state']

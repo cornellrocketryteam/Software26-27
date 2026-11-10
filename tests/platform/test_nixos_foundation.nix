@@ -27,6 +27,58 @@ let
   storeKey = evaluate [ {
     groundStation.cache.signingKeyFile = "/nix/store/not-a-runtime-secret";
   } ];
+  ingestionSettings = {
+    groundStation.cache = {
+      signingKeyFile = "/run/keys/cache-signing-key";
+      ingestion = {
+        enable = true;
+        authorizedKeys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFixtureOnlyNotADeploymentKey archive-test" ];
+        trustedDeveloperAccessReviewed = true;
+        archiveId = "test-station-archive-v1";
+      };
+    };
+  };
+  ingestion = evaluateVM [ ingestionSettings ];
+  missingIngestionReview = evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.trustedDeveloperAccessReviewed = lib.mkForce false;
+  } ];
+  missingIngestionKeys = evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.authorizedKeys = lib.mkForce [ ];
+  } ];
+  invalidIngestionKey = evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.authorizedKeys = lib.mkForce [ "restrict,command=\"false\" ssh-ed25519 AAAA" ];
+  } ];
+  # RFC 8032 test-vector public key; fixture only, never a deployment key.
+  ingestionTestKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea";
+  ingestionWithKey = key: evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.authorizedKeys = lib.mkForce [ key ];
+  } ];
+  carriageReturnIngestionKey = ingestionWithKey "${ingestionTestKey} runner\rannotation";
+  newlineIngestionKey = ingestionWithKey "${ingestionTestKey} runner\n${ingestionTestKey} injected";
+  crlfIngestionKey = ingestionWithKey "${ingestionTestKey} runner\r\n${ingestionTestKey} injected";
+  trailingNewlineIngestionKey = ingestionWithKey "${ingestionTestKey} runner\n";
+  # Ordinary r/n letters and literal backslash-r/backslash-n are legal comment
+  # text; the regex must reject control characters rather than those letters.
+  validIngestionComment = "runner ronit normal literal\\r\\n";
+  commentedIngestionKey = ingestionWithKey "${ingestionTestKey} ${validIngestionComment}";
+  missingArchiveId = evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.archiveId = lib.mkForce null;
+  } ];
+  invalidArchiveId = evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.archiveId = lib.mkForce "../not-an-archive";
+  } ];
+  ingestionWithArchiveId = archiveId: evaluateVM [ ingestionSettings {
+    groundStation.cache.ingestion.archiveId = lib.mkForce archiveId;
+  } ];
+  carriageReturnArchiveId = ingestionWithArchiveId "test-station\rarchive";
+  newlineArchiveId = ingestionWithArchiveId "test-station\narchive";
+  trailingNewlineArchiveId = ingestionWithArchiveId "test-station-archive-v1\n";
+  injectedArchiveId = ingestionWithArchiveId "test-station; echo injected";
+  newlineInjectedArchiveId = ingestionWithArchiveId "test-station\n$(echo injected)";
+  unsignedIngestion = evaluateVM [ ingestionSettings {
+    groundStation.cache.enable = lib.mkForce false;
+  } ];
+  ingestionSsh = ingestion.system.build.groundCacheSsh.text;
   worker = evaluateVM [ {
     groundStation = {
       fieldMode = false;
@@ -109,6 +161,69 @@ let
     daemonCpuBound = worker.systemd.services.nix-daemon.serviceConfig.CPUQuota == "300%";
     buildAdmissionHook = builtins.isString base.nix.settings.pre-build-hook;
     cacheOffWithoutKey = !base.services.harmonia.cache.enable;
+    cacheIngestionOffByDefault = !(base.groundStation.cache.ingestion.enable or true)
+      && !(base.users.users ? ground-cache)
+      && base.groundStation.cache.ingestion.authorizedKeys == [ ]
+      && !base.groundStation.cache.ingestion.trustedDeveloperAccessReviewed
+      && base.groundStation.cache.ingestion.archiveId == null
+      && !(builtins.elem "ground-cache" base.nix.settings.trusted-users);
+    cacheIngestionRequiresReview = hasFailure "administrative developer access" missingIngestionReview;
+    cacheIngestionRequiresKeys = hasFailure "explicit nonempty public keys" missingIngestionKeys;
+    cacheIngestionRejectsKeyOptions = hasFailure "bare single-line public keys" invalidIngestionKey;
+    cacheIngestionRejectsKeyCR = hasFailure "bare single-line public keys" carriageReturnIngestionKey;
+    cacheIngestionRejectsKeyLF = hasFailure "bare single-line public keys" newlineIngestionKey;
+    cacheIngestionRejectsKeyCRLF = hasFailure "bare single-line public keys" crlfIngestionKey;
+    cacheIngestionRejectsKeyTrailingLF = hasFailure "bare single-line public keys" trailingNewlineIngestionKey;
+    cacheIngestionAllowsCommentLettersAndLiteralEscapes = failed commentedIngestionKey == [ ]
+      && lib.any (lib.hasSuffix "${ingestionTestKey} ${validIngestionComment}")
+        commentedIngestionKey.users.users.ground-cache.openssh.authorizedKeys.keys;
+    cacheIngestionRequiresArchiveId = hasFailure "explicit stable archive ID" missingArchiveId
+      && hasFailure "explicit stable archive ID" invalidArchiveId;
+    cacheIngestionRejectsArchiveCR = hasFailure "explicit stable archive ID" carriageReturnArchiveId;
+    cacheIngestionRejectsArchiveLF = hasFailure "explicit stable archive ID" newlineArchiveId;
+    cacheIngestionRejectsArchiveTrailingLF = hasFailure "explicit stable archive ID" trailingNewlineArchiveId;
+    cacheIngestionRejectsArchiveInjection = hasFailure "explicit stable archive ID" injectedArchiveId
+      && hasFailure "explicit stable archive ID" newlineInjectedArchiveId;
+    cacheIngestionRequiresSignedCache = hasFailure "enabled signed cache" unsignedIngestion;
+    cacheIngestionFixedState = ingestion.groundStation.cache.ingestion.stateDir == "/var/lib/ground-cache-archive";
+    cacheIngestionTrustedAccount = builtins.elem "ground-cache" ingestion.nix.settings.trusted-users
+      && ingestion.nix.settings.allowed-users == base.nix.settings.allowed-users;
+    cacheIngestionAccountLocked = ingestion.users.users.ground-cache.isSystemUser
+      && ingestion.users.users.ground-cache.hashedPassword == "!"
+      && ingestion.users.users.ground-cache.extraGroups == [ ];
+    cacheIngestionArchiveOwnership = builtins.elem
+      "d /var/lib/ground-cache-archive 0700 ground-cache ground-cache - -"
+      ingestion.systemd.tmpfiles.rules;
+    cacheIngestionForcedKeys = lib.all
+      (key: lib.hasPrefix "restrict,command=\"/nix/store/" key
+        && lib.hasInfix "/bin/ground-cache-ssh\" ssh-ed25519 " key)
+      ingestion.users.users.ground-cache.openssh.authorizedKeys.keys;
+    cacheIngestionForcedAccountCommand = lib.hasInfix "Match User ground-cache" ingestion.services.openssh.extraConfig
+      && lib.hasInfix "ForceCommand /nix/store/" ingestion.services.openssh.extraConfig
+      && lib.hasInfix "AllowTcpForwarding no" ingestion.services.openssh.extraConfig
+      && lib.hasInfix "PermitTTY no" ingestion.services.openssh.extraConfig;
+    cacheIngestionExactCommands = lib.hasInfix "case \"\${SSH_ORIGINAL_COMMAND-}\" in" ingestionSsh
+      && lib.hasInfix "'nix-daemon --stdio')" ingestionSsh
+      && lib.hasInfix "'crt-platform-cache-receive-v1')" ingestionSsh
+      && lib.hasInfix "command denied" ingestionSsh
+      && lib.hasInfix "exit 126" ingestionSsh
+      && !(lib.hasInfix "eval " ingestionSsh);
+    cacheIngestionPinsDaemon = lib.hasInfix "nix-daemon --stdio --store unix:///nix/var/nix/daemon-socket/socket" ingestionSsh
+      && lib.hasInfix "NIX_REMOTE=unix:///nix/var/nix/daemon-socket/socket" ingestionSsh
+      && lib.hasInfix "NIX_USER_CONF_FILES=/dev/null" ingestionSsh
+      && lib.hasInfix "/bin/env -i" ingestionSsh;
+    cacheIngestionPinsReceiverIdentity = lib.hasInfix "--state-dir /var/lib/ground-cache-archive" ingestionSsh
+      && lib.hasInfix "--archive-id test-station-archive-v1" ingestionSsh;
+    cacheIngestionPreservesFieldPolicy = ingestion.groundStation.fieldMode
+      && ingestion.nix.settings.max-jobs == 0
+      && ingestion.systemd.services.nix-daemon.serviceConfig.MemoryMax == "6G"
+      && !ingestion.nix.sshServe.enable
+      && ingestion.services.openssh.settings.PermitRootLogin == "no"
+      && !ingestion.services.openssh.settings.PasswordAuthentication
+      && (builtins.head ingestion.services.openssh.listenAddresses).addr == "127.0.0.1";
+    cacheIngestionDoesNotExposeSecret = !(lib.hasInfix "/run/keys/cache-signing-key"
+      (lib.concatStringsSep "\n" ingestion.users.users.ground-cache.openssh.authorizedKeys.keys));
+    cacheIngestionEnabledAssertionsPass = failed ingestion == [ ];
     cacheSignedWithRuntimeKey = signed.services.harmonia.cache.enable
       && signed.services.harmonia.cache.signKeyPaths == [ "/run/keys/cache-signing-key" ];
     daemonSignsWithSameRuntimeKey = (signed.nix.settings.secret-key-files or [ ])

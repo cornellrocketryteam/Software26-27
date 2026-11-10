@@ -23,6 +23,21 @@ if name == 'ssh':
         sys.stderr.write('transport unavailable\n'); sys.exit(255)
     if os.environ.get('SSH_SLEEP'):
         time.sleep(5)
+    if args and args[-1] == 'crt-platform-cache-receive-v1':
+        request = json.load(sys.stdin)
+        scenario = os.environ.get('RECEIPT_SCENARIO', 'valid')
+        root = '/var/lib/ground-cache-archive'
+        receipt = {k: request[k] for k in ('protocol', 'releaseId', 'manifestSha256', 'storePaths')}
+        receipt.update(archiveId='station-archive-1', archivePath=root, retained=True,
+                       roots={s: root + '/roots/' + request['releaseId'] + '/' + str(i)
+                              for i, s in enumerate(request['storePaths'])})
+        if scenario == 'invalid-json': print('not JSON'); sys.exit(0)
+        if scenario == 'wrong-digest': receipt['manifestSha256'] = '0' * 64
+        if scenario == 'wrong-archive': receipt['archiveId'] = 'different-archive'
+        if scenario == 'wrong-paths': receipt['storePaths'] = ['/nix/store/wrong']
+        if scenario == 'missing-root': receipt['roots'] = {}
+        if scenario == 'not-retained': receipt['retained'] = False
+        print(json.dumps(receipt)); sys.exit(0)
     scenario = os.environ.get('STATION_HEALTH')
     print(json.dumps({'protocol': 1, 'platforms': ['aarch64-linux', 'x86_64-linux'],
                       'available': scenario != 'busy', 'operationalMode': 'field' if scenario == 'field' else 'maintenance',

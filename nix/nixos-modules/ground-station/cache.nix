@@ -11,7 +11,7 @@ in
       type = lib.types.bool;
       default = cfg.signingKeyFile != null;
       defaultText = lib.literalExpression "config.groundStation.cache.signingKeyFile != null";
-      description = "Signed read-only Harmonia cache, proxied at /cache/. No HTTP uploads or release-ingestion acknowledgement.";
+      description = "Signed read-only Harmonia cache, proxied at /cache/. No HTTP uploads; optional SSH ingestion is configured separately.";
     };
     signingKeyFile = lib.mkOption {
       type = lib.types.nullOr lib.types.str;

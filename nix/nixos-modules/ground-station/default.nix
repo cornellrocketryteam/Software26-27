@@ -1,6 +1,6 @@
 { config, lib, ... }:
 {
-  imports = [ ./network.nix ./operator.nix ./storage.nix ./builder.nix ./cache.nix ./ui.nix ./commanding.nix ];
+  imports = [ ./network.nix ./operator.nix ./storage.nix ./builder.nix ./cache.nix ./cache-ingestion.nix ./ui.nix ./commanding.nix ];
 
   options.groundStation = {
     virtualMachine = lib.mkOption {

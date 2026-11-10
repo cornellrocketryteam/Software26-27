@@ -43,6 +43,7 @@ existing, independently verified known_hosts file, optional configuration is:
     "probeTimeoutSeconds": 10,
     "evaluationTimeoutSeconds": 300,
     "copyTimeoutSeconds": 120,
+    "receiptTimeoutSeconds": 300,
     "buildTimeoutSeconds": 14400
   },
   "station": {
@@ -56,7 +57,8 @@ existing, independently verified known_hosts file, optional configuration is:
   "cache": {
     "store": "ssh-ng://ingest@groundstation.example.org",
     "sshTarget": "ingest@groundstation.example.org",
-    "knownHosts": "/absolute/path/to/verified_known_hosts"
+    "knownHosts": "/absolute/path/to/verified_known_hosts",
+    "receiptArchiveId": "reviewed-station-archive-v1"
   }
 }
 ```
@@ -73,6 +75,10 @@ Existing SSH-agent authentication is used; no private key is copied or recorded.
 Evaluation/preflight has its own 300-second default (maximum 3600), separate from
 the 10-second health-probe default (maximum 60), so normal Nix evaluation is not
 cut off by a network probe deadline.
+`cache.receiptArchiveId` must match the station's configured archive identity.
+Leave it absent for an older endpoint: copies remain pending rather than accepting
+an unverified acknowledgement. Receipt exchange has a separate 300-second timeout
+(maximum 3600). See [station setup and acceptance](../../docs/operations/build-cache.md).
 
 ## Routing and current build graphs
 
@@ -183,11 +189,11 @@ outbox lock protects local writes, with a consistent lock order. Network I/O doe
 not hold the outbox lock, and enqueue never recursively acquires it. Lock waits
 are bounded and return a visible retry/busy error. Concurrent builds have distinct
 IDs/roots. Every normal build retries old records once before building and the new
-record once afterward. `cache-sync` retries all records. Both survive process
+record once afterward. `cache-sync` retries pending records. Both survive process
 restarts. `--dry-run` performs no subprocess or filesystem writes (it may read
 configuration/status); a build dry run does not establish availability/success.
 
-## Publication and receipt integration still required
+## Publication and durable receipts
 
 Publishing runs `nix copy --to CONFIGURED_SSH_NG_STORE STORE_PATH...` with pinned
 SSH options and a timeout. Failed/partial copies leave the successful local build
@@ -195,33 +201,41 @@ and its pending pins intact. Repeating nix copy is idempotent at store-path leve
 Manifest/root mismatch blocks publication. A cache outage does not change build
 success to failure after durable enqueue; inspect status for the reason.
 
-**There is no implemented receipt receiver or acknowledgement acceptance path.**
-Even successful copying retains the entry and all local pins, with reason
-`validated durable remote receipt required (receiver not implemented)`.
-No JSON flag, exit status from nix copy, or arbitrary configured command is
-accepted as proof of archive/retention. `cache-sync` exit zero means the queue was
-processed; inspect its `pending` list. `acknowledged` is always zero in this version.
+After a successful copy, clients with a pinned `receiptArchiveId` send a bounded
+JSON request to exactly `crt-platform-cache-receive-v1` over the same pinned SSH
+endpoint. There are no caller-selected server commands. The request includes
+protocol 1, release ID, manifest SHA256, base64 of the exact manifest bytes and
+the sorted store-path set. Limits are 1 MiB per manifest, 2 MiB per request and
+64 distinct output paths.
 
-Minimal future controlled receipt protocol (proposal, not executable API):
+The receiver rejects unsafe IDs, non-store paths, mismatched metadata and
+conflicting duplicate releases. Under its archive lock it saves the original
+manifest, registers indirect GC roots for all output closures, verifies content
+with `nix store verify --recursive --no-trust`, then persists a receipt before
+replying. `--no-trust` skips source-signature checks, not content hashing: the
+reviewed importer is an administrative publisher. HTTP readers still require
+the configured cache's signatures. No compilation or repair is requested.
 
-1. Client supplies manifest bytes, manifest SHA256, release ID and exact store paths
-   to a fixed receiver command over the same pinned authenticated SSH endpoint.
-2. Receiver validates manifest/hash/path agreement and verifies every imported
-   closure against the local store. Reject duplicate IDs with different content.
-3. Under a receiver lock, register stable GC roots for every closure using
-   nix-store, persist the manifest/archive record, fsync files/directories, then
-   atomically persist the receipt. A retry with the same ID/digest returns the
-   same persisted receipt after checking roots still exist.
-4. Receipt must bind protocol/version, release ID, manifest digest, exact store
-   path set, rooted paths and durable archive identity. Exit zero alone is not ack.
-5. Only after a separately tested client validates that receipt may it atomically
-   move the record to acknowledged history and release pending-only pins. Active,
-   recovery, and local release retention are separate policies and must survive.
+A retry re-registers roots and verifies contents, returning the same saved receipt.
+Failed validation, copy, verification, persistence or SSH exchange leaves the local
+record pending. The client requires exact agreement on archive identity, release
+ID, manifest digest, paths and retention-root mapping; an exit status alone is
+insufficient. A valid receipt atomically changes the existing outbox record from
+`pending` to `acknowledged`. There is no deletion/re-enqueue gap, and the immutable
+manifest's `publication.statusSource` continues to point at that durable record.
+Its original `publication.state` records the initial intent and is not rewritten.
 
-Coordinate this receiver/installer with the NixOS owner; no server is assumed up.
-There is no path here that currently clears pending roots or marks a release cached,
-tested, active or deployed. Archive delivery of the manifest itself is also pending
-that protocol; nix copy currently transfers closures only.
+`status` returns separate `pending` and `acknowledged` lists. `cache-sync` reports
+remaining pending entries and the total number of locally recorded acknowledgements,
+not just new ones. Zero exit means the queue was processed; inspect those fields.
+Acknowledged records are not recopied on later builds/sync. All local release roots
+remain retained, including after acknowledgement; there is no automatic pruning.
+Acknowledged does not mean tested, active or deployed, or an independent backup.
+
+The receiver package and opt-in NixOS ingestion account now exist, but the actual
+station is not configured or validated. The forced SSH interface is not a security
+boundary against its daemon-trusted developers: enabling it grants administrative
+Nix capabilities and requires explicit keys/review. There is no HTTP upload route.
 
 ## Offline scope and troubleshooting
 
@@ -239,7 +253,8 @@ remain work in the approved broader plan.
 - Missing local platform: prepare the accepted Linux VM/external builder. `check`
   reports declared ARM compatibility; no board or remote SSH is performed.
 - Publication pending: inspect `status`/outbox reason; retry `cache-sync` after
-  connectivity returns. Successful copy still needs future remote retention ack.
+  connectivity returns. Check the installed receiver and matching pinned archive ID;
+  a successful copy alone is not an acknowledgement.
 - Corrupt JSON: status/sync return a named error and preserve the file for repair.
 - Interrupted/failed build: inspect `STATE/logs/ID`; roots/sources are retained.
   Re-run explicitly after diagnosis. There is no automatic compiler rerun.
@@ -250,7 +265,7 @@ remain work in the approved broader plan.
 ## Host tests
 
 ```sh
-python3 -m unittest discover -s tests/platform -p 'test_*cli.py' -v
+python3 -m unittest discover -s tests/platform -p 'test_*.py' -v
 ```
 
 The tests create isolated temporary Git repositories and real fake executable
@@ -259,3 +274,8 @@ external platform declarations, health timeouts/busy/full/field state, interrupt
 copies, indirect GC registration and garbage collection. They never run a real
 image build, connect to the station/board, activate a generation or flash hardware.
 Actual Nix/store/network/hardware acceptance remains separate.
+Receiver tests additionally exercise temporary archives, conflicting identities,
+interrupted receipt writes and re-registration on retry. A separate manual check
+has exercised the receiver against the previously built FIT using real local Nix;
+it does not establish station SSH, signing, LAN substitution or physical power-loss
+behavior.

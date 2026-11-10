@@ -14,12 +14,15 @@ class PlatformError(Exception):
     pass
 
 
-def run(argv, *, cwd=None, timeout=10, env=None, log=None):
+def run(argv, *, cwd=None, timeout=10, env=None, log=None, input_data=None):
     """No shell; disk-backed output; kill the process group on timeout."""
-    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr, tempfile.TemporaryFile() as stdin:
+        if input_data is not None:
+            stdin.write(input_data)
+            stdin.seek(0)
         try:
             process = subprocess.Popen([str(a) for a in argv], cwd=cwd, env=env,
-                                       stdout=stdout, stderr=stderr, start_new_session=True)
+                                       stdin=stdin, stdout=stdout, stderr=stderr, start_new_session=True)
         except OSError as exc:
             raise PlatformError(f'{argv[0]} unavailable: {exc}') from exc
         timed_out = False
@@ -71,14 +74,24 @@ def sync_dir(path):
         os.close(fd)
 
 
-def atomic_json(path, data):
+def durable_mkdir(path):
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    missing = []
+    while not path.exists():
+        missing.append(path)
+        path = path.parent
+    for directory in reversed(missing):
+        directory.mkdir(exist_ok=True)
+        sync_dir(directory.parent)
+
+
+def atomic_bytes(path, data):
+    path = Path(path)
+    durable_mkdir(path.parent)
     fd, temp = tempfile.mkstemp(prefix=f'.{path.name}.', suffix='.tmp', dir=path.parent)
     try:
-        with os.fdopen(fd, 'w') as stream:
-            json.dump(data, stream, indent=2, sort_keys=True)
-            stream.write('\n')
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temp, path)
@@ -86,6 +99,10 @@ def atomic_json(path, data):
     finally:
         if os.path.exists(temp):
             os.unlink(temp)
+
+
+def atomic_json(path, data):
+    atomic_bytes(path, (json.dumps(data, indent=2, sort_keys=True) + '\n').encode())
 
 
 @contextmanager

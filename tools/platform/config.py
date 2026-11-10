@@ -30,8 +30,12 @@ def load_config(path, *, explicit=False):
         raise PlatformError('policy.preferStation must be boolean')
     for key, default, maximum in (('probeTimeoutSeconds', 10, 60), ('evaluationTimeoutSeconds', 300, 3600),
                                   ('copyTimeoutSeconds', 120, 3600),
+                                  ('receiptTimeoutSeconds', 300, 3600),
                                   ('buildTimeoutSeconds', 14400, 86400)):
         number(config, key, default, maximum)
+    if 'receiptArchiveId' in config.get('cache', {}):
+        from .receipts import identity
+        identity(config['cache']['receiptArchiveId'], 'cache receipt archive ID')
     return config
 
 

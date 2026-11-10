@@ -9,7 +9,7 @@ build worker, durable offline publication queue and reduced GitHub CI, see the
 [checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md).
 The [NixOS foundation](nixos-configurations/ground-station/README.md) and
 [build/cache CLI](../tools/platform/README.md) now exist. Full station services,
-remote cache acknowledgements and hardware acceptance remain pending. The default
+live signed-cache/receipt deployment and hardware acceptance remain pending. The default
 fill-station graph still uses an ARM64 Linux build host; explicit experimental
 x86 cross-build graphs have overlay-build evidence, not complete image validation.
 `.github/workflows/nix.yml` still builds through FlakeHub on branch pushes until

@@ -22,10 +22,18 @@ instructions. Foundation commit `0078f82` adds the NixOS targets, build/cache CL
 experimental x86 build graph and packaged command listener. Other contributors'
 changes remain in the branch; these commits do not imply hardware acceptance.
 
-All 52 host tests passed for the CLI/outbox and listener parser. Nix evaluation checks the
+The initial 52 host tests passed for the CLI/outbox and listener parser. Nix evaluation checks the
 NixOS configuration gates and both vehicles on both build platforms. Both x86
 device-tree overlays and the macOS listener package built successfully. The VM
 test exists but has not been built/run; the UM560 remains uninspected.
+
+The receipt increment adds a bounded cache receiver, client acknowledgement state
+and an opt-in forced-command SSH importer. It is disabled by default. The expanded
+73-test host suite passed, covering malformed receipts, interrupted writes, concurrent/repeated sync, duplicate
+IDs and modeled GC. A real local-Nix check rooted and verified the existing FIT,
+preserved its manifest bytes and returned a stable receipt on retry. Station LAN,
+signing/substitution, daemon containment and power-loss tests remain unchecked.
+See [cache setup and acceptance](../../operations/build-cache.md).
 
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
 ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
@@ -37,9 +45,9 @@ has not been deployed or tested on the board. Its roots protect outputs, not a
 complete offline rebuild input set.
 
 Next milestone: inspect the powered-on UM560, back up the current data/services,
-and supply actual hardware/boot configuration. In parallel, implement durable
-cache receipts and remote admission before enabling station builds. Preserve the
-current Compose deployment until the NixOS service migration passes. Existing
+and supply actual hardware/boot configuration. Validate the cache/receipt setup
+on that machine and implement remote build admission before enabling station
+builds. Preserve the current Compose deployment until the NixOS service migration passes. Existing
 button firmware is monitoring-only with the new listener; session-protocol
 firmware and command mapping review remain required.
 
@@ -177,6 +185,10 @@ Planned files: `nix/nixos-modules/ground-station/{cache,backup}.nix`,
   prove a valid object substitutes and an invalid signature is refused.
 - [ ] Implement authenticated ingestion separate from HTTP read service; pin
   imported closure before acknowledging it. Test two authorized developers.
+- [x] Implement the ingestion/receipt protocol and opt-in SSH account; verify
+  original manifest bytes, registered output roots, closure content and matching
+  acknowledgement. Exercise failure/retry on the host and the receiver with
+  actual local Nix. Two-developer station/signing tests remain outstanding.
 - [ ] Publish and fetch both ARM64 image artifacts and x86 station closures.
 - [ ] Verify no FlakeHub credentials or endpoint is required on a clean client
   or worker. Inspect host-level substituters too, not just repository files.
@@ -221,6 +233,9 @@ The CLI can be a thin Python implementation behind the shell entry point.
   must remain success if station upload fails.
 - [ ] Make next build and `cache-sync` retry pending records idempotently. Test
   station absent, laptop restart, partial copy, concurrent sync and duplicate IDs.
+- [x] Host-test pending-to-acknowledged transitions, receipt mismatch/disconnect,
+  process restart, concurrent sync, conflicting IDs and interrupted local/remote
+  acknowledgement persistence. Keep local release roots after acknowledgement.
 - [ ] Simulate GC while an item is pending; verify its artifacts and needed
   prepared build inputs remain available.
 - [ ] Remove pending pins only after validated remote receipt and retention roots.
