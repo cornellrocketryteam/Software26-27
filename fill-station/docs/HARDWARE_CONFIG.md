@@ -423,7 +423,7 @@ nix build .#mixosConfigurations.fill-station.config.system.build.sdImage --out-l
 
 The card image is `result-sd-liquid/fill-station.img` or `result-sd-hybrid/fill-station.img`.
 
-For the card-writing procedure, see **Flashing to SD Card** in `fill-station/docs/LINUX_IMAGE_BUILD_PROCESS.md`. Use the selected result path instead of that document's generic `result/fill-station.img`. Writing an image erases the destination, so confirm it is the intended SD card. For OSPI, use the team's approved OSPI deployment procedure.
+For the card-writing procedure, see **Flashing to SD Card** in `fill-station/docs/LINUX_IMAGE_BUILD_PROCESS.md`. Use the selected result path instead of that document's generic `result/fill-station.img`. Writing an image erases the destination, so confirm it is the intended SD card. For normal OSPI updates and SD recovery, follow the [deployment runbook](../../docs/operations/fill-station-deployment.md); routine changes update the FIT, not all bootloaders.
 
 The separate `fitImage` build target produces a boot component, not a complete SD-card image. Overlay-only and FIT-only checks are covered in the testing guide.
 

@@ -192,7 +192,7 @@ nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage 
 nix build .#mixosConfigurations.fill-station.config.system.build.sdImage --out-link result-sd-hybrid
 ```
 
-Use `result-sd-liquid/fill-station.img` or `result-sd-hybrid/fill-station.img` with the **Flashing to SD Card** procedure in `fill-station/docs/LINUX_IMAGE_BUILD_PROCESS.md`. Substitute your selected result path for that guide's `result/fill-station.img`. Confirm the destination is the intended SD card before writing it; writing an image erases that destination. For OSPI deployment, use the team's approved OSPI procedure instead.
+Use `result-sd-liquid/fill-station.img` or `result-sd-hybrid/fill-station.img` with the **Flashing to SD Card** procedure in `fill-station/docs/LINUX_IMAGE_BUILD_PROCESS.md`. Substitute your selected result path for that guide's `result/fill-station.img`. Confirm the destination is the intended SD card before writing it; writing an image erases that destination. For OSPI updates and recovery, use the [deployment runbook](../../docs/operations/fill-station-deployment.md).
 
 ### Optional: run the standalone real-board device-tree tests
 

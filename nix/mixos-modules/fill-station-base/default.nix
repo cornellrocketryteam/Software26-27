@@ -65,7 +65,10 @@ in
       # -R: generate missing host keys; state preserves them.
       # -D: read authorized_keys from /etc/dropbear.
       # -s: disable password login.
-      process = "${lib.getExe' pkgs.dropbear "dropbear"} -F -R -s -D /etc/dropbear";
+      # MixOS mounts / as tmpfs with mode 1777. Dropbear checks every parent
+      # of authorized_keys and rejects a group/world-writable /, even with
+      # the sticky bit. Correct it before starting the SSH server.
+      process = "sh -c 'chmod 0755 / && exec ${lib.getExe' pkgs.dropbear "dropbear"} -F -R -s -D /etc/dropbear'";
     };
 
     fill-station = {

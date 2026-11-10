@@ -8,8 +8,10 @@
 #     nix build .#mixosConfigurations.fill-station.config.system.build.ospiImage -o result-ospi
 #
 # Works whether the board is running from SD or from flash: Linux runs from RAM,
-# so rewriting the flash underneath it is safe. A FIT cut off mid-write fails
-# U-Boot's checksum and the board falls back to the SD card. Partitions are found
+# so updating flash is possible while Linux runs, but an interrupted erase/write
+# can leave OSPI unbootable. Current U-Boot tries SD before OSPI and does not
+# retry SD after OSPI fails; use a known-good full SD for manual recovery.
+# There is no automatic A/B rollback. Partitions are found
 # by name in /proc/mtd; ospi.env* and ospi.phypattern are never written.
 set -euo pipefail
 

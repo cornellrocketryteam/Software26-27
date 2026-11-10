@@ -279,10 +279,14 @@ const ADC2_ADDRESS: u16 = 0x49;
 ## Testing Tools
 
 ### Dashboard and Mock Server
+Complete the one-time online setup in [client/README.md](../client/README.md) first.
+
 ```bash
 cd client
-python mock_server.py             # optional: mock server on ws://localhost:9000
-streamlit run dashboard_v2.py
+# Optional mock server; run in a separate terminal:
+uv run --no-project --offline --python .venv/bin/python python mock_server.py
+# Dashboard:
+uv run --no-project --offline --python .venv/bin/python python -m streamlit run dashboard_v2.py
 ```
 
 ### Rust Test Binaries

@@ -1,0 +1,266 @@
+# Ground-platform implementation plan and acceptance checklist
+
+Status: proposed, not implemented. Architecture and confirmed requirements:
+[ground-platform.md](../../architecture/ground-platform.md).
+
+**Goal:** Reproducible offline NixOS ground-station startup, LAN caching and
+optional builds, deferred artifact publication, and straightforward local-boot
+fill-station deployment with tested recovery.
+
+**Architecture:** Keep the fill station on MixOS with OSPI boot and ext4 DATA;
+manage the x86-64 ground station with NixOS. Implement one build/release interface
+over Nix, backed by a signed cache and durable laptop outbox.
+
+**Tech stack:** Nix/NixOS/MixOS, systemd, pinned OCI images, Python command
+listener, built React assets, Harmonia, SSH, QEMU/binfmt, existing FIT updater.
+
+## Global constraints
+
+- Preserve Hybrid/Liquid separation, current profiles, ext4 state, SSH keys,
+  `/` permission fix, and local failsafes.
+- No mandatory internet/ground-station dependency for fill-station startup.
+- No automatic commanding, flashing, arming, release activation, or reboot as a
+  side effect of building, caching, syncing, or service startup.
+- Preserve unrelated local work. Historical plans are evidence, not current runbooks.
+- Tests and hardware evidence have separate status; unchecked means unfinished.
+- New commands/paths below are specified interfaces until their task is complete.
+
+## Dependency order
+
+Inventory → ground-station OS/service packaging → signed cache and offline
+preparation using the validated Mac worker → durable sync/build interface →
+deployment orchestration → CI cutover → field acceptance. The optional station
+build-worker proof can run independently; keep it disabled until it passes.
+Network boot is a separate optional final task.
+
+## 0. Freeze and inventory the working baseline
+
+- [ ] Record a reviewed commit including the pending SSH root-mode fix, all three
+  authorized keys, and offline dashboard documentation; do not lose these changes.
+- [ ] Archive the working Liquid/Hybrid release manifests and recovery SD image.
+  Capture user-reported SD/OSPI/persistence results with board/release identity.
+- [ ] Obtain `lscpu`, memory, storage, NIC names, firmware/boot mode, display and
+  USB serial identities from the UM560; record hardware configuration outside secrets.
+- [ ] Inventory existing broker/database/Grafana data, versions, schema/rules,
+  camera/Home Assistant use, and installed command-button firmware.
+- [ ] Restore a test database backup into an isolated instance; record pass/fail.
+- [ ] Agree the LAN names, DHCP reservations, trusted developer accounts, and
+  exact physical-command source identity. Keep private keys out of Git/Nix store.
+
+Acceptance: a second contributor can recover the existing system using the archive;
+the NixOS migration has a tested data-backup restore path.
+
+## 1. Introduce the ground-station NixOS target
+
+Planned files: `nix/flake-modules/nixos-configurations.nix`,
+`nix/nixos-configurations/ground-station/default.nix`, its hardware module,
+and `nix/nixos-modules/ground-station/{network,operator,storage}.nix`.
+Keep existing MixOS configurations and attributes intact.
+
+- [ ] Add `nixosConfigurations.ground-station` for `x86_64-linux` using locked inputs.
+- [ ] Configure disks/filesystems, persistent service directories, named users,
+  SSH, LAN firewall rules, clock/RTC handling, and journal retention.
+- [ ] Install from prepared local media; boot without WAN, without a laptop,
+  and without the fill station. Record NixOS generation and hardware identity.
+- [ ] Package the static operator UI and offline tile assets; start the kiosk
+  without requiring public DNS, internet, or npm downloads.
+- [ ] Test local-console recovery and selecting a previous NixOS generation.
+- [ ] Verify unattended kiosk startup, field-mode suspend prevention, intended
+  display behavior, and automatic recovery after AC power returns. Repeat with
+  WAN and both peers absent; record any firmware setting required.
+
+Planned raw build interface:
+
+```sh
+nix build .#nixosConfigurations.ground-station.config.system.build.toplevel
+```
+
+This attribute does not exist yet. Initial installation must first make a matching
+x86-64 builder available; the ARM64 Mac VM is not an x86 native builder.
+
+## 2. Package and autostart the telemetry and command stack
+
+Planned files: `nix/nixos-modules/ground-station/{telemetry,commanding,ui}.nix`,
+packages under `nix/packages/crt/`, and versioned provisioning under
+`ground-station/provisioning/`. Modify `ground-station/LaunchButton/pc_listener.py`
+and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
+
+- [ ] Pin container image digests, preload archives, and declare persistent volumes.
+  Retain current EMQX/TimescaleDB/Grafana behavior during host migration.
+- [ ] Provision the database and availability migration idempotently; preserve data.
+- [ ] Provision broker protobuf schema, both topic rules, and shared SQL action.
+- [ ] Provision Grafana datasource and dashboard; test NULL/unavailable vs zero.
+- [ ] Replace hard-coded UI/listener/broker addresses with one deployment config.
+- [ ] Package Python listener dependencies in Nix; replace interactive serial
+  selection with configured stable device identity and controlled retries.
+- [ ] Add dependency/readiness checks and restart policies, visible service status,
+  device permissions, and logs. Browser failure must not stop recording.
+- [ ] Test startup/restart/unplug/replug with a simulator: no launch, arm, or wipe
+  is emitted without a new valid physical input in the intended session.
+- [ ] Power-cycle offline: UI, broker, database, Grafana, and listener recover
+  without terminal commands. Missing peer is visible and does not block boot.
+- [ ] Confirm map tiles work with WAN disconnected but LAN connected.
+- [ ] Compare UI telemetry, command responses, persistence, and recovery to baseline.
+
+Acceptance: documented cold boot to usable operator screen; expected services
+healthy or explicitly degraded; no accidental command on service startup.
+
+## 3. Prove the x86 PC can build the current ARM64 graph
+
+Planned file: `nix/nixos-modules/ground-station/builder.nix`; tests under
+`tests/platform/`. Current `fill-station-base/default.nix` remains ARM64-hosted.
+
+- [ ] Enable and verify ARM64 Linux QEMU/binfmt; do not merely advertise support.
+- [ ] Establish daemon-side SSH worker credentials and pinned host identity.
+- [ ] Build both vehicle binaries, kernel, bootloaders, overlays, FITs, and images
+  on the UM560 worker; record emulation time, peak RAM, and image sizes.
+- [ ] Boot one generated release on the board and compare peripheral behavior.
+- [ ] Confirm Mac ARM64 Linux VM can build with station disabled/unreachable.
+- [ ] Keep the user-accepted signed-in Determinate Mac builder as fallback and
+  test offline restart/credential behavior. Replacing it with an account-independent
+  VM is deferred, not required to remove FlakeHub Cache.
+- [ ] Apply real worker CPU/memory isolation, not just Nix job/core hints. Set
+  initial one-job concurrency and proposed 6 GiB/three-core ceiling; ensure the
+  Nix daemon doing the work is inside that boundary. Keep heavy field builds
+  disabled until the team sets numeric latency budgets and stress tests pass.
+- [ ] Evaluate a native x86-to-ARM cross-build configuration alongside emulation;
+  make the build-platform selection explicit and validate both vehicle images.
+- [ ] Benchmark identical source/lock/profile across station and laptop: clean
+  compile with prepared dependencies, incremental app build, and cached build.
+  Include queue/copy overhead, peak RAM and operator-service load. Do not guess
+  the winner from CPU models. Select station-first only for proven faster jobs.
+- [ ] Verify the chosen graph has a compatible laptop fallback; if cross-build
+  fallback needs a distinct graph/platform, record it and validate both outputs.
+
+Acceptance: real compatible worker, not an unsupported-system scheduling label.
+
+## 4. Signed cache, archive, and offline preparation
+
+Planned files: `nix/nixos-modules/ground-station/{cache,backup}.nix`,
+`nix/client-config/` examples and `docs/operations/build-cache.md`.
+
+- [ ] Serve Harmonia on LAN-only endpoints, with signature verification on clients.
+  Evaluate nix-serve as the smaller alternative before finalizing the module.
+- [ ] Install the cache signing secret on the station and public trust on clients;
+  prove a valid object substitutes and an invalid signature is refused.
+- [ ] Implement authenticated ingestion separate from HTTP read service; pin
+  imported closure before acknowledging it. Test two authorized developers.
+- [ ] Publish and fetch both ARM64 image artifacts and x86 station closures.
+- [ ] Verify no FlakeHub credentials or endpoint is required on a clean client
+  or worker. Inspect host-level substituters too, not just repository files.
+- [ ] Define free-space guard, GC roots/retention, archive layout and independent
+  DB/secret backups. Run GC and prove active/recovery releases remain usable.
+- [ ] Add `prepare-offline`: retain flake inputs, source/dependency closures,
+  required build platforms, OCI images, UI assets and map data.
+- [ ] Test a declared prepared offline rebuild with WAN and station disconnected:
+  it must succeed in an isolated test store containing required inputs/toolchains
+  but no final target outputs, including after GC. Never delete the only recovery
+  release to perform this test.
+- [ ] Separately test an intentionally unprepared target: report exact missing
+  inputs. A clear error does not count as successful prepared offline building.
+- [ ] Export/import a `file://` cache from external storage as the temporary option.
+
+Acceptance: substitution and offline recovery work without a public service;
+cache outage cannot stop a booted field application.
+
+## 5. One build command, durable retry, and traceable releases
+
+Planned files: `scripts/platform`, `tools/platform/{build,cache,manifest}.py`,
+`shared/schemas/release-manifest.schema.json`, tests under `tests/platform/`.
+The CLI can be a thin Python implementation behind the shell entry point.
+
+- [ ] Implement the interface in the architecture doc; add help and validation.
+- [ ] Test host/vehicle/artifact selection and bounded cache/SSH probes before
+  enabling an optional cache/worker. Implement `auto`, explicit local, explicit
+  station, and offline modes with visible selection reasons.
+- [ ] Test station-first `auto` when benchmarks justify it, laptop-first otherwise,
+  and local-capability failure routing to the station before compilation starts.
+  Exercise station unreachable/busy/full and local Linux builder unavailable.
+- [ ] Test Determinate external-builder/SSH-worker priority explicitly. Implement
+  bounded infrastructure-only failover, never blind retries of compiler failures.
+- [ ] Record manifest before publication, including commit/dirty source snapshot,
+  input/profile digests, platform, worker, artifacts, hashes, and tests.
+- [ ] Persist outbox record and real GC roots transactionally; local build success
+  must remain success if station upload fails.
+- [ ] Make next build and `cache-sync` retry pending records idempotently. Test
+  station absent, laptop restart, partial copy, concurrent sync and duplicate IDs.
+- [ ] Simulate GC while an item is pending; verify its artifacts and needed
+  prepared build inputs remain available.
+- [ ] Remove pending pins only after validated remote receipt and retention roots.
+  Distinguish cached, tested, and active releases in status output.
+- [ ] Test offline builds on laptop, reconnection, station publication, and cache
+  reuse by another developer without compiling again where outputs match.
+
+Acceptance: one documented entry point; no hidden dependency on successful upload.
+
+## 6. Deploy and recover without routine SD reflashing
+
+Planned files: `tools/platform/deploy.py`, enhancements to `tools/flash-ospi.sh`,
+`tests/platform/test_deploy.py`, and the deployment runbook.
+
+- [ ] Separate `build`, `publish`, `deploy`, `reboot`, and `health-check` actions.
+- [ ] Add machine/vehicle/release identity checks, pinned SSH host keys and a
+  deployment lock. Do not silently inherit aliases disabling host verification.
+- [ ] Preflight every requested partition/file/checksum/size and staging space
+  before writing the first partition; reject incomplete bundles early.
+- [ ] Define and test application safing and update quiescence with its owner.
+  Network connectivity alone is not proof the system is ready to update.
+- [ ] Default to FIT-only updates; require explicit bootloader provisioning mode.
+- [ ] Stage over SSH, check SHA256, perform flashcp read-back verification, and
+  reboot only as an explicit deployment step.
+- [ ] Expose installed release identity on the board and verify it after reboot;
+  check root mode, ext4 state, persistent SSH, application/broker connectivity.
+- [ ] Archive previous FIT and tested recovery SD; rehearse manual SD boot and
+  restoring the OSPI bundle. Do not claim automatic rollback for the single slot.
+- [ ] In isolated maintenance testing, characterize upload interruption and
+  simulated write failure. Actual power-cut flashing tests need a prepared
+  recovery setup and owner-defined procedure, not a live operating system.
+- [ ] Deploy a ground-station closure, test boot entry rollback and schema
+  compatibility; verify cache data and telemetry survive OS generation changes.
+
+Acceptance: ordinary update requires no SD removal; failed single-slot write has
+a documented, demonstrated manual recovery route.
+
+## 7. Retire expensive GitHub builds and align documentation
+
+- [ ] After replacement build/cache/offline acceptance, remove or convert
+  `.github/workflows/nix.yml` so branch pushes do not build/upload full images
+  and do not authenticate to FlakeHub. Keep lightweight contract/host tests.
+- [ ] Do not install a privileged public-PR GitHub runner on the operator station.
+- [ ] Replace manual-default instructions once provisioning/deploy commands exist;
+  retain explicitly labeled recovery procedures and historical evidence.
+- [ ] Audit all docs for obsolete uEnv/ospiboot, FlakeHub-required, network-boot,
+  automatic rollback, cryptographic FIT verification, and fresh-boot download claims.
+- [ ] Have a second contributor execute the documented workflow from a clean
+  prepared laptop without verbal instructions.
+
+## 8. Optional network boot and A/B exploration
+
+- [ ] Measure whether staged FIT-over-SSH iteration is insufficient first.
+- [ ] If network boot is pursued, separately enable/test U-Boot Ethernet, image
+  serving, bounded attempts, and local fallback with the server disconnected.
+- [ ] If A/B is pursued, measure image headroom and design partition/state/boot
+  acknowledgement together; require interrupted-update recovery tests.
+
+These are not prerequisites for the agreed offline OSPI/network-update baseline.
+
+## Final acceptance matrix
+
+| Scenario | Required result | Evidence |
+| --- | --- | --- |
+| WAN absent, both machines cold boot | Local UI/services and fill-station application start | Boot logs + readiness timings |
+| Ground station powered off | Fill station boots locally; laptop prepared build works | Serial log + build manifest |
+| Fill station absent | Ground station boots, records service health, displays disconnected | UI + service logs |
+| Cache absent with online laptop | Build uses allowed alternatives; publication queues | Outbox + builder log |
+| Cache and WAN absent with prepared laptop | Declared release rebuild succeeds without final outputs already present | Offline/GC test log |
+| Deliberately unprepared offline target | Exact missing-input report; no long network waits | Negative test log |
+| Reconnect after local build | Queue syncs once; second client substitutes | Transfer record + cache log |
+| Heavy build while collecting telemetry | Measured accepted latency, or builds paused | Resource/latency trace |
+| Listener restarts with held/noisy input | No spontaneous command or replay | Simulator transcript |
+| New FIT update | Correct vehicle/release boots and state persists | Manifest + post-boot checks |
+| Broken FIT in isolated recovery test | Manual SD restoration succeeds | Recovery log |
+| NixOS rollback after data migration | Compatible services/data or explicit restore path | Restore test |
+| Station disk pressure/GC | Active release and DB retained; builds stop clearly | GC/free-space test |
+
+Each acceptance row needs the tested revision, hardware, date, operator and
+artifact references. A checked implementation task alone is not hardware signoff.

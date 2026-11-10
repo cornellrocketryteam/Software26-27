@@ -1,5 +1,29 @@
 # Troubleshooting
 
+## SSH rejects an authorized key because `/` is writable
+
+If your Mac offers the expected public key but authentication fails, inspect
+the board's log over serial:
+
+```sh
+grep -i dropbear /var/log/messages | tail -20
+ls -ld /
+```
+
+The confirmed failure was `/ must be owned by user or root, and not writable
+by group or others`, with `/` owned by root but mode 1777. MixOS creates the
+runtime root as tmpfs. Dropbear rejects its writable permissions even with
+the sticky bit. The shared image configuration now runs `chmod 0755 /`
+before starting Dropbear, retaining key-only login.
+
+On an older running image, `chmod 0755 /` over serial fixes that boot only.
+Rebuild and deploy the image for the startup fix. After reboot, check that
+`ls -ld /` reports `drwxr-xr-x` and SSH works again. This was verified live
+for the temporary correction; the updated image still needs a reboot test.
+
+Use `/var/log/messages` for these logs; this syslog configuration does not
+enable the shared-memory buffer required by `logread`.
+
 ## "Resource busy" (os error 16)
 **Symptoms:**
 When running `fill-station` manually:

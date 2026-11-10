@@ -13,6 +13,9 @@ This page is the starting point for software documentation in the repository.
 
 | Document | Use it for |
 | --- | --- |
+| [Ground-platform architecture](architecture/ground-platform.md) | Proposed NixOS startup, cache/build/offline workflow, and deployment decisions |
+| [Ground-platform checklist](superpowers/plans/2026-11-09-ground-platform.md) | Implementation order and measurable acceptance criteria |
+| [Fill-station deployment](operations/fill-station-deployment.md) | Current SD/OSPI build, network update, and manual recovery procedure |
 | [Development readiness](operations/development-readiness.md) | Evidence and signoff required before operational use |
 | [FSW](../fsw/README.md) | Shared Hybrid/Liquid flight-software home |
 | [Fill Station](../fill-station/README.md) | Pad-side fill, vent, purge, and safing software |

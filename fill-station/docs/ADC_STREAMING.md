@@ -143,9 +143,11 @@ cargo run --release
 ```
 
 ### View ADC Readings (Dashboard)
+Complete the one-time online setup in [client/README.md](../client/README.md) first.
+
 ```bash
 cd fill-station/client
-streamlit run dashboard_v2.py
+uv run --no-project --offline --python .venv/bin/python python -m streamlit run dashboard_v2.py
 ```
 
 The "Sensor Data (Fill Station ADC)" table shows FS-PT1–FS-PT5 and the Load Cell.

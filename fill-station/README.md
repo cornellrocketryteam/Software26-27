@@ -183,7 +183,11 @@ The system implements a **deadman switch** safety feature:
 ## Testing
 
 ### Test ADC Streaming
-Run the dashboard (`cd client && streamlit run dashboard_v2.py`), or use `websocat`:
+Run the dashboard with `uv` after the one-time online setup in the [client instructions](client/README.md), or use `websocat`:
+```sh
+cd client
+uv run --no-project --offline --python .venv/bin/python python -m streamlit run dashboard_v2.py
+```
 ```bash
 websocat ws://localhost:9000
 # Then type commands:

@@ -1,6 +1,16 @@
 # Ground Station
 
-This directory will contain the Ground Station UI and platform services.
+This directory contains the current telemetry stack (`compose.yml`), database
+schema/migrations, Grafana dashboard, and physical-command listener. The React
+operator application is in `../Ground_Station_UI`; the Python bench dashboard
+is in `../fill-station/client`.
+
+The intended NixOS service startup, LAN cache/build worker, offline fallback,
+and local-boot deployment architecture is described in
+[ground-platform.md](../docs/architecture/ground-platform.md). Work against its
+[implementation and acceptance checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md).
+These are proposed modules/workflows, not deployed services. The Compose stack
+and manual provisioning below remain current until their replacement passes.
 
 Ground Station software covers operator presentation, recording, network-device control, and non-time-critical commands. Keep time-critical Fill Station behavior independent of the Ground Station.
 

@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# Ground-station operator UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/TypeScript application built with Vite. Telemetry infrastructure, Grafana,
+database migration files and the physical-button listener live in
+[`../ground-station`](../ground-station/README.md). The separate Streamlit
+bench client is documented in [`fill-station/client`](../fill-station/client/README.md).
 
-Currently, two official plugins are available:
+## Current development workflow
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+cd Ground_Station_UI
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Production assets and linting:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+npm run build
+npm run lint
 ```
+
+These are current package scripts; `vite preview` is for development inspection,
+not the proposed supervised field server. `npm ci` needs a prepared package cache
+or internet. Do not require it during field startup.
+
+## Current integration boundaries
+
+`src/App.tsx` currently contains a literal fill-station WebSocket endpoint.
+The physical-command listener has a separate literal endpoint in
+`ground-station/LaunchButton/pc_listener.py`; the broker address also exists in
+`fill-station/src/mqtt_publisher.rs`. These are not yet one deployment configuration.
+Changing the UI endpoint does not configure the listener or broker.
+
+The map has local tile support, but currently chooses remote tiles using
+`navigator.onLine`. LAN connectivity alone can make this true without usable
+internet. Explicit offline field mode and prepared tile coverage are required
+implementation work.
+
+## Planned NixOS operation
+
+Follow the [ground-platform architecture](../docs/architecture/ground-platform.md)
+and [checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md). The target
+is a prebuilt static UI served locally, an automatically opened kiosk, provisioned
+Grafana, and an independently supervised command listener. The station must boot
+with WAN/laptop/fill station absent and show disconnected peers clearly.
+
+No startup code should install packages or replay launch/arm/wipe commands. NixOS
+packaging, centralized endpoint configuration, offline assets and kiosk startup
+are proposed work, not features established by this README.

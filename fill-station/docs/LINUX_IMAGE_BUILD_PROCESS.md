@@ -1,775 +1,181 @@
-# Linux Image Build Process Documentation
+# Linux Image Build Process
 
-## Overview
+This guide describes the current TI SK-AM64B MixOS image build. The intended
+NixOS ground-station/cache/build architecture is in
+[ground-platform.md](../../docs/architecture/ground-platform.md), with a
+[phased checklist](../../docs/superpowers/plans/2026-11-09-ground-platform.md).
+Those services and the proposed `scripts/platform` interface are not implemented
+by documenting them. Current deployment is in the
+[SD/OSPI runbook](../../docs/operations/fill-station-deployment.md).
 
-This document explains how the embedded Linux system image is built for the fill-station target on the Texas Instruments AM64x platform. The build system uses Nix flakes and the MixOS framework to create a bootable SD card image containing U-Boot bootloaders, a FIT (Flattened Image Tree) image with the kernel, device tree, and initrd.
+## Inputs and build platform
 
----
+The repository's `flake.lock` pins Nixpkgs, MixOS, and flake tooling. Source packages
+live under `nix/packages/crt`; shared image modules under
+`nix/mixos-modules/fill-station-base`; machine selections under
+`nix/mixos-configurations/*.nix`. `nix/flake-modules` exports those configurations.
 
-## Architecture Overview
+The current fill-station module selects an `aarch64-linux` build platform and an
+`aarch64-unknown-linux-musl` target, tuned for Cortex-A53. On an Apple-silicon Mac,
+use the configured ARM64 Linux VM/builder. An x86 Linux machine is not automatically
+compatible: the ground-station roadmap first proves ARM64 emulation, with native
+x86 cross-builds considered separately. Kernel editing is described in
+[nix/linux-kernel.md](../../nix/linux-kernel.md).
 
-The build process produces a complete bootable SD card image (`fill-station.img`) through several stages:
+The current GitHub image workflow still uses FlakeHub until replaced. This is a
+migration dependency, not the desired permanent architecture. Host-level Nix
+cache settings also matter; changing repository inputs alone does not remove
+FlakeHub from an installed daemon's substituters.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Nix Flake Entry Point                         │
-│                      (flake.nix)                                  │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                ┌───────────────┴───────────────┐
-                │                               │
-                ▼                               ▼
-┌───────────────────────────┐   ┌──────────────────────────────┐
-│   MixOS Configuration     │   │   Custom Overlays            │
-│   (mixos-configurations/) │   │   (packages/crt/)            │
-└───────────┬───────────────┘   └──────────┬───────────────────┘
-            │                               │
-            │                               │ Provides:
-            │                               │ - fill-station-linux
-            │                               │ - ti-uboot-r5/a53
-            │                               │ - ti-arm-trusted-firmware
-            │                               │ - ti-optee
-            │                               │ - fill-station binary
-            │                               │
-            ▼                               │
-┌─────────────────────────────────┐         │
-│  Fill Station Configuration     │◄────────┘
-│  (fill-station/default.nix)     │
-│                                 │
-│  - Kernel: fill-station-linux         │
-│  - Init processes               │
-│  - Binaries to include          │
-│  - User/group config            │
-└──────────┬──────────────────────┘
-           │
-           │ Imports:
-           │
-           ├──────────────────────────┐
-           │                          │
-           ▼                          ▼
-┌──────────────────────┐   ┌────────────────────┐
-│   FIT Image Build    │   │  SD Image Build    │
-│   (fit/default.nix)  │   │ (sd-image/)        │
-└──────┬───────────────┘   └────────┬───────────┘
-       │                            │
-       │ Produces:                  │ Produces:
-       │ fitImage.itb               │ fill-station.img
-       │                            │
-       ▼                            ▼
-┌──────────────────────┐   ┌────────────────────┐
-│   Kernel (Image)     │   │  Bootable SD Card  │
-│   DTB (device tree)  │   │  - U-Boot R5       │
-│   Initrd (ramdisk)   │   │  - U-Boot A53      │
-└──────────────────────┘   │  - FIT Image       │
-                           │  - Boot config     │
-                           └────────────────────┘
+## Build commands
+
+Liquid full SD:
+
+```sh
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.sdImage -o result-sd-liquid
 ```
 
----
+Hybrid full SD (the default configuration):
 
-## Build Components
-
-### 1. Custom Overlay Packages (`nix/packages/crt/`)
-
-The system requires several custom-built packages specific to the TI AM64x platform:
-
-#### **fill-station-linux** (`fill-station-linux/package.nix`)
-- Custom Linux kernel with AM64x-specific configuration
-- Based on `linux_7_2` from the pinned nixpkgs
-- Uses manual kernel configuration from `kernel.config`
-- Outputs: kernel `Image` file (uncompressed ARM64 kernel)
-
-#### **ti-uboot-r5** (`ti-uboot-r5/package.nix`)
-- U-Boot for the R5 core (ARM Cortex-R5F) - first-stage bootloader
-- Built for `armv7l-linux` platform
-- Requires TI Linux firmware (`ti-linux-firmware`)
-- Outputs multiple boot images:
-  - `tiboot3-am64x-gp-evm.bin` (GP = General Purpose devices)
-  - `tiboot3-am64x_sr2-hs-fs-evm.bin` (HS-FS = High Security - Field Securable)
-  - `tiboot3-am64x_sr2-hs-evm.bin` (HS-SE = High Security - Security Enforced)
-- **Role**: Initial boot ROM loads this from SD card; it initializes DDR and loads the A53 bootloader
-
-#### **ti-uboot-a53** (`ti-uboot-a53/package.nix`)
-- U-Boot for the A53 cores (ARM Cortex-A53) - second-stage bootloader
-- Built for `aarch64-linux` platform
-- Depends on:
-  - `ti-arm-trusted-firmware` (provides `bl31.bin` - ARM Trusted Firmware BL31)
-  - `ti-optee` (provides `tee-raw.bin` - OP-TEE trusted execution environment)
-  - `ti-linux-firmware` (TI-specific firmware blobs)
-- Outputs:
-  - `tispl.bin` (SPL - Secondary Program Loader, for HS devices)
-  - `u-boot.img` (main U-Boot image)
-  - Unsigned versions for GP devices
-- **Role**: Loads and executes the FIT image containing kernel, DTB, and initrd
-
-#### **ti-arm-trusted-firmware** (`ti-arm-trusted-firmware/package.nix`)
-- ARM Trusted Firmware for secure boot and runtime services
-- Platform: `k3` (TI's Keystone 3 architecture family)
-- Target board: `lite`
-- Includes OP-TEE dispatcher (`SPD=opteed`)
-- Outputs: `bl31.bin` (Boot Loader stage 3.1 - EL3 runtime firmware)
-
-#### **ti-optee** (`ti-optee/package.nix`)
-- OP-TEE OS (Open Portable Trusted Execution Environment)
-- Provides secure world execution environment
-- Cross-compiled for `armv7l-hf-multiplatform`
-- Outputs: `tee-raw.bin`
-
-#### **fill-station** (`fill-station/package.nix`)
-- The actual ground station Rust application
-- WebSocket server on port 9000
-- Controls hardware components (igniters, ADCs, valves, etc.)
-- Also installs the helper binaries from `fill-station/src/bin/` (`adc_monitor`, `adc_test`, `dual_adc_monitor`)
-
-#### **fillstation-dtbo** (`fillstation-dtbo/package.nix`)
-- Device tree overlay (pinmux, I2C2, ePWM, USB0 host, PRU-header GPIOs)
-- Preprocessed with `clang -E`, compiled with `dtc -@`
-- Merged into the kernel's `k3-am642-sk.dtb` at FIT build time (see below)
-- See [DTBO_BUILDER.md](DTBO_BUILDER.md) and [PRU_HEADER.md](PRU_HEADER.md)
-
----
-
-### 2. MixOS Configuration (`nix/mixos-modules/fill-station-base/`)
-
-#### **Main Configuration** (`default.nix`)
-
-Defines the system configuration:
-
-```nix
-{
-  # Build and host platform configuration
-  nixpkgs.buildPlatform = "aarch64-linux";
-  nixpkgs.hostPlatform.config = "aarch64-unknown-linux-musl";
-
-  # Kernel selection
-  boot.kernel = pkgs.crt.fill-station-linux;
-
-  # Init processes (PID 1 responsibilities)
-  init = {
-    shell = {
-      tty = "ttyS2";  # Serial console on UART2
-      action = "askfirst";
-      process = "/bin/sh";
-    };
-    sshd = {
-      action = "respawn";
-      process = "${lib.getExe' pkgs.crt.dropbear-minimal "dropbear"} -F -R";
-    };
-    fill-station = {
-      action = "respawn";  # restarted by init if it exits/crashes
-      process = lib.getExe pkgs.crt.fill-station;
-    };
-    wpa_supplicant = {
-      action = "respawn";
-      process = "${lib.getExe' pkgs.wpa_supplicant "wpa_supplicant"} -i wlan0 -c /etc/wpa_supplicant.conf";
-    };
-    dhcp = {
-      action = "respawn";
-      process = "${lib.getExe' pkgs.busybox "udhcpc"} -f -i wlan0";
-    };
-  };
-
-  # Binaries included in system image
-  bin = [
-    pkgs.crt.dropbear-minimal  # Lightweight SSH server
-    pkgs.libgpiod              # GPIO control utilities
-    pkgs.tcpdump               # Network debugging
-    pkgs.crt.fill-station      # Main application (+ src/bin helpers)
-    pkgs.iw                    # Wi-Fi configuration
-    pkgs.wpa_supplicant        # WPA2 connection tool
-    pkgs.util-linux            # mount -L etc.
-  ];
-
-  # wl18xx Wi-Fi firmware, installed under /lib/firmware by MixOS
-  boot.firmware = [ ... ];
-  etc."wpa_supplicant.conf".source = ...;  # SSID/PSK baked into the image
-  etc."shadow".source = ...;               # root password hash baked in
-}
+```sh
+nix build .#mixosConfigurations.fill-station.config.system.build.sdImage -o result-sd-hybrid
 ```
 
-**Key aspects:**
-- Everything is cross-compiled for `aarch64-unknown-linux-musl` (dynamically linked against musl; the libraries ship in the image's `/nix/store`)
-- `buildPlatform` is hardcoded to `aarch64-linux`, so building from a Mac needs an aarch64 Linux builder
-- Minimal busybox init from MixOS (not systemd); services are generated into `/etc/inittab`
-- MixOS also adds default services: `mixos sysinit`, `syslogd`, `klogd`, `crond`, and `mdev -d` (device hotplug + module autoload)
-- Console on `ttyS2` (115200 baud, set in FIT image kernel parameters)
-- Imports both FIT and SD image build definitions
+For the smaller build components and flash bundle, for example Liquid:
 
----
-
-### 3. FIT Image Build (`nix/mixos-modules/fill-station-base/fit/`)
-
-The FIT (Flattened Image Tree) image is a standard format for bundling kernel, device tree, and initrd into a single bootable image with cryptographic verification.
-
-#### **FIT Entry Point** (`fit/default.nix`)
-
-```nix
-system.build.fitImage = pkgs.callPackage ./build-fit-image.nix {
-  kernel = "${config.boot.kernel}/Image";
-  dtb = "${config.boot.kernel}/dtbs/ti/k3-am642-sk.dtb";
-  dtbOverlay = "${pkgs.crt.fillstation-dtbo}/k3-am64-fillstation-pinmux-overlay.dtbo";
-  initrd = "${config.system.build.initrd}/initrd";
-};
+```sh
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.pinmuxOverlay -o result-pinmux-liquid
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.fitImage -o result-fit-liquid
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.ospiImage -o result-ospi-liquid
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.dataCardImage -o result-data-liquid
 ```
 
-Passes four inputs to the build script:
-1. **Kernel Image**: Uncompressed ARM64 kernel from `fill-station-linux`
-2. **DTB** (Device Tree Blob): The stock SK-AM64 DTB built by the kernel itself
-3. **DTB overlay**: Fill-station pinmux/peripheral overlay from `fillstation-dtbo`
-4. **Initrd**: Initial RAM disk built by MixOS (see [Initrd and Root Filesystem](#initrd-and-root-filesystem))
+The debug configuration is `fill-station-debug` (Hybrid). There is no separate
+ADS7128 diagnostic machine; add selectable devices in the hardware editor and
+build the matching normal vehicle. Saving does not deploy it or add telemetry
+roles to unbound devices.
 
-#### **FIT Build Script** (`fit/build-fit-image.nix`)
+A `result-*` entry is normally a symlink into the Nix store. It names that build's
+output, not necessarily the current source. New Git-backed flake files must be
+tracked to enter the build. Record source/profile identity before deployment.
 
-The build process:
+## Build stages and key files
 
-```bash
-# 1. Compress kernel with LZMA
-cp ${kernel} kernel
-xz --format=lzma kernel
+| Stage | Current source | Result |
+| --- | --- | --- |
+| R5 bootloader | `nix/packages/crt/ti-uboot-r5` | Board/security-specific `tiboot3.bin` |
+| A53 bootloader | `nix/packages/crt/ti-uboot-a53` | `tispl.bin`, `u-boot.img`, compiled boot policy |
+| Trusted firmware | `ti-arm-trusted-firmware`, `ti-optee`, `ti-linux-firmware` packages | Boot dependencies |
+| Kernel | `fill-station-linux/package.nix` and `kernel.config` | Kernel, DTBs, modules |
+| Hardware config | `fill-station/hardware/compiler.py` and selected profile | Matching runtime configuration and DT overlay |
+| Application | `fill-station/package.nix` and `fill-station/build.rs` | Vehicle-selected Rust binary and generated nanopb bindings |
+| Runtime | `fill-station-base/default.nix` and MixOS | Immutable userspace/initrd plus persistent-state setup |
+| FIT | `fill-station-base/fit/` | `fitImage.itb` containing kernel, merged DTB and initrd |
+| SD | `fill-station-base/sd-image/` | Full card image |
+| OSPI/DATA | `fill-station-base/ospi-image/` | Flash bundle and DATA-only card image |
 
-# 2. Merge the fill-station overlay into the stock SK DTB
-cp ${dtb} dtb
-fdtoverlay -i dtb -o dtb-merged ${dtbOverlay}
+The FIT build applies the generated pinmux overlay to the kernel's SK DTB,
+checks controller/pin expectations, adds boot arguments, compresses the kernel
+with LZMA, and packages it with the initrd. It rejects a FIT larger than the
+58,458,112-byte OSPI slot. Overlay-only success does not validate the complete
+FIT build, a board boot, or physical pin behavior.
 
-# 3. Delete properties an overlay can't remove (USB0 SerDes PHY — USB 2.0 only)
-fdtput -d dtb-merged /bus@f4000/cdns-usb@f900000/usb@f400000 phys
-fdtput -d dtb-merged /bus@f4000/cdns-usb@f900000/usb@f400000 phy-names
+The current FIT uses CRC32 integrity checks, not authenticated signatures. Do not
+infer secure boot from the FIT format or confuse Nix-cache signing with bootloader
+verification. SHA256 transport checks and flash read-back also do not authenticate
+a signer to the bootloader.
 
-# 4. Sanity-check the merged tree (build fails on mismatch)
-expect "usb0 dr_mode" "$(fdtget dtb-merged $usb0 dr_mode)" host
-python3 ${pinmuxVerifier} dtb-merged ${pinmuxExpectations}
+## Runtime and persistent storage
 
-# 5. Write kernel boot parameters into /chosen/bootargs
-fdtput --auto-path --verbose --type=s dtb-merged /chosen bootargs \
-  "quiet console=ttyS2,115200n8 panic=-1"
-mv dtb-merged dtb
+Linux starts from the FIT/initrd and creates a tmpfs runtime root, with packaged
+userspace supplied by MixOS. The shared SSH startup corrects `/` to mode 0755
+before Dropbear runs: mode 1777 was confirmed to cause parent-directory rejection
+of valid public keys. Password login remains disabled; authorized keys are
+versioned under `fill-station-base/authorized_keys`.
 
-# 6. Copy initrd (already xz-compressed)
-cp ${initrd} initrd
+The SD partition labeled DATA is ext4 and mounted at `/state`. MixOS uses it for
+persistent `/etc` overlay directories and `/var`, `/root`, `/home` state. FAT32
+cannot serve as this OverlayFS backing filesystem. Existing FAT32 DATA cards
+must be backed up and replaced; there is no automatic formatting/migration at boot.
+CSV logs are under `/var/log/fill-station`. SSH host keys are intended to persist.
+Inspect Dropbear logs in `/var/log/messages`; `logread` requires a shared-memory
+buffer that this configuration does not enable.
 
-# 7. Generate FIT image using U-Boot mkimage tool
-cp ${./fitImage.its} fitImage.its
-substituteInPlace fitImage.its --subst-var loadaddr  # Insert load address
-mkimage -f fitImage.its fitImage.itb
-```
+The full SD image has a 2 MiB initial gap, a 128 MiB FAT firmware partition and
+1 GiB ext4 DATA. Firmware contains `tiboot3.bin`, `tispl.bin`, `u-boot.img` and
+`fitImage.itb`. The DATA-only image is a separate 256 MiB ext4 DATA partition
+plus partition-table gap; it does not contain recovery bootloaders.
 
-**Kernel parameters set:**
-- `quiet` (or `debug` if debug=true): Controls verbosity
-- `console=ttyS2,115200n8`: Serial console configuration
-- `panic=-1`: Reboot immediately on kernel panic
-- `boot.firmware` installs XZ-compressed wl18xx firmware under the standard `/lib/firmware` path; the kernel enables XZ firmware loading.
+## Actual U-Boot boot policy
 
-**Load address**: `0x82000000` - Memory address where U-Boot loads the FIT image
+Boot policy is compiled in `nix/packages/crt/ti-uboot-a53/package.nix`; the image
+no longer supplies the formerly documented `uEnv.txt`. Nor does this version
+provide the old custom `boot_device`/`ospiboot` interface.
 
-#### **FIT Image Tree Source** (`fit/fitImage.its`)
+The ROM's boot-mode switches select the initial boot source. The boot stages are
+ROM → R5 SPL (`tiboot3`) → A53 SPL (`tispl`, trusted firmware/OP-TEE) → main U-Boot.
+Main U-Boot then tries:
 
-Defines the structure of the FIT image:
+1. Load `fitImage.itb` from MMC device 1, partition 1, and boot it.
+2. If that returns/fails, probe OSPI, read the FIT header from offset `0x800000`,
+   validate its size against `0x37c0000`, read that FIT, and boot it.
 
-```dts
-/dts-v1/;
+The built U-Boot inspected during integration uses `addr_fit=0x90000000`; the
+kernel FIT load/entry address is separately `0x82000000`. Use the actual built
+bootloader environment when debugging; these are different purposes.
 
-/ {
-    description = "FIT image with kernel, initrd and DTB";
-    
-    images {
-        kernel {
-            data = /incbin/("./kernel.lzma");
-            type = "kernel";
-            arch = "arm64";
-            compression = "lzma";
-            load = <0x82000000>;    # Load address
-            entry = <0x82000000>;   # Entry point (same as load)
-            hash { algo = "crc32"; };
-        };
-        
-        fdt-0 {
-            data = /incbin/("./dtb");
-            type = "flat_dt";
-            compression = "none";
-            hash { algo = "crc32"; };
-        };
-        
-        initrd {
-            data = /incbin/("initrd");
-            type = "ramdisk";
-            compression = "none";
-            hash { algo = "crc32"; };
-        };
-    };
-    
-    configurations {
-        default = "board-0";
-        board-0 {
-            kernel = "kernel";
-            fdt = "fdt-0";
-            ramdisk = "initrd";
-            signature {
-                algo = "crc32";
-                key-name-hint = "dev";
-                sign-images = "fdt-0", "kernel", "ramdisk";
-            };
-        };
-    };
-};
-```
-
-**Key features:**
-- Single configuration named "board-0" (default)
-- All components include CRC32 hashes for integrity verification
-- Signature block for verified boot (currently using CRC32, upgradable to RSA/ECDSA)
-
----
-
-### Initrd and Root Filesystem
-
-The `initrd` inside the FIT is produced by MixOS (`system.build.initrd`). It is
-tiny on its own: an xz-compressed cpio with just two things:
-
-```
-/init                 -> mixos-rdinit (small Zig program)
-/nix/store/…-mixos.erofs   (the real root filesystem, LZMA-compressed EROFS)
-```
-
-At boot, `mixos-rdinit` mounts `/dev`, `/sys`, `/proc`, loop-mounts the EROFS
-image **read-only** at `/sysroot`, moves the pseudo-filesystems into it,
-`chroot`s, and execs busybox `/sbin/init`. The whole system runs from RAM — the
-SD card is only read at boot (plus the DATA partition, see below).
-
-The EROFS root contains:
-- `/nix/store` — the runtime closure (fill-station, busybox, dropbear, libgpiod,
-  iw, wpa_supplicant, tcpdump, util-linux, musl, …)
-- `/bin` — merged `bin` packages + busybox applets
-- `/etc/*` — symlinks into the store (`inittab`, `mdev.conf`, `passwd`,
-  `shadow`, `wpa_supplicant.conf`, …)
-- `/lib/firmware` — compressed Wi-Fi firmware from `boot.firmware`
-- `/lib/modules/<version>/` — **all** `=m` kernel modules (see below)
-
-Runtime storage:
-- `/` is read-only; `/tmp` (and `/run` → `/tmp`) is tmpfs
-- MixOS mounts the ext4 SD card partition labeled `DATA` at `/state` using
-  `state.enable`, `state.fsType`, `state.source`, and a label-resolving `state.init`.
-- `/var`, `/root`, and `/home` are backed by `/state`; `/etc` has a persistent
-  writable overlay. CSV logs go to `/var/log/fill-station` (on the card at
-  `var/log/fill-station`). SSH host keys also persist across reboots.
-- DATA is ext4 because MixOS places OverlayFS upper/work directories there
-  for writable `/etc`; FAT32 cannot support that overlay. Both SD image outputs
-  now format DATA as ext4. Existing FAT32 DATA cards must be backed up and
-  replaced with a newly built card image before testing; no formatting or
-  migration runs at boot. The boot firmware partition remains FAT.
-
-#### Kernel modules
-
-Because `CONFIG_MODULES=y`, MixOS splits the kernel's modules into a separate
-output and copies **every** `=m` module into `/lib/modules/<version>/` in the
-EROFS (≈1,400 `.ko` files, ~70 MB), then runs busybox `depmod`.
-
-Nothing loads modules explicitly — `boot.kernelModules` is unset (empty).
-Instead MixOS installs this mdev rule:
-
-```
-$MODALIAS=.* 0:0 660 @modprobe "$MODALIAS"
-```
-
-so a module is loaded only if a device node with a matching modalias appears:
-at boot via `mixos sysinit` → `mdev -s` (coldplug), and afterwards via the
-`mdev -d` hotplug daemon. This is best-effort. Anything the fill station
-depends on (I2C, USB CDC-ACM, Wi-Fi, ePWM, …) is built in (`=y`). When adding a
-driver, prefer `=y`; if you must use `=m` and it doesn't autoload, add it to
-`boot.kernelModules` in `default.nix`. Check with `lsmod` over SSH.
-
-#### Boot-time services (`/etc/inittab`)
-
-Generated from `init` in `default.nix` plus MixOS defaults:
-
-| Action | Process |
-|--------|---------|
-| `sysinit` | `mixos sysinit` — mounts, module loading, `mdev -s`, hostname, `/state` |
-| `respawn` | `fill-station`, `dropbear`, `wpa_supplicant`, `udhcpc`, `syslogd`, `klogd`, `crond`, `mdev -d` |
-| `askfirst` | `/bin/sh` on `ttyS2` |
-
----
-
-### 4. SD Card Image Build (`nix/mixos-modules/fill-station-base/sd-image/`)
-
-#### **SD Image Entry Point** (`sd-image/default.nix`)
-
-```nix
-system.build.sdImage = pkgs.callPackage ./build-sd-image.nix {
-  fitImage = "${config.system.build.fitImage}/fitImage.itb";
-};
-```
-
-Takes the FIT image as input and builds the complete SD card image.
-
-#### **SD Image Build Script** (`sd-image/build-sd-image.nix`)
-
-Creates a bootable SD card with DOS partition table:
-
-**Partition Layout:**
-```
-┌────────────────────────────────────────────────────────┐
-│  Gap: 2 MiB (unpartitioned space for ROM bootloader)   │
-├────────────────────────────────────────────────────────┤
-│  Partition 1: FIRMWARE (128 MiB, FAT32, bootable)     │
-│  - tiboot3.bin      (R5 U-Boot first stage)           │
-│  - tispl.bin        (A53 U-Boot SPL)                  │
-│  - u-boot.img       (A53 U-Boot main)                 │
-│  - uEnv.txt         (U-Boot environment/config)       │
-│  - fitImage.itb     (Kernel + DTB + initrd)           │
-├────────────────────────────────────────────────────────┤
-│  Partition 2: DATA (1024 MiB, ext4)                    │
-│  - Mounted at /state; logs in var/log/fill-station    │
-│  - Persists /var, /root, /home, and the /etc overlay   │
-└────────────────────────────────────────────────────────┘
-Total: ~1.2 GiB
-```
-
-> ⚠️ Flashing the image with `dd` overwrites the **whole card, including
-> DATA**. Copy logs off `/var/log/fill-station` before reflashing
-> (`/tmp/data` on older images).
-
-**Build process:**
-
-1. **Partition Table Creation:**
-   ```bash
-   sfdisk $img <<EOF
-     label: dos
-     label-id: 0x2178694e
-     
-     start=2M, size=128M, type=c, bootable
-     start=130M, size=1024M, type=c
-   EOF
-   ```
-
-2. **Filesystem Creation:**
-   ```bash
-   mkfs.vfat --invariant -i 0x2178694e -n FIRMWARE firmware_part.img
-   mkfs.ext4 -F -L DATA second_part.img
-   ```
-   - `--invariant`: Produces deterministic/reproducible filesystems
-
-3. **Firmware Partition Population:**
-   ```bash
-   cp ${ti-uboot-r5}/tiboot3-am64x_sr2-hs-fs-evm.bin firmware/tiboot3.bin
-   cp ${ti-uboot-a53}/tispl.bin firmware/tispl.bin
-   cp ${ti-uboot-a53}/u-boot.img firmware/u-boot.img
-   cp ${./uEnv.txt} firmware/uEnv.txt
-   cp ${fitImage} firmware/fitImage.itb
-   ```
-   - Uses `mcopy` and `mmd` (mtools) to copy files into FAT image
-   - All timestamps set to 2000-01-01 for reproducibility
-
-4. **Verification & Assembly:**
-   ```bash
-   fsck.vfat -vn firmware_part.img  # Verify filesystem integrity
-   e2fsck -fn second_part.img
-   dd conv=notrunc if=firmware_part.img of=$img seek=$START1 count=$SECTORS1
-   dd conv=notrunc if=second_part.img of=$img seek=$START2 count=$SECTORS2
-   ```
-
-#### **U-Boot Environment** (`sd-image/uEnv.txt`)
-
-```
-boot_targets=mmc1 mmc0
-bootdelay=1
-uenvcmd=echo "Booting FIT from mmc 1:1..."; load mmc 1:1 ${addr_fit} fitImage.itb; bootm ${addr_fit}#board-0
-```
-
-- `mmc 1:1` = MMC device 1, partition 1 (the FIRMWARE partition)
-- `${addr_fit}` = U-Boot variable containing FIT load address (set by AM64x defaults)
-- `bootm` = U-Boot command to boot from a multi-image (FIT)
-- `#board-0` = explicitly select the FIT configuration (avoids a warning U-Boot prints when falling back to the default config)
-
----
-
-## Boot Sequence
-
-### Complete Boot Flow:
-
-```
-1. Power On
-   │
-   ▼
-2. ROM Bootloader (in SoC)
-   - Reads tiboot3.bin from SD card (first 2 MiB or partition 1)
-   - Loads to internal SRAM
-   - Executes on R5 core
-   │
-   ▼
-3. tiboot3.bin (R5 U-Boot SPL)
-   - Initializes DDR memory
-   - Loads tispl.bin from SD card
-   - Jumps to tispl.bin
-   │
-   ▼
-4. tispl.bin (A53 U-Boot SPL)
-   - Loads bl31.bin (ARM Trusted Firmware) to EL3
-   - Loads tee-raw.bin (OP-TEE) to secure world
-   - Loads u-boot.img to non-secure world
-   - Jumps to u-boot.img
-   │
-   ▼
-5. u-boot.img (A53 U-Boot Main)
-   - Reads uEnv.txt for boot configuration
-   - Executes: load mmc 1:1 ${addr_fit} fitImage.itb
-   - Loads FIT image to address 0x82000000
-   - Verifies FIT image hashes/signatures
-   - Executes: bootm ${addr_fit}
-   │
-   ▼
-6. FIT Image Boot (bootm command)
-   - Decompresses kernel (LZMA) to memory
-   - Passes DTB to kernel (via FDT address)
-   - Loads initrd to memory (passed to kernel)
-   - Kernel boot parameters from DTB /chosen/bootargs:
-     "quiet console=ttyS2,115200n8 panic=-1"
-   - Jumps to kernel entry point (0x82000000)
-   │
-   ▼
-7. Linux Kernel
-   - Uncompresses itself if needed
-   - Initializes hardware using DTB
-   - Unpacks the initrd (cpio) into a RAM filesystem
-   - Executes /init (mixos-rdinit)
-   │
-   ▼
-8. mixos-rdinit
-   - Loop-mounts the EROFS root image read-only at /sysroot
-   - Moves /dev, /sys, /proc into it and chroots
-   - Execs busybox /sbin/init
-   │
-   ▼
-9. Busybox init (/etc/inittab)
-   - sysinit: `mixos sysinit` — mounts tmpfs/cgroups/etc., runs
-     `mdev -s` (coldplug + module autoload), mounts the ext4 DATA partition at /state
-   - respawn: fill-station, dropbear, wpa_supplicant, udhcpc,
-     syslogd, klogd, crond, mdev -d
-   - askfirst: shell on ttyS2
-   │
-   ▼
-10. System Running
-   - Fill station WebSocket server on port 9000 (restarted if it exits)
-   - SSH access via dropbear
-   - Serial console on ttyS2
-```
-
----
-
-## Building the Image
-
-### Command:
-
-From the repository root:
-
-```bash
-nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
-```
-
-### What happens:
-
-1. Nix evaluates `flake.nix` → imports `nix/flake-modules/mixos-configurations.nix`
-2. MixOS configuration loads `fill-station/default.nix`
-3. Overlay packages are built (or fetched from cache):
-   - `fill-station-linux` (kernel)
-   - `ti-uboot-r5`, `ti-uboot-a53` (bootloaders)
-   - `ti-arm-trusted-firmware`, `ti-optee` (secure firmware)
-   - `fill-station` (application)
-4. MixOS builds the root filesystem (EROFS) and wraps it in the initrd:
-   - busybox userspace + init, generated `/etc/inittab`
-   - `bin` packages (dropbear, libgpiod, tcpdump, fill-station, iw, wpa_supplicant, util-linux)
-   - all kernel modules in `/lib/modules`
-5. FIT image is built:
-   - Kernel compressed to LZMA
-   - DTB patched with boot parameters
-   - All components packaged with `mkimage`
-6. SD image is built:
-   - Partition table created
-   - FAT firmware and ext4 DATA filesystems created
-   - Bootloaders and FIT image copied to firmware partition
-   - Image assembled with `dd`
-
-### Output:
-
-```
-result/
-└── fill-station.img
-```
-
-A symlink `result` points to the Nix store path containing the complete SD card image.
-
----
+A bootable SD can hide an OSPI problem. There is no SD retry after the OSPI attempt
+and no A/B boot-success/rollback mechanism. Current U-Boot networking is disabled;
+Linux SSH updates work without network boot.
 
 ## Flashing to SD Card
 
-```bash
-# Identify SD card device (be careful!)
-diskutil list  # macOS
-lsblk          # Linux
+Back up logs first. Identify the destination card and confirm it is not a system
+or data disk. Write the complete matching `fill-station.img` using a raw-image
+writer such as the existing team SD-writing workflow, then eject it cleanly.
+The image replaces the card partition table and DATA contents; do not copy the
+image file into a mounted FAT filesystem. This document deliberately does not
+supply a guessed `/dev/diskN` destructive command.
 
-# Unmount if mounted
-diskutil unmountDisk /dev/diskN  # macOS
-sudo umount /dev/sdX*            # Linux
+For SD testing use a full SD image and the board's documented SD boot-switch
+position. For OSPI testing, first provision flash from a known-good running image,
+then power off, choose the documented OSPI switch position, and insert a DATA-only
+card. Preserve the full SD card as manual recovery media.
 
-# Write image
-sudo dd if=result/fill-station.img of=/dev/diskN bs=1M status=progress  # macOS
-sudo dd if=result/fill-station.img of=/dev/sdX bs=1M status=progress    # Linux
+## OSPI update and recovery
 
-# Sync and eject
-sync
-diskutil eject /dev/diskN  # macOS
-sudo eject /dev/sdX        # Linux
-```
+Follow [fill-station-deployment.md](../../docs/operations/fill-station-deployment.md).
+Use `tools/flash-ospi.sh TARGET all BUNDLE` for first provisioning/reviewed bootloader
+changes, and `fit` for routine application/kernel/FIT updates. The script checks
+SHA256 before writing and uses flashcp read-back comparison. It does not safe the
+application, verify the vehicle, perform an atomic update, or reboot automatically.
+Current per-file preflight does not guarantee later bundle files are valid before
+the first write; stronger all-files preflight is planned.
 
----
+Running from RAM permits updating flash while Linux is running. An interrupted
+write can still leave OSPI unbootable. Manual recovery is power-off → SD boot with
+the known-good full image → Linux → reflash the reviewed bundle. Never promise
+power-loss tolerance or automatic SD fallback on the basis of the current script.
 
-## Why FIT Images?
+## Verification and troubleshooting
 
-### Traditional Boot (what we DON'T use):
-```
-U-Boot → load kernel → load dtb → load initrd → bootm <kernel> <initrd> <dtb>
-```
-Problems:
-- Three separate load commands
-- No integrity verification
-- No built-in signing
-- Complex boot scripts
+- Build both vehicle variants when changing shared configuration; use the
+  [hardware testing guide](HARDWARE_CONFIG_TESTING.md) for profile/pinmux checks.
+- Capture serial output at 115200 8N1. Record source revision, vehicle, profile,
+  image identity, actual boot source, kernel version and connected hardware.
+- After a fresh boot, verify root mode, ext4 `/state`, SSH keys, reboot persistence,
+  application health and expected peripherals. SD and OSPI are separate tests.
+- For a FIT failure, inspect serial and `mkimage -l fitImage.itb`, MMC partition,
+  compiled boot command, OSPI offset/size and image integrity. There is no image
+  `uEnv.txt` to edit in the current implementation.
+- For SSH key rejection, see [troubleshooting](TROUBLESHOOTING.md). Do not erase
+  authorized keys or weaken password/host-key checks to hide a permissions error.
+- Missing cache/worker is a build-infrastructure issue, not proof of bad hardware;
+  offline builds need prepared inputs and a compatible Linux worker.
 
-### FIT Image Boot (what we DO use):
-```
-U-Boot → load fitImage.itb → bootm ${addr_fit}
-```
-Benefits:
-- **Single artifact**: One file contains kernel, DTB, initrd
-- **Integrity**: Built-in hashing (CRC32, SHA256, etc.)
-- **Verified boot**: Support for RSA/ECDSA signatures
-- **Configurations**: Multiple boot configs in one image (different boards, debug/release)
-- **Compression**: Per-component compression (we use LZMA for kernel)
-- **Standard format**: Well-supported by U-Boot, kernel tool (`mkimage`)
+## References
 
-### Security Features (available but not fully utilized):
-- RSA signature verification (we use CRC32 currently, upgradable)
-- Key revocation support
-- Chain of trust from ROM → U-Boot → FIT → Kernel
-
----
-
-## Key Files Reference
-
-| File | Purpose |
-|------|---------|
-| `flake.nix` | Top-level Nix flake, defines all outputs |
-| `nix/flake-modules/mixos-configurations.nix` | Builds one MixOS system per `nix/mixos-configurations/<name>.nix` |
-| `nix/mixos-modules/fill-station-base/default.nix` | Fill station system configuration |
-| `nix/mixos-modules/fill-station-base/fit/default.nix` | FIT image build entry |
-| `nix/mixos-modules/fill-station-base/fit/build-fit-image.nix` | FIT image build script |
-| `nix/mixos-modules/fill-station-base/fit/fitImage.its` | FIT image tree source |
-| `nix/packages/crt/fillstation-dtbo/` | Device tree overlay merged into the stock SK DTB |
-| `nix/mixos-modules/fill-station-base/sd-image/default.nix` | SD image build entry |
-| `nix/mixos-modules/fill-station-base/sd-image/build-sd-image.nix` | SD image build script |
-| `nix/mixos-modules/fill-station-base/sd-image/uEnv.txt` | U-Boot environment |
-| `nix/packages/crt/fill-station-linux/package.nix` | Custom kernel package |
-| `nix/packages/crt/ti-uboot-r5/package.nix` | R5 U-Boot package |
-| `nix/packages/crt/ti-uboot-a53/package.nix` | A53 U-Boot package |
-| `nix/packages/crt/ti-arm-trusted-firmware/package.nix` | ARM TF package |
-| `nix/packages/crt/ti-optee/package.nix` | OP-TEE package |
-| `nix/packages/crt/fill-station/package.nix` | Fill station binary package |
-
----
-
-## Customization Guide
-
-### Change Kernel Config:
-
-Follow [Linux kernel configuration](../../nix/linux-kernel.md) to edit
-`nix/packages/crt/fill-station-linux/kernel.config`: enter the `nix develop` shell,
-copy the saved config into the kernel build directory, run `olddefconfig`, then
-enable or disable options in `menuconfig`. Save, exit, and copy the resulting
-`.config` back before rebuilding. The guide includes the Darwin Linux builder VM
-workflow for macOS.
-
-### Change Boot Parameters:
-Edit `nix/mixos-modules/fill-station-base/fit/build-fit-image.nix`:
-```nix
-env = {
-  kernelParams = toString [
-    "debug"  # or "quiet"
-    "console=ttyS2,115200n8"
-    "panic=-1"
-    # Add more parameters here
-  ];
-};
-```
-
-### Change Device Tree:
-Edit the overlay in `nix/packages/crt/fillstation-dtbo/src/` (see [DTBO_BUILDER.md](DTBO_BUILDER.md) / [PRU_HEADER.md](PRU_HEADER.md)).
-For properties an overlay can't delete, add an `fdtput -d` in `build-fit-image.nix`.
-
-### Modify Init Processes:
-Edit `nix/mixos-modules/fill-station-base/default.nix`:
-```nix
-init = {
-  my-service = {
-    action = "respawn";  # or "once", "askfirst"
-    process = "/path/to/binary";
-  };
-};
-```
-
-### Add Binaries to Image:
-Edit `nix/mixos-modules/fill-station-base/default.nix`:
-```nix
-bin = [
-  pkgs.mypackage
-  # ... existing packages
-];
-```
-
-### Change Partition Sizes:
-Edit `nix/mixos-modules/fill-station-base/sd-image/build-sd-image.nix`:
-```nix
-gapMiB = 2;
-firmwareSizeMiB = 128;
-secondPartitionSizeMiB = 1024;
-```
-
----
-
-## Troubleshooting
-
-### Build fails with kernel errors:
-- Check `kernel.config` for invalid options
-- Ensure all required kernel features are enabled (e.g., `CONFIG_OF`, `CONFIG_ARM64`)
-
-### U-Boot doesn't boot:
-- Verify SD card was written correctly: `fdisk -l result/fill-station.img`
-- Check serial console output on `ttyS2` (115200 baud)
-- Ensure correct `tiboot3.bin` variant for your board (GP vs HS-FS)
-
-### FIT image fails to load:
-- Check `uEnv.txt` has correct MMC device and partition
-- Verify load address `0x82000000` doesn't conflict with other memory regions
-- Run `mkimage -l fitImage.itb` to inspect FIT image structure
-
-### System boots but application doesn't start:
-- Check init config: `cat /etc/inittab` on the board (or inspect `nix build .#mixosConfigurations.fill-station.config.system.build.root`)
-- The app runs with stdout/stderr on `/dev/null` (inittab `null::`); to see its output, run `fill-station` manually over SSH
-- Verify init configuration in `default.nix`
-- Check serial console for error messages
-
-### Reproducibility issues:
-- All timestamps forced to 2000-01-01
-- Use `--invariant` flag for FAT filesystems
-- Nix content-addressing ensures reproducible builds
-- If builds differ, check for non-deterministic tool versions
-
----
-
-## Further Reading
-
-- [Linux kernel configuration](../../nix/linux-kernel.md)
-- [U-Boot FIT Image Format](https://docs.u-boot.org/en/latest/usage/fit/index.html)
-- [MixOS Documentation](https://github.com/jmbaur/mixos)
-- [TI AM64x Technical Reference](https://www.ti.com/product/AM6442)
-- [Device Tree Specification](https://www.devicetree.org/)
-- [Nix Flakes](https://nixos.wiki/wiki/Flakes)
-- [ARM Trusted Firmware](https://www.trustedfirmware.org/)
+- [U-Boot FIT documentation](https://docs.u-boot.org/en/latest/usage/fit/index.html)
+- [Nix distributed builds](https://nix.dev/tutorials/nixos/distributed-builds-setup.html)
+- [Nix binary caches](https://nix.dev/tutorials/nixos/binary-cache-setup.html)
+- [Ground-platform architecture](../../docs/architecture/ground-platform.md)
