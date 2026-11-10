@@ -3,6 +3,7 @@
   pkgsCross,
   stdenvNoCC,
   dosfstools,
+  e2fsprogs,
   libfaketime,
   mtools,
   util-linux,
@@ -13,7 +14,7 @@ let
   # Controls for the second partition
   secondPartitionSizeMiB = 1024;
   # Partition type codes for sfdisk: 'c' = W95 FAT32 (LBA), '83' = Linux
-  secondPartitionType = "c";
+  secondPartitionType = "83";
   # Name of the second partition
   secondPartitionLabel = "DATA";
   label-id = "0x2178694e";
@@ -32,6 +33,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   nativeBuildInputs = [
     dosfstools
+    e2fsprogs
     libfaketime
     mtools
     util-linux
@@ -76,7 +78,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     truncate -s $((SECTORS2 * 512)) second_part.img
 
     mkfs.vfat --invariant -i ${label-id} -n FIRMWARE firmware_part.img
-    mkfs.vfat --invariant -F 32 -n ${secondPartitionLabel} second_part.img
+    faketime "2000-01-01 00:00:00" mkfs.ext4 -F -L ${secondPartitionLabel} \
+      -U 2178694e-0000-4000-8000-000000000001 \
+      -E lazy_itable_init=0,lazy_journal_init=0,hash_seed=2178694e-0000-4000-8000-000000000001 second_part.img
 
     # Populate firmware files into first partition image
     mkdir -p firmware
@@ -95,7 +99,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
     # Verify both filesystems before copying them into the disk image.
     fsck.vfat -vn firmware_part.img
-    fsck.vfat -vn second_part.img
+    e2fsck -fn second_part.img
 
     # Write partition images into the full disk image at the correct offsets
     dd conv=notrunc if=firmware_part.img of=$img seek=$START1 count=$SECTORS1

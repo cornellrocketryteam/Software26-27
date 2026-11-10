@@ -8,7 +8,7 @@
 #   ospi.rootfs  0x800000  0x37c0000 fitImage.itb (booted by U-Boot's BOOTCOMMAND)
 # ospi.env*, and ospi.phypattern at 0x3fc0000, are never written.
 #
-# dataCardImage: SD card with only the FAT32 DATA partition for
+# dataCardImage: SD card with only the ext4 DATA partition for
 # running from flash; state.init finds it by LABEL=DATA.
 { config, pkgs, ... }:
 let
@@ -57,13 +57,15 @@ in
   system.build.dataCardImage = pkgs.callPackage (
     {
       stdenvNoCC,
-      dosfstools,
+      e2fsprogs,
+      libfaketime,
       util-linux,
     }:
     stdenvNoCC.mkDerivation {
       name = "fill-station-data-card.img";
       nativeBuildInputs = [
-        dosfstools
+        e2fsprogs
+        libfaketime
         util-linux
       ];
       buildCommand = ''
@@ -75,12 +77,14 @@ in
         truncate -s $(((startMiB + sizeMiB) * 1024 * 1024)) $img
         sfdisk --no-reread --no-tell-kernel $img <<EOF
           label: dos
-          start=''${startMiB}M, size=''${sizeMiB}M, type=c
+          start=''${startMiB}M, size=''${sizeMiB}M, type=83
         EOF
 
         truncate -s $((sizeMiB * 1024 * 1024)) data.img
-        mkfs.vfat --invariant -F 32 -n DATA data.img
-        fsck.vfat -vn data.img
+        faketime "2000-01-01 00:00:00" mkfs.ext4 -F -L DATA \
+          -U 2178694e-0000-4000-8000-000000000001 \
+          -E lazy_itable_init=0,lazy_journal_init=0,hash_seed=2178694e-0000-4000-8000-000000000001 data.img
+        e2fsck -fn data.img
         dd conv=notrunc if=data.img of=$img bs=1M seek=$startMiB
       '';
 

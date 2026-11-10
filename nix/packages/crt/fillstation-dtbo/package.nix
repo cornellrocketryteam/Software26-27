@@ -45,6 +45,7 @@ stdenvNoCC.mkDerivation {
     cp k3-am64-fillstation-pinmux-overlay.dtbo generated/* $out/
     cp profiles/${profile}.json $out/profile.json
     cp board-pins.json $out/board-pins.json
+    # Use the filename expected by the FIT builder, without the store hash.
     cp ${./verify-merged.py} $out/verify-merged.py
     printf '%s\n' '${profile}' > $out/profile
     runHook postInstall

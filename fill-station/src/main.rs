@@ -1,3 +1,4 @@
+mod ads7128_bench;
 mod command;
 mod components;
 mod csv_logger;
@@ -108,6 +109,14 @@ const TELEM_FRESHNESS_MS: u64 = 3_000;
 compile_error!("features `liquid` and `hybrid` are mutually exclusive; enable at most one");
 
 fn main() -> Result<()> {
+    #[cfg(not(test))]
+    {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        if let Some(address) = ads7128_bench::parse_args(&args).map_err(anyhow::Error::msg)? {
+            return ads7128_bench::run(address);
+        }
+    }
+
     // Create a log layer for file output
     #[cfg(target_os = "linux")]
     let log_dir = "/tmp/fill-station/logs";

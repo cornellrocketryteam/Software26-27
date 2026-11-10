@@ -40,7 +40,8 @@ in
 
   state = {
     enable = true;
-    fsType = "vfat";
+    # MixOS uses this filesystem for OverlayFS upper/work directories in /etc.
+    fsType = "ext4";
     options = [ "noatime" ];
     source = "/dev/fill-station-state";
     # MixOS mounts the device directly, so resolve the label before mounting.

@@ -346,15 +346,16 @@ The EROFS root contains:
 
 Runtime storage:
 - `/` is read-only; `/tmp` (and `/run` → `/tmp`) is tmpfs
-- MixOS mounts the VFAT SD card partition labeled `DATA` at `/state` using
+- MixOS mounts the ext4 SD card partition labeled `DATA` at `/state` using
   `state.enable`, `state.fsType`, `state.source`, and a label-resolving `state.init`.
 - `/var`, `/root`, and `/home` are backed by `/state`; `/etc` has a persistent
   writable overlay. CSV logs go to `/var/log/fill-station` (on the card at
   `var/log/fill-station`). SSH host keys also persist across reboots.
-- **Boot limitation:** the images now format DATA as FAT32 and `state.fsType`
-  is `vfat`, but MixOS requires an overlay-compatible state filesystem for its
-  writable `/etc`. VFAT cannot supply that overlay, so this state configuration
-  cannot complete boot. No formatting runs at boot.
+- DATA is ext4 because MixOS places OverlayFS upper/work directories there
+  for writable `/etc`; FAT32 cannot support that overlay. Both SD image outputs
+  now format DATA as ext4. Existing FAT32 DATA cards must be backed up and
+  replaced with a newly built card image before testing; no formatting or
+  migration runs at boot. The boot firmware partition remains FAT.
 
 #### Kernel modules
 
@@ -416,7 +417,7 @@ Creates a bootable SD card with DOS partition table:
 │  - uEnv.txt         (U-Boot environment/config)       │
 │  - fitImage.itb     (Kernel + DTB + initrd)           │
 ├────────────────────────────────────────────────────────┤
-│  Partition 2: DATA (1024 MiB, FAT32)                   │
+│  Partition 2: DATA (1024 MiB, ext4)                    │
 │  - Mounted at /state; logs in var/log/fill-station    │
 │  - Persists /var, /root, /home, and the /etc overlay   │
 └────────────────────────────────────────────────────────┘
@@ -443,7 +444,7 @@ Total: ~1.2 GiB
 2. **Filesystem Creation:**
    ```bash
    mkfs.vfat --invariant -i 0x2178694e -n FIRMWARE firmware_part.img
-   mkfs.vfat --invariant -F 32 -n DATA second_part.img
+   mkfs.ext4 -F -L DATA second_part.img
    ```
    - `--invariant`: Produces deterministic/reproducible filesystems
 
@@ -461,7 +462,7 @@ Total: ~1.2 GiB
 4. **Verification & Assembly:**
    ```bash
    fsck.vfat -vn firmware_part.img  # Verify filesystem integrity
-   fsck.vfat -vn second_part.img
+   e2fsck -fn second_part.img
    dd conv=notrunc if=firmware_part.img of=$img seek=$START1 count=$SECTORS1
    dd conv=notrunc if=second_part.img of=$img seek=$START2 count=$SECTORS2
    ```
@@ -540,7 +541,7 @@ uenvcmd=echo "Booting FIT from mmc 1:1..."; load mmc 1:1 ${addr_fit} fitImage.it
    ▼
 9. Busybox init (/etc/inittab)
    - sysinit: `mixos sysinit` — mounts tmpfs/cgroups/etc., runs
-     `mdev -s` (coldplug + module autoload), mounts the VFAT DATA partition at /state
+     `mdev -s` (coldplug + module autoload), mounts the ext4 DATA partition at /state
    - respawn: fill-station, dropbear, wpa_supplicant, udhcpc,
      syslogd, klogd, crond, mdev -d
    - askfirst: shell on ttyS2
@@ -583,7 +584,7 @@ nix build .#mixosConfigurations.fill-station.config.system.build.sdImage
    - All components packaged with `mkimage`
 6. SD image is built:
    - Partition table created
-   - FAT32 firmware and DATA filesystems created
+   - FAT firmware and ext4 DATA filesystems created
    - Bootloaders and FIT image copied to firmware partition
    - Image assembled with `dd`
 
