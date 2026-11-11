@@ -141,6 +141,13 @@ fn main() -> Result<()> {
         println!("~~~~~~~~~~~~~~~~~~~~~~~~");
     }
 
+    // Bench test: sweep the E-REG and exit without starting anything else
+    #[cfg(feature = "ereg-test")]
+    {
+        return smol::block_on(ereg_test());
+    }
+
+    #[allow(unreachable_code)]
     smol::block_on(async {
         info!("Initializing fill station...");
         let hardware = Arc::new(Mutex::new(Hardware::new().await?));
@@ -246,6 +253,105 @@ fn main() -> Result<()> {
             .detach();
         }
     })
+}
+
+// ============================================================================
+// E-REG BENCH TEST (cargo feature `ereg-test`)
+// ============================================================================
+
+/// E-REG PWM: EHRPWM4_B on SK-AM64B expansion header pin 33
+/// (EPWM4 -> 23040000.pwm, channel 1 = B). The hybrid profile also assigns
+/// this pin to the MAV; the test exits before Hardware::new, so they don't clash.
+#[cfg(feature = "ereg-test")]
+const EREG_PWM_DEVICE: &str = "23040000.pwm";
+#[cfg(feature = "ereg-test")]
+const EREG_PWM_CHANNEL: u32 = 1;
+
+/// Time to hold each step so the movement can be watched on the bench
+#[cfg(feature = "ereg-test")]
+const EREG_STEP_DWELL: Duration = Duration::from_millis(500);
+
+/// Sweeps the E-REG through its angle range, checks clamping and rejection of
+/// bad inputs, then runs the controller over a grid of pressures and errors.
+#[cfg(feature = "ereg-test")]
+async fn ereg_test() -> Result<()> {
+    use crate::components::ereg::{Ereg, EregConfig, EregController};
+    use crate::components::mav;
+
+    // Same servo timing as the MAV (330 Hz, 800-2200 us).
+    // TODO: confirm the E-REG angle range that maps onto that pulse range.
+    let config = EregConfig {
+        period_us: 1_000_000 / mav::FREQUENCY_HZ,
+        min_pulse_us: mav::MIN_US,
+        max_pulse_us: mav::MAX_US,
+        min_angle_deg: 0.0,
+        max_angle_deg: 90.0,
+    };
+    let ereg = Ereg::new(EREG_PWM_DEVICE, EREG_PWM_CHANNEL, "ereg", config).await?;
+
+    // 1. Angle sweep up and back down in 10 degree steps
+    info!("E-REG test 1: angle sweep {}..{} deg", config.min_angle_deg, config.max_angle_deg);
+    let up: Vec<f32> = (0..=9).map(|i| i as f32 * 10.0).collect();
+    let down: Vec<f32> = up.iter().rev().copied().collect();
+    for angle in up.into_iter().chain(down) {
+        ereg.set_angle_degrees(angle).await?;
+        info!("  angle {:>5.1} deg -> {} us", angle, ereg.pulse_width_us());
+        Timer::after(EREG_STEP_DWELL).await;
+    }
+
+    // 2. Out-of-range angles should clamp to the end stops; non-finite should be rejected
+    info!("E-REG test 2: clamping and invalid angles");
+    for angle in [-20.0, 45.5, 120.0] {
+        ereg.set_angle_degrees(angle).await?;
+        info!("  angle {:>6.1} deg -> {} us (expect clamp outside 0..90)", angle, ereg.pulse_width_us());
+        Timer::after(EREG_STEP_DWELL).await;
+    }
+    for angle in [f32::NAN, f32::INFINITY] {
+        match ereg.set_angle_degrees(angle).await {
+            Ok(()) => error!("  angle {} was accepted but should be rejected", angle),
+            Err(e) => info!("  angle {} rejected as expected: {}", angle, e),
+        }
+    }
+
+    // 3. Controller over a pressure x error grid.
+    // TODO: replace with the gains from the slides; units assumed psi.
+    let controller = EregController::new(0.05, 5.0, 30.0, 500.0);
+    info!("E-REG test 3: controller sweep (kp0=0.05, a=5.0, theta0=30.0, b=500.0)");
+    for pressure in [50.0, 100.0, 200.0, 400.0, 600.0, 800.0] {
+        for error in [-100.0, -25.0, 0.0, 25.0, 100.0] {
+            match controller.command_actuator(&ereg, pressure, error).await {
+                Ok(angle) => info!(
+                    "  P={:>5.0} err={:>6.1} -> Kp={:.4} ff={:.2} cmd={:>7.2} deg -> {} us",
+                    pressure,
+                    error,
+                    controller.calculate_gain(pressure).unwrap_or(f32::NAN),
+                    controller.calculate_feedforward(pressure).unwrap_or(f32::NAN),
+                    angle,
+                    ereg.pulse_width_us()
+                ),
+                Err(e) => error!("  P={} err={} -> unexpected {:?}", pressure, error, e),
+            }
+            Timer::after(EREG_STEP_DWELL).await;
+        }
+    }
+
+    // 4. Invalid controller inputs should return InvalidCommand without moving the actuator
+    info!("E-REG test 4: invalid controller inputs");
+    for (pressure, error) in [(0.0, 10.0), (-50.0, 10.0), (f32::NAN, 10.0), (200.0, f32::NAN)] {
+        let before = ereg.pulse_width_us();
+        match controller.command_actuator(&ereg, pressure, error).await {
+            Ok(angle) => error!("  P={} err={} accepted (cmd {}) but should be rejected", pressure, error, angle),
+            Err(e) => info!(
+                "  P={} err={} -> {:?}, pulse unchanged: {}",
+                pressure, error, e, before == ereg.pulse_width_us()
+            ),
+        }
+    }
+
+    // Park at the minimum angle before exiting
+    ereg.set_angle_degrees(config.min_angle_deg).await?;
+    info!("E-REG test complete, parked at {} us", ereg.pulse_width_us());
+    Ok(())
 }
 
 /// Handle WebSocket connection lifecycle

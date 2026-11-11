@@ -1,0 +1,238 @@
+2026-11-11T22:25:54.128527Z  INFO fill_station::components::ereg: E-REG 'ereg' mocked for non-Linux platform (23010000.pwm ch 0, period 3030 us)
+2026-11-11T22:25:54.128579Z  INFO fill_station: E-REG test 1: angle sweep 0..90 deg
+2026-11-11T22:25:54.128589Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:25:54.128595Z  INFO fill_station:   angle   0.0 deg -> 800 us
+2026-11-11T22:25:54.629197Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 956 us
+2026-11-11T22:25:54.629272Z  INFO fill_station:   angle  10.0 deg -> 956 us
+2026-11-11T22:25:55.130293Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1111 us
+2026-11-11T22:25:55.130359Z  INFO fill_station:   angle  20.0 deg -> 1111 us
+2026-11-11T22:25:55.631125Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1267 us
+2026-11-11T22:25:55.631195Z  INFO fill_station:   angle  30.0 deg -> 1267 us
+2026-11-11T22:25:56.132221Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:25:56.132303Z  INFO fill_station:   angle  40.0 deg -> 1422 us
+2026-11-11T22:25:56.633438Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1578 us
+2026-11-11T22:25:56.633582Z  INFO fill_station:   angle  50.0 deg -> 1578 us
+2026-11-11T22:25:57.133794Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1733 us
+2026-11-11T22:25:57.133932Z  INFO fill_station:   angle  60.0 deg -> 1733 us
+2026-11-11T22:25:57.635136Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1889 us
+2026-11-11T22:25:57.635285Z  INFO fill_station:   angle  70.0 deg -> 1889 us
+2026-11-11T22:25:58.135613Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2044 us
+2026-11-11T22:25:58.135719Z  INFO fill_station:   angle  80.0 deg -> 2044 us
+2026-11-11T22:25:58.636860Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2200 us
+2026-11-11T22:25:58.636973Z  INFO fill_station:   angle  90.0 deg -> 2200 us
+2026-11-11T22:25:59.137730Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2200 us
+2026-11-11T22:25:59.137876Z  INFO fill_station:   angle  90.0 deg -> 2200 us
+2026-11-11T22:25:59.639062Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2044 us
+2026-11-11T22:25:59.639205Z  INFO fill_station:   angle  80.0 deg -> 2044 us
+2026-11-11T22:26:00.140385Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1889 us
+2026-11-11T22:26:00.140498Z  INFO fill_station:   angle  70.0 deg -> 1889 us
+2026-11-11T22:26:00.641844Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1733 us
+2026-11-11T22:26:00.642180Z  INFO fill_station:   angle  60.0 deg -> 1733 us
+2026-11-11T22:26:01.143573Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1578 us
+2026-11-11T22:26:01.143660Z  INFO fill_station:   angle  50.0 deg -> 1578 us
+2026-11-11T22:26:01.644165Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:26:01.644320Z  INFO fill_station:   angle  40.0 deg -> 1422 us
+2026-11-11T22:26:02.145054Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1267 us
+2026-11-11T22:26:02.145178Z  INFO fill_station:   angle  30.0 deg -> 1267 us
+2026-11-11T22:26:02.646362Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1111 us
+2026-11-11T22:26:02.646494Z  INFO fill_station:   angle  20.0 deg -> 1111 us
+2026-11-11T22:26:03.146842Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 956 us
+2026-11-11T22:26:03.146957Z  INFO fill_station:   angle  10.0 deg -> 956 us
+2026-11-11T22:26:03.647851Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:26:03.648095Z  INFO fill_station:   angle   0.0 deg -> 800 us
+2026-11-11T22:26:04.149343Z  INFO fill_station: E-REG test 2: clamping and invalid angles
+2026-11-11T22:26:04.149525Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:26:04.149583Z  INFO fill_station:   angle  -20.0 deg -> 800 us (expect clamp outside 0..90)
+2026-11-11T22:26:04.650763Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1508 us
+2026-11-11T22:26:04.650888Z  INFO fill_station:   angle   45.5 deg -> 1508 us (expect clamp outside 0..90)
+2026-11-11T22:26:05.151546Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2200 us
+2026-11-11T22:26:05.151692Z  INFO fill_station:   angle  120.0 deg -> 2200 us (expect clamp outside 0..90)
+2026-11-11T22:26:05.652127Z  INFO fill_station:   angle NaN rejected as expected: E-REG 'ereg' angle is not finite: NaN
+2026-11-11T22:26:05.652168Z  INFO fill_station:   angle inf rejected as expected: E-REG 'ereg' angle is not finite: inf
+2026-11-11T22:26:05.652176Z  INFO fill_station: E-REG test 3: controller sweep (kp0=0.05, a=5.0, theta0=30.0, b=500.0)
+2026-11-11T22:26:05.652194Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:26:05.652203Z  INFO fill_station:   P=   50 err=-100.0 -> Kp=0.1500 ff=40.00 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:26:06.153339Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1364 us
+2026-11-11T22:26:06.153478Z  INFO fill_station:   P=   50 err= -25.0 -> Kp=0.1500 ff=40.00 cmd=  36.25 deg -> 1364 us
+2026-11-11T22:26:06.654689Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:26:06.654831Z  INFO fill_station:   P=   50 err=   0.0 -> Kp=0.1500 ff=40.00 cmd=  40.00 deg -> 1422 us
+2026-11-11T22:26:07.156024Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1481 us
+2026-11-11T22:26:07.156133Z  INFO fill_station:   P=   50 err=  25.0 -> Kp=0.1500 ff=40.00 cmd=  43.75 deg -> 1481 us
+2026-11-11T22:26:07.657309Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1656 us
+2026-11-11T22:26:07.657446Z  INFO fill_station:   P=   50 err= 100.0 -> Kp=0.1500 ff=40.00 cmd=  55.00 deg -> 1656 us
+2026-11-11T22:26:08.158456Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:26:08.158702Z  INFO fill_station:   P=  100 err=-100.0 -> Kp=0.1000 ff=35.00 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:26:08.660145Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1306 us
+2026-11-11T22:26:08.660356Z  INFO fill_station:   P=  100 err= -25.0 -> Kp=0.1000 ff=35.00 cmd=  32.50 deg -> 1306 us
+2026-11-11T22:26:09.161534Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1344 us
+2026-11-11T22:26:09.161641Z  INFO fill_station:   P=  100 err=   0.0 -> Kp=0.1000 ff=35.00 cmd=  35.00 deg -> 1344 us
+2026-11-11T22:26:09.662642Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1383 us
+2026-11-11T22:26:09.662819Z  INFO fill_station:   P=  100 err=  25.0 -> Kp=0.1000 ff=35.00 cmd=  37.50 deg -> 1383 us
+2026-11-11T22:26:10.163999Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1500 us
+2026-11-11T22:26:10.164249Z  INFO fill_station:   P=  100 err= 100.0 -> Kp=0.1000 ff=35.00 cmd=  45.00 deg -> 1500 us
+2026-11-11T22:26:10.665420Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:26:10.665460Z  INFO fill_station:   P=  200 err=-100.0 -> Kp=0.0750 ff=32.50 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:26:11.166569Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1276 us
+2026-11-11T22:26:11.166614Z  INFO fill_station:   P=  200 err= -25.0 -> Kp=0.0750 ff=32.50 cmd=  30.62 deg -> 1276 us
+2026-11-11T22:26:11.667736Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1306 us
+2026-11-11T22:26:11.667778Z  INFO fill_station:   P=  200 err=   0.0 -> Kp=0.0750 ff=32.50 cmd=  32.50 deg -> 1306 us
+2026-11-11T22:26:12.168910Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1335 us
+2026-11-11T22:26:12.168965Z  INFO fill_station:   P=  200 err=  25.0 -> Kp=0.0750 ff=32.50 cmd=  34.38 deg -> 1335 us
+2026-11-11T22:26:12.669327Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:26:12.669409Z  INFO fill_station:   P=  200 err= 100.0 -> Kp=0.0750 ff=32.50 cmd=  40.00 deg -> 1422 us
+2026-11-11T22:26:13.170559Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:26:13.170761Z  INFO fill_station:   P=  400 err=-100.0 -> Kp=0.0625 ff=31.25 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:26:13.671875Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1262 us
+2026-11-11T22:26:13.671910Z  INFO fill_station:   P=  400 err= -25.0 -> Kp=0.0625 ff=31.25 cmd=  29.69 deg -> 1262 us
+2026-11-11T22:26:14.172970Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1286 us
+2026-11-11T22:26:14.173016Z  INFO fill_station:   P=  400 err=   0.0 -> Kp=0.0625 ff=31.25 cmd=  31.25 deg -> 1286 us
+2026-11-11T22:26:14.673643Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1310 us
+2026-11-11T22:26:14.673701Z  INFO fill_station:   P=  400 err=  25.0 -> Kp=0.0625 ff=31.25 cmd=  32.81 deg -> 1310 us
+2026-11-11T22:26:15.173830Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1383 us
+2026-11-11T22:26:15.173865Z  INFO fill_station:   P=  400 err= 100.0 -> Kp=0.0625 ff=31.25 cmd=  37.50 deg -> 1383 us
+2026-11-11T22:26:15.674909Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:26:15.674943Z  INFO fill_station:   P=  600 err=-100.0 -> Kp=0.0583 ff=30.83 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:26:16.176060Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1257 us
+2026-11-11T22:26:16.176126Z  INFO fill_station:   P=  600 err= -25.0 -> Kp=0.0583 ff=30.83 cmd=  29.38 deg -> 1257 us
+2026-11-11T22:26:16.676408Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1280 us
+2026-11-11T22:26:16.676532Z  INFO fill_station:   P=  600 err=   0.0 -> Kp=0.0583 ff=30.83 cmd=  30.83 deg -> 1280 us
+2026-11-11T22:26:17.177744Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1302 us
+2026-11-11T22:26:17.177779Z  INFO fill_station:   P=  600 err=  25.0 -> Kp=0.0583 ff=30.83 cmd=  32.29 deg -> 1302 us
+2026-11-11T22:26:17.678881Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1370 us
+2026-11-11T22:26:17.678938Z  INFO fill_station:   P=  600 err= 100.0 -> Kp=0.0583 ff=30.83 cmd=  36.67 deg -> 1370 us
+2026-11-11T22:26:18.180095Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:26:18.180167Z  INFO fill_station:   P=  800 err=-100.0 -> Kp=0.0563 ff=30.62 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:26:18.681224Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1255 us
+2026-11-11T22:26:18.681258Z  INFO fill_station:   P=  800 err= -25.0 -> Kp=0.0563 ff=30.62 cmd=  29.22 deg -> 1255 us
+2026-11-11T22:26:19.182317Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1276 us
+2026-11-11T22:26:19.182358Z  INFO fill_station:   P=  800 err=   0.0 -> Kp=0.0563 ff=30.62 cmd=  30.62 deg -> 1276 us
+2026-11-11T22:26:19.683423Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1298 us
+2026-11-11T22:26:19.683460Z  INFO fill_station:   P=  800 err=  25.0 -> Kp=0.0563 ff=30.62 cmd=  32.03 deg -> 1298 us
+2026-11-11T22:26:20.184016Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1364 us
+2026-11-11T22:26:20.184067Z  INFO fill_station:   P=  800 err= 100.0 -> Kp=0.0563 ff=30.62 cmd=  36.25 deg -> 1364 us
+2026-11-11T22:26:20.684958Z  INFO fill_station: E-REG test 4: invalid controller inputs
+2026-11-11T22:26:20.685018Z  INFO fill_station:   P=0 err=10 -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:26:20.685033Z  INFO fill_station:   P=-50 err=10 -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:26:20.685045Z  INFO fill_station:   P=NaN err=10 -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:26:20.685055Z  INFO fill_station:   P=200 err=NaN -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:26:20.685067Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:26:20.685079Z  INFO fill_station: E-REG test complete, parked at 800 us
+2026-11-11T22:31:32.886834Z  INFO fill_station::components::ereg: E-REG 'ereg' mocked for non-Linux platform (23040000.pwm ch 1, period 3030 us)
+2026-11-11T22:31:32.886883Z  INFO fill_station: E-REG test 1: angle sweep 0..90 deg
+2026-11-11T22:31:32.886894Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:31:32.886901Z  INFO fill_station:   angle   0.0 deg -> 800 us
+2026-11-11T22:31:33.387612Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 956 us
+2026-11-11T22:31:33.387745Z  INFO fill_station:   angle  10.0 deg -> 956 us
+2026-11-11T22:31:33.888953Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1111 us
+2026-11-11T22:31:33.889016Z  INFO fill_station:   angle  20.0 deg -> 1111 us
+2026-11-11T22:31:34.390204Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1267 us
+2026-11-11T22:31:34.390350Z  INFO fill_station:   angle  30.0 deg -> 1267 us
+2026-11-11T22:31:34.891500Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:31:34.891604Z  INFO fill_station:   angle  40.0 deg -> 1422 us
+2026-11-11T22:31:35.392767Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1578 us
+2026-11-11T22:31:35.392905Z  INFO fill_station:   angle  50.0 deg -> 1578 us
+2026-11-11T22:31:35.893445Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1733 us
+2026-11-11T22:31:35.893598Z  INFO fill_station:   angle  60.0 deg -> 1733 us
+2026-11-11T22:31:36.394047Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1889 us
+2026-11-11T22:31:36.394102Z  INFO fill_station:   angle  70.0 deg -> 1889 us
+2026-11-11T22:31:36.895254Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2044 us
+2026-11-11T22:31:36.895392Z  INFO fill_station:   angle  80.0 deg -> 2044 us
+2026-11-11T22:31:37.396575Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2200 us
+2026-11-11T22:31:37.396747Z  INFO fill_station:   angle  90.0 deg -> 2200 us
+2026-11-11T22:31:37.897892Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2200 us
+2026-11-11T22:31:37.897971Z  INFO fill_station:   angle  90.0 deg -> 2200 us
+2026-11-11T22:31:38.399106Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2044 us
+2026-11-11T22:31:38.399242Z  INFO fill_station:   angle  80.0 deg -> 2044 us
+2026-11-11T22:31:38.900433Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1889 us
+2026-11-11T22:31:38.900474Z  INFO fill_station:   angle  70.0 deg -> 1889 us
+2026-11-11T22:31:39.401972Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1733 us
+2026-11-11T22:31:39.402098Z  INFO fill_station:   angle  60.0 deg -> 1733 us
+2026-11-11T22:31:39.903247Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1578 us
+2026-11-11T22:31:39.903305Z  INFO fill_station:   angle  50.0 deg -> 1578 us
+2026-11-11T22:31:40.404450Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:31:40.404597Z  INFO fill_station:   angle  40.0 deg -> 1422 us
+2026-11-11T22:31:40.905759Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1267 us
+2026-11-11T22:31:40.905880Z  INFO fill_station:   angle  30.0 deg -> 1267 us
+2026-11-11T22:31:41.407052Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1111 us
+2026-11-11T22:31:41.407185Z  INFO fill_station:   angle  20.0 deg -> 1111 us
+2026-11-11T22:31:41.908208Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 956 us
+2026-11-11T22:31:41.908292Z  INFO fill_station:   angle  10.0 deg -> 956 us
+2026-11-11T22:31:42.409105Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:31:42.409256Z  INFO fill_station:   angle   0.0 deg -> 800 us
+2026-11-11T22:31:42.910466Z  INFO fill_station: E-REG test 2: clamping and invalid angles
+2026-11-11T22:31:42.910608Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:31:42.910663Z  INFO fill_station:   angle  -20.0 deg -> 800 us (expect clamp outside 0..90)
+2026-11-11T22:31:43.411836Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1508 us
+2026-11-11T22:31:43.411942Z  INFO fill_station:   angle   45.5 deg -> 1508 us (expect clamp outside 0..90)
+2026-11-11T22:31:43.912839Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 2200 us
+2026-11-11T22:31:43.912883Z  INFO fill_station:   angle  120.0 deg -> 2200 us (expect clamp outside 0..90)
+2026-11-11T22:31:44.413876Z  INFO fill_station:   angle NaN rejected as expected: E-REG 'ereg' angle is not finite: NaN
+2026-11-11T22:31:44.414084Z  INFO fill_station:   angle inf rejected as expected: E-REG 'ereg' angle is not finite: inf
+2026-11-11T22:31:44.414165Z  INFO fill_station: E-REG test 3: controller sweep (kp0=0.05, a=5.0, theta0=30.0, b=500.0)
+2026-11-11T22:31:44.414238Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:31:44.414290Z  INFO fill_station:   P=   50 err=-100.0 -> Kp=0.1500 ff=40.00 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:31:44.915563Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1364 us
+2026-11-11T22:31:44.915686Z  INFO fill_station:   P=   50 err= -25.0 -> Kp=0.1500 ff=40.00 cmd=  36.25 deg -> 1364 us
+2026-11-11T22:31:45.416866Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:31:45.417003Z  INFO fill_station:   P=   50 err=   0.0 -> Kp=0.1500 ff=40.00 cmd=  40.00 deg -> 1422 us
+2026-11-11T22:31:45.917985Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1481 us
+2026-11-11T22:31:45.918083Z  INFO fill_station:   P=   50 err=  25.0 -> Kp=0.1500 ff=40.00 cmd=  43.75 deg -> 1481 us
+2026-11-11T22:31:46.419221Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1656 us
+2026-11-11T22:31:46.419337Z  INFO fill_station:   P=   50 err= 100.0 -> Kp=0.1500 ff=40.00 cmd=  55.00 deg -> 1656 us
+2026-11-11T22:31:46.920517Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:31:46.920823Z  INFO fill_station:   P=  100 err=-100.0 -> Kp=0.1000 ff=35.00 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:31:47.422032Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1306 us
+2026-11-11T22:31:47.422178Z  INFO fill_station:   P=  100 err= -25.0 -> Kp=0.1000 ff=35.00 cmd=  32.50 deg -> 1306 us
+2026-11-11T22:31:47.923252Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1344 us
+2026-11-11T22:31:47.923725Z  INFO fill_station:   P=  100 err=   0.0 -> Kp=0.1000 ff=35.00 cmd=  35.00 deg -> 1344 us
+2026-11-11T22:31:48.425184Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1383 us
+2026-11-11T22:31:48.425470Z  INFO fill_station:   P=  100 err=  25.0 -> Kp=0.1000 ff=35.00 cmd=  37.50 deg -> 1383 us
+2026-11-11T22:31:48.926732Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1500 us
+2026-11-11T22:31:48.926874Z  INFO fill_station:   P=  100 err= 100.0 -> Kp=0.1000 ff=35.00 cmd=  45.00 deg -> 1500 us
+2026-11-11T22:31:49.427171Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:31:49.427305Z  INFO fill_station:   P=  200 err=-100.0 -> Kp=0.0750 ff=32.50 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:31:49.928030Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1276 us
+2026-11-11T22:31:49.928164Z  INFO fill_station:   P=  200 err= -25.0 -> Kp=0.0750 ff=32.50 cmd=  30.62 deg -> 1276 us
+2026-11-11T22:31:50.429385Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1306 us
+2026-11-11T22:31:50.429530Z  INFO fill_station:   P=  200 err=   0.0 -> Kp=0.0750 ff=32.50 cmd=  32.50 deg -> 1306 us
+2026-11-11T22:31:50.930741Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1335 us
+2026-11-11T22:31:50.930897Z  INFO fill_station:   P=  200 err=  25.0 -> Kp=0.0750 ff=32.50 cmd=  34.38 deg -> 1335 us
+2026-11-11T22:31:51.432129Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1422 us
+2026-11-11T22:31:51.432263Z  INFO fill_station:   P=  200 err= 100.0 -> Kp=0.0750 ff=32.50 cmd=  40.00 deg -> 1422 us
+2026-11-11T22:31:51.932609Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:31:51.932679Z  INFO fill_station:   P=  400 err=-100.0 -> Kp=0.0625 ff=31.25 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:31:52.433935Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1262 us
+2026-11-11T22:31:52.434210Z  INFO fill_station:   P=  400 err= -25.0 -> Kp=0.0625 ff=31.25 cmd=  29.69 deg -> 1262 us
+2026-11-11T22:31:52.935438Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1286 us
+2026-11-11T22:31:52.935575Z  INFO fill_station:   P=  400 err=   0.0 -> Kp=0.0625 ff=31.25 cmd=  31.25 deg -> 1286 us
+2026-11-11T22:31:53.436779Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1310 us
+2026-11-11T22:31:53.436912Z  INFO fill_station:   P=  400 err=  25.0 -> Kp=0.0625 ff=31.25 cmd=  32.81 deg -> 1310 us
+2026-11-11T22:31:53.938113Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1383 us
+2026-11-11T22:31:53.938253Z  INFO fill_station:   P=  400 err= 100.0 -> Kp=0.0625 ff=31.25 cmd=  37.50 deg -> 1383 us
+2026-11-11T22:31:54.439437Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:31:54.439545Z  INFO fill_station:   P=  600 err=-100.0 -> Kp=0.0583 ff=30.83 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:31:54.939835Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1257 us
+2026-11-11T22:31:54.939987Z  INFO fill_station:   P=  600 err= -25.0 -> Kp=0.0583 ff=30.83 cmd=  29.38 deg -> 1257 us
+2026-11-11T22:31:55.441204Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1280 us
+2026-11-11T22:31:55.441290Z  INFO fill_station:   P=  600 err=   0.0 -> Kp=0.0583 ff=30.83 cmd=  30.83 deg -> 1280 us
+2026-11-11T22:31:55.942568Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1302 us
+2026-11-11T22:31:55.942846Z  INFO fill_station:   P=  600 err=  25.0 -> Kp=0.0583 ff=30.83 cmd=  32.29 deg -> 1302 us
+2026-11-11T22:31:56.444177Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1370 us
+2026-11-11T22:31:56.444308Z  INFO fill_station:   P=  600 err= 100.0 -> Kp=0.0583 ff=30.83 cmd=  36.67 deg -> 1370 us
+2026-11-11T22:31:56.945517Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1189 us
+2026-11-11T22:31:56.945716Z  INFO fill_station:   P=  800 err=-100.0 -> Kp=0.0563 ff=30.62 cmd=  25.00 deg -> 1189 us
+2026-11-11T22:31:57.446016Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1255 us
+2026-11-11T22:31:57.446132Z  INFO fill_station:   P=  800 err= -25.0 -> Kp=0.0563 ff=30.62 cmd=  29.22 deg -> 1255 us
+2026-11-11T22:31:57.946934Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1276 us
+2026-11-11T22:31:57.947060Z  INFO fill_station:   P=  800 err=   0.0 -> Kp=0.0563 ff=30.62 cmd=  30.62 deg -> 1276 us
+2026-11-11T22:31:58.447811Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1298 us
+2026-11-11T22:31:58.447957Z  INFO fill_station:   P=  800 err=  25.0 -> Kp=0.0563 ff=30.62 cmd=  32.03 deg -> 1298 us
+2026-11-11T22:31:58.949161Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 1364 us
+2026-11-11T22:31:58.949294Z  INFO fill_station:   P=  800 err= 100.0 -> Kp=0.0563 ff=30.62 cmd=  36.25 deg -> 1364 us
+2026-11-11T22:31:59.449647Z  INFO fill_station: E-REG test 4: invalid controller inputs
+2026-11-11T22:31:59.449790Z  INFO fill_station:   P=0 err=10 -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:31:59.449852Z  INFO fill_station:   P=-50 err=10 -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:31:59.449900Z  INFO fill_station:   P=NaN err=10 -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:31:59.449948Z  INFO fill_station:   P=200 err=NaN -> InvalidCommand, pulse unchanged: true
+2026-11-11T22:31:59.449995Z  INFO fill_station::components::ereg: [Mock] E-REG 'ereg' set to 800 us
+2026-11-11T22:31:59.450037Z  INFO fill_station: E-REG test complete, parked at 800 us

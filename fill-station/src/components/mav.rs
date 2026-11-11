@@ -10,9 +10,9 @@ use tracing::{info, warn};
 // Servo constants mirror the FSW MAV driver (`fsw/src/actuator.rs` `Mav`) so
 // both MAVs travel the same distance. Keep the two in sync.
 // Servo: ProModeler DS2685BLHV.
-const FREQUENCY_HZ: u32 = 330;
-const MIN_US: u32 = 800;
-const MAX_US: u32 = 2200;
+pub const FREQUENCY_HZ: u32 = 330;
+pub const MIN_US: u32 = 800;
+pub const MAX_US: u32 = 2200;
 pub const OPEN_US: u32 = 1950;
 pub const CLOSE_US: u32 = 883;
 
@@ -159,7 +159,7 @@ impl Mav {
 
 /// Find `/sys/class/pwm/pwmchipN` whose `device` symlink points at `device_addr`.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-fn find_pwmchip(device_addr: &str) -> Result<PathBuf> {
+pub(crate) fn find_pwmchip(device_addr: &str) -> Result<PathBuf> {
     for entry in fs::read_dir("/sys/class/pwm").context("Failed to read /sys/class/pwm")? {
         let path = entry?.path();
         if let Ok(target) = fs::read_link(path.join("device")) {
