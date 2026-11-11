@@ -1,7 +1,8 @@
 # Build cache publication and station acceptance
 
 The build CLI, durable receiver and opt-in NixOS SSH ingestion module are
-implemented. They have host tests and local real-Nix receiver evidence. The
+implemented. They have host tests, local real-Nix receiver evidence and isolated
+signed-HTTP VM acceptance. The
 UM560 has not been configured: LAN substitution, two-developer access, daemon
 containment, storage retention and offline operation still need live acceptance.
 
@@ -93,7 +94,54 @@ roots remain after acknowledgement. Acknowledged means retained at the recorded
 archive at receipt time; it does not mean board-tested, active or independently
 backed up. `cache-sync` reports the total local acknowledgement count.
 
-## Required live acceptance
+## Signed HTTP VM acceptance
+
+The manual `tests/platform/test_cache_vm.nix` boots the real ground-station
+profile, nginx `/cache/` route and Harmonia. The guest has no NIC or forwarding.
+Disposable signing keys are generated privately on its persistent disk before
+the services start; production keys are not selected or created by this test.
+The small fixture outputs are ordinary input-addressed derivations with a
+dependency, so content-addressed trust exemptions cannot bypass the signature test.
+
+Each client uses a fresh `local?root=...` store under the guest's private fixture
+directory. Its inherited signing secrets and substituters are cleared,
+`require-sigs` stays true, and builders are disabled. This separates clean-client
+acceptance from files already present in the station's own store.
+
+```sh
+nix build --impure --expr 'let f = builtins.getFlake (toString ./.); pkgs = import f.inputs.nixpkgs { system = "aarch64-darwin"; }; in import ./tests/platform/test_cache_vm.nix { inherit pkgs; }' -o /private/tmp/ground-cache-vm --option timeout 2400 -L
+```
+
+Prepare the VM closure while online; running this guest requires no WAN, FlakeHub
+credentials or fill-station connection. It is excluded from automatic branch-push
+image workflows. A native Linux runner may select its matching host package set;
+the guest stays x86. Budget 1.5 GiB guest RAM plus host overhead.
+
+**Observed 2026-11-11: passed in 180 seconds**, exit status zero. Output:
+`/nix/store/mk7ffc94afxzbharjvchrh51nya6k5rx-vm-test-run-ground-signed-cache`.
+
+- A clean client fetched a correctly signed complete closure through nginx.
+- Separate empty stores rejected an unrelated signing key and a deliberately
+  corrupted signature with the correct public key trusted. Both failures had
+  signature-specific diagnostics; no fixture path was accepted.
+- GC ran only against the disposable client store. The explicitly rooted closure
+  survived and a control object, confirmed present before GC, was removed.
+- During cache outage, retained client files remained readable and the local
+  operator page remained available; a new fetch failed. Restoring the cache allowed a fresh client fetch
+  with no builder or external substituter.
+- A populated-disk cold restart preserved public trust and recovered the cache
+  automatically. Another empty client fetched with the original public key.
+  `/readyz` stayed 503; telemetry, commanding and workers stayed disabled.
+
+This verifies cache signing and client retention with small fixtures. It does not
+prove physical LAN access, production key installation, SSH ingestion, two real
+developers, station archive GC/backup, large release transfers, worker builds or
+prepared-input offline rebuilding. The collector never targets the laptop or
+station's normal store. See [implementation evidence](../superpowers/plans/2026-11-11-signed-cache-acceptance.md).
+Trust behavior follows the [Nix signature settings](https://nix.dev/manual/nix/2.35/command-ref/conf-file.html)
+and [copy verification](https://nix.dev/manual/nix/2.28/command-ref/new-cli/nix3-copy.html).
+
+## Required physical and remaining acceptance
 
 - Prove signed HTTP substitution from a clean client's store, and rejection of
   an invalid signature. Check host-level substituters as well as flake settings.

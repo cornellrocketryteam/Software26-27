@@ -43,8 +43,11 @@ for commands that exist today.
 
 The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
 see [cache acceptance](../operations/build-cache.md) before enabling it. A separate
-disabled-by-default [worker endpoint](../operations/build-worker.md) now provides
-runtime health and guarded admission. Live worker/containment and cache/signing
+signed-HTTP cache VM now verifies trusted fetches, rejection of untrusted/corrupted
+signatures, rooted client retention through GC, cache outage and cold restart.
+Physical LAN, real signing keys, ingestion and station archive acceptance remain
+pending. The disabled-by-default [worker endpoint](../operations/build-worker.md)
+now provides runtime health and guarded admission. Physical worker/containment and cache/signing
 acceptance, remote output retention, prepared offline rebuilds,
 deployment orchestration and CI cutover remain unfinished. Existing
 FlakeHub-related CI remains until the replacement passes its acceptance tests.
@@ -52,10 +55,11 @@ FlakeHub-related CI remains until the replacement passes its acceptance tests.
 ## Confirmed requirements and evidence
 
 - Ground station: user-reported MINISFORUM UM560 XT, Ryzen 5 5600H,
-  16 GB RAM, 512 GB SSD; x86-64 NixOS, on the same LAN as the fill station.
-  It currently has Linux and is powered off. The planned inspection address is
-  `root@192.168.1.206`, using the existing MQTT host and user-supplied username;
-  neither SSH access nor the installed OS/hardware configuration is verified.
+  16 GB RAM, 512 GB SSD; planned x86-64 NixOS, on the same LAN as the fill station.
+  It has user-reported Linux and is being prepared for local inventory on a
+  network separate from this Mac, without internet. The user confirmed
+  `192.168.1.206`; the planned SSH username is `root`, but SSH setup is unknown.
+  Obtain user-run console outputs; OS and hardware configuration remain unverified.
 - Both endpoints use Ethernet for normal networking. Migrate the fill station
   from its current Wi-Fi startup configuration to Ethernet; the mini PC gets
   network access over Ethernet, with no Wi-Fi association required. Exact wired

@@ -85,6 +85,14 @@ runner hit a confirmed host OOM before acceptance completed. See the
 [retry scheduling evidence](2026-11-11-telemetry-retry-cadence.md).
 Native x86 hardware startup remains unverified.
 
+The signed-cache VM also passed on November 11: trusted HTTP closure fetch,
+untrusted/corrupted signature rejection in clean stores, rooted client GC,
+continued local artifact reads/UI serving during cache outage, and unattended cold restart
+with unchanged trust. Builders/external substituters were disabled and the guest
+had no NIC. These small fixtures do not establish production archive retention,
+SSH ingestion, large release transfer or physical station operation. See
+[signed cache acceptance](../../operations/build-cache.md).
+
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
 ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
 contains an 18,727,192-byte FIT with SHA256
@@ -94,10 +102,11 @@ locally and pending publication because no cache is configured. This release
 has not been deployed or tested on the board. Its roots protect outputs, not a
 complete offline rebuild input set.
 
-The UM560 currently has Linux but is powered off. Plan the later inventory at
-`root@192.168.1.206`; this is the configured MQTT address plus the user-provided
-SSH username, not a verified login. The UI/telemetry VM acceptance above is complete;
-physical inventory waits for the PC to be available.
+The user is preparing the UM560 on an offline network separate from this Mac.
+Its confirmed IP is `192.168.1.206`; the earlier SSH username was `root`, but SSH
+setup is unknown. Inventory now proceeds using user-run local-terminal commands,
+starting with `cat /etc/os-release`. Do not infer a distribution, disk layout or
+successful SSH login before receiving those outputs.
 
 Next hardware milestone: inspect the powered-on UM560, back up the current data/services,
 and supply actual hardware/boot configuration. Validate the cache/receipt setup
@@ -389,6 +398,9 @@ Planned files: `nix/nixos-modules/ground-station/{cache,backup}.nix`,
   Evaluate nix-serve as the smaller alternative before finalizing the module.
 - [ ] Install the cache signing secret on the station and public trust on clients;
   prove a valid object substitutes and an invalid signature is refused.
+- [x] Verify the actual Harmonia/nginx signed HTTP path in an isolated VM, with
+  clean client stores, an unrelated trusted key and a corrupted signature. Keep
+  production key installation and physical LAN validation separate.
 - [ ] Implement authenticated ingestion separate from HTTP read service; pin
   imported closure before acknowledging it. Test two authorized developers.
 - [x] Implement the ingestion/receipt protocol and opt-in SSH account; verify
@@ -400,6 +412,9 @@ Planned files: `nix/nixos-modules/ground-station/{cache,backup}.nix`,
   or worker. Inspect host-level substituters too, not just repository files.
 - [ ] Define free-space guard, GC roots/retention, archive layout and independent
   DB/secret backups. Run GC and prove active/recovery releases remain usable.
+- [x] In a disposable client store only, prove a rooted fixture closure survives
+  real GC and an unrooted control is collected. Verify cache outage, restart and
+  unchanged trust through cold boot; production archive retention remains open.
 - [ ] Add `prepare-offline`: retain flake inputs, source/dependency closures,
   required build platforms, OCI images, UI assets and map data.
 - [ ] Test a declared prepared offline rebuild with WAN and station disconnected:
