@@ -29,12 +29,14 @@ for commands that exist today.
   opt-in NixOS nginx startup now exist. Validated public runtime settings replace
   the browser's fixed board address; missing settings show disconnected status.
   Browser and nginx routing checks passed. Offline tile preparation, kiosk and
-  complete telemetry-stack startup remain pending; `/readyz` still returns 503.
+  physical station startup remain pending; `/readyz` still returns 503.
 - [Telemetry packaging](../operations/telemetry-stack.md): opt-in prepared-image
   containers, private runtime credentials, idempotent database/availability setup,
   named broker resource reconciliation and local Grafana provisioning now exist.
-  Production image/edition/license inventory, backup restore and NixOS/UM560
-  cold-boot acceptance remain required before replacing Compose.
+  An isolated x86 NixOS VM passed offline boot, container-failure recovery and
+  persisted-data checks through a cold restart, ending with 21 correct fixture
+  rows. Production image/edition/license inventory, backup restore and physical
+  UM560 cold-boot acceptance remain required before replacing Compose.
 
 The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
 see [cache acceptance](../operations/build-cache.md) before enabling it. A separate
@@ -48,7 +50,9 @@ FlakeHub-related CI remains until the replacement passes its acceptance tests.
 
 - Ground station: user-reported MINISFORUM UM560 XT, Ryzen 5 5600H,
   16 GB RAM, 512 GB SSD; x86-64 NixOS, on the same LAN as the fill station.
-  It is not available for live inspection yet.
+  It currently has Linux and is powered off. The planned inspection address is
+  `root@192.168.1.206`, using the existing MQTT host and user-supplied username;
+  neither SSH access nor the installed OS/hardware configuration is verified.
 - Both endpoints use Ethernet for normal networking. Migrate the fill station
   from its current Wi-Fi startup configuration to Ethernet; the mini PC gets
   network access over Ethernet, with no Wi-Fi association required. Exact wired
@@ -67,8 +71,9 @@ FlakeHub-related CI remains until the replacement passes its acceptance tests.
 - Remove automatic expensive image builds from GitHub Actions; retain lightweight
   repository checks. Building or publishing is never permission to deploy.
 - User reports SD boot, OSPI boot, SSH, persistent SSH, and dashboard operation
-  worked. Code inspection and host tests are separate evidence. We have not
-  demonstrated interrupted-update recovery or autonomous ground-station startup.
+  worked. An isolated x86 VM separately demonstrated autonomous UI/telemetry
+  startup and recovery. Physical station startup and interrupted board-update
+  recovery remain unverified.
 - Ext4 DATA and the root-directory permission correction are required parts of
   the current image. Standalone ADC diagnostics were retired; ADS7128 is an
   initialized-only selectable device, not a new telemetry channel mapping.

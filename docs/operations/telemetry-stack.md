@@ -163,6 +163,10 @@ procedure. Never recursively copy an uninspected running database directory.
    Schema Registry/PostgreSQL capabilities and inventories paginated rules before
    reconciling the named schema, connector, shared action and two telemetry rules.
    Overlapping unmanaged rules block provisioning to prevent duplicate inserts.
+   Unchanged owned configuration is left in place, avoiding repeated protobuf
+   compilation. Masked connector passwords are reapplied to support rotation.
+   Schema writes have up to 120 seconds within the provisioner's 180-second
+   deadline; other API requests retain a five-second maximum.
 5. Grafana starts after migration with a local datasource and dashboard. A bounded,
    recurring HTTP probe checks Grafana's storage health. It does not establish
    datasource, ingestion, physical commanding or complete station readiness.
@@ -189,6 +193,16 @@ Preparation and provisioning failures retry with bounded attempts; recovery edge
 request dependent services again. A failed prerequisite leaves consumers degraded
 instead of declaring success. Service retries never send a launch, arm, wipe or
 network-device power command. Closing the browser does not stop recording.
+
+Telemetry startup is requested through `ground-telemetry.target`, which is a
+background supervision target. It deliberately has no ordering behind its wanted
+services. The normal OS boot target therefore does not wait forever for missing
+credentials or repeatedly failing provisioning. Target activity means supervision
+was requested; inspect the individual units and health checks for actual status.
+The services retain their prerequisite, filesystem and shutdown dependencies.
+Some failed preparation transactions request immediate retries through their
+dependent activation edges. The configured restart delay therefore does not
+establish a fixed retry cadence; rate-limiting that feedback remains open.
 
 The overall `/readyz` deliberately remains **503**. Successful static UI serving,
 Grafana process health and a running broker are separate evidence. Actual
@@ -276,12 +290,62 @@ The actual module's amd64 archive outputs use
 `tests/platform/test_telemetry_archives.nix`. Their hashes, canonical local tags
 and Linux/amd64 image configuration were verified separately.
 
-Final source checks passed: 15 runtime tests on both Darwin and x86 Linux helper
-builds, 56 telemetry module contracts and 121 existing foundation contracts.
-The platform suite ran 108 tests with one Linux-only skip. The all-amd64 EMQX
-startup failure remains recorded above; no complete NixOS service boot or physical
-mini-PC acceptance is inferred from the mixed-platform test.
+Current source checks passed: 17 runtime tests on both Darwin and x86 Linux helper
+builds, 59 telemetry module contracts and 121 existing foundation contracts.
+The platform suite ran 110 tests with one Linux-only skip. The Docker Desktop
+amd64 EMQX startup failure remains recorded above. The separate full x86 NixOS VM
+result below supplies service boot/recovery evidence; physical mini-PC acceptance
+remains pending.
 
 Physical UM560 installation, production pin/license inventory, backup restore,
-NixOS cold boot/recovery with the three services, prepared maps, kiosk, wired
+physical cold boot/recovery with the three services, prepared maps, kiosk, wired
 device telemetry and physical commanding remain separate acceptance work.
+
+### Complete NixOS VM boot/recovery test
+
+`tests/platform/test_telemetry_vm.nix` is an explicit manual test using the actual
+NixOS profile, systemd units, static UI and all three amd64 image archives. The
+guest has no NIC or host port forwarding. Test-only credentials are generated
+privately inside its persistent virtual disk; no values enter the Nix store.
+The four-file console normalization used by the UI VM also applies here. The
+test disables Docker's unused bridge, since these containers use host networking.
+
+The fixture withholds credentials on the first boot, then releases only that
+input. It also forces the first database migration attempt to fail. The Grafana
+probe timer is held out of this window so it cannot mask a missing recovery edge
+by starting dependencies. Actual container SIGKILLs must produce new containers,
+higher restart counts and fresh provisioning invocations. The checks then cover
+synthetic ingestion, persisted rows, stable credentials, and writes after a
+complete shutdown/start of the populated guest disk. The recurring probe is
+tested only after those recovery cases.
+
+On the current Apple-silicon Mac, run QEMU directly on macOS:
+
+```sh
+nix build --impure --expr 'let f = builtins.getFlake (toString ./.); pkgs = import f.inputs.nixpkgs { system = "aarch64-darwin"; }; in import ./tests/platform/test_telemetry_vm.nix { inherit pkgs; }' -o /private/tmp/ground-telemetry-vm-test --option timeout 5400 -L
+```
+
+On a native x86 Linux test host, select `x86_64-linux` for the host package set.
+The guest remains x86 in either case. This test needs approximately 3 GiB guest
+RAM plus host overhead and a sparse 16 GiB guest disk. Prepared archives and the
+whole guest closure are build inputs; the running guest cannot fetch anything.
+It is intentionally excluded from automatic branch-push image workflows.
+
+The ARM64 Linux builder's 8 GiB host ran out of memory with both 4 GiB and 3 GiB
+guests before full acceptance completed; the latter failure recorded an OOM kill.
+Do not treat those partial runs as a pass or fix them by changing the service
+images. The direct macOS runner avoids that particular host limit. A Linux test
+host still needs enough memory and workspace for QEMU and all prepared images.
+
+**Observed 2026-11-10: passed**, using the direct macOS runner, in 1,492 seconds.
+The result is `/nix/store/js5rm5j0zlr2vfdgz1n62psa6xnf962m-vm-test-run-ground-telemetry-offline-recovery`.
+It verified degraded boot and UI availability, automatic credential/migration
+recovery, real JSON/protobuf ingestion, separate database/broker/Grafana SIGKILL
+recovery, and fourteen persisted rows through a complete shutdown/start on the
+same disk. Credentials stayed unchanged; a new batch after boot yielded **21
+correct rows without duplicates**. The recurring Grafana probe ran successfully,
+all NICs remained absent, `/readyz` stayed 503 and commanding stayed disabled.
+
+This emulated x86 guest result is separate from the earlier mixed-platform
+container test. Native UM560 timing, hardware installation, Ethernet/display
+behavior, abrupt whole-machine power loss and field acceptance remain unverified.

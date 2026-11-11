@@ -61,17 +61,26 @@ The telemetry increment adds an opt-in NixOS container graph, a packaged local
 provisioner, distinct administrator/insert/read credentials and explicit loopback
 SCRAM authentication. The database setup is repeatable, broker provisioning checks
 capabilities and conflicting rules, and Grafana loads a local datasource/dashboard.
-Darwin and x86 Linux helper packages each passed 15 runtime tests. All three actual
+Darwin and x86 Linux helper packages each passed 17 runtime tests. All three actual
 module image archives built with verified hashes for the disposable test versions;
 those fixtures are not production image choices. See the
 [telemetry runbook](../../operations/telemetry-stack.md). Production compatibility,
-restore, NixOS service cold boot and physical UM560 acceptance remain unchecked.
-All 56 telemetry and 121 foundation module contracts passed; the host suite ran
-108 tests with one Linux-only skip. The isolated mixed-platform test passed real
+restore and physical UM560 acceptance remain unchecked.
+All 59 telemetry and 121 foundation module contracts passed; the host suite ran
+110 tests with one Linux-only skip. The isolated mixed-platform test passed real
 JSON/protobuf ingestion, role authentication, Grafana provisioning and restart
 persistence without duplicate rows. It used a native ARM64 broker because the
-amd64 EMQX fixture fails QUIC-library initialization on this Mac. Native x86
-broker startup remains an explicit acceptance gap, not a successful test.
+amd64 EMQX fixture fails QUIC-library initialization on Docker Desktop/Rosetta.
+The separate full x86 NixOS VM now passes with all three amd64 images and no NIC:
+missing credentials do not hold OS boot, supplying them triggers recovery, a
+forced migration failure retries, and database/broker/Grafana SIGKILLs recover
+automatically. Fourteen saved rows and unchanged credentials survive a cold
+restart; a third batch produces 21 correct rows without duplicates. The Grafana
+probe completes successfully and physical commanding stays disabled. This test
+ran directly on macOS in 1,492 seconds; the 8 GiB Linux runner hit a confirmed
+host OOM before acceptance completed. See the
+[boot/recovery evidence](2026-11-10-telemetry-boot-recovery.md).
+Native x86 hardware startup remains unverified.
 
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
 ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
@@ -82,7 +91,12 @@ locally and pending publication because no cache is configured. This release
 has not been deployed or tested on the board. Its roots protect outputs, not a
 complete offline rebuild input set.
 
-Next milestone: inspect the powered-on UM560, back up the current data/services,
+The UM560 currently has Linux but is powered off. Plan the later inventory at
+`root@192.168.1.206`; this is the configured MQTT address plus the user-provided
+SSH username, not a verified login. The UI/telemetry VM acceptance above is complete;
+physical inventory waits for the PC to be available.
+
+Next hardware milestone: inspect the powered-on UM560, back up the current data/services,
 and supply actual hardware/boot configuration. Validate the cache/receipt setup
 on that machine, complete remote output retention and validate the worker endpoint
 before routine station builds. Preserve the current Compose deployment until the
@@ -231,8 +245,12 @@ and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
   device permissions, and logs. Browser failure must not stop recording.
 - [x] Add bounded telemetry preparation/migration/provisioning and recurring
   Grafana probes, restart/recovery edges, private credentials and scoped listeners.
-- [ ] Verify those recovery edges by booting/restarting the actual NixOS services;
-  pure module ordering checks and manually restarted containers are distinct evidence.
+- [ ] Rate-limit failed preparation transactions across dependent activation
+  edges; client-requested retries can bypass the configured restart delay.
+- [x] Verify telemetry recovery edges in the actual NixOS services inside an
+  isolated x86 VM: degraded boot, failed migration retry, three container SIGKILLs,
+  persisted rows/credentials and new ingestion after a populated-disk cold restart.
+  Physical station acceptance remains separate.
 - [ ] Test startup/restart/unplug/replug with a simulator: no launch, arm, or wipe
   is emitted without a new valid physical input in the intended session.
 - [ ] Power-cycle offline: UI, broker, database, Grafana, and listener recover

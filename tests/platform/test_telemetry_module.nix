@@ -59,6 +59,17 @@ let
   ordering = lib.toposort (a: b:
     builtins.elem a (unit b).after || builtins.elem b (unit a).before) unitNames;
   checks = {
+    nonblockingTelemetryTarget = enabled.systemd.targets ? ground-telemetry
+      && enabled.systemd.targets.ground-telemetry.unitConfig.DefaultDependencies == false
+      && builtins.elem "multi-user.target" enabled.systemd.targets.ground-telemetry.wantedBy
+      && builtins.elem "shutdown.target" enabled.systemd.targets.ground-telemetry.before
+      && builtins.elem "shutdown.target" enabled.systemd.targets.ground-telemetry.conflicts;
+    telemetryDoesNotHoldBootTarget = lib.all (name:
+      !(builtins.elem "multi-user.target" services.${name}.wantedBy)
+      && builtins.elem "ground-telemetry.target" services.${name}.wantedBy)
+        [ "ground-telemetry-prepare" "ground-telemetry-database" "ground-telemetry-broker"
+          "docker-ground-timescaledb" "docker-ground-emqx" "docker-ground-grafana" ];
+    noImplicitOciBootMembership = lib.all (name: !c."ground-${name}".autoStart) names;
     defaultDisabled = !(base.groundStation.telemetry.enable or true)
       && base.virtualisation.oci-containers.containers == { }
       && !(base.systemd.services ? ground-telemetry-prepare);

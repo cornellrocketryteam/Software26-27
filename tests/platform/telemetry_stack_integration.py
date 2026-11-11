@@ -226,12 +226,14 @@ def client_phase(phase, cycle):
         original_http = runtime._http
         last_request = "no management request"
 
-        def observed_http(url, method="GET", body=None, credentials=None):
+        def observed_http(url, method="GET", body=None, credentials=None, **kwargs):
             nonlocal last_request
             # Only operation, fixed local path, and status escape the fixture.
             path = url.split("18083", 1)[-1].split("?", 1)[0]
+            require(not (method == "PUT" and path == "/api/v5/schema_registry/telemetry"),
+                    "Unchanged fixture protobuf was unnecessarily recompiled.")
             last_request = method + " " + path + " transport failure"
-            result = original_http(url, method, body, credentials)
+            result = original_http(url, method, body, credentials, **kwargs)
             last_request = method + " " + path + " HTTP " + str(result[0])
             return result
 

@@ -235,6 +235,30 @@ class RuntimeContracts(unittest.TestCase):
             with self.assertRaises(runtime.ProvisionError):
                 runtime.broker(self.secret, ROOT / "ground-station", fixture.url + "/api/v5", attempts=1)
 
+    def test_repeated_reconciliation_does_not_recompile_unchanged_schema(self):
+        with http_fixture() as fixture:
+            runtime.broker(self.secret, ROOT / "ground-station", fixture.url + "/api/v5", attempts=1)
+            fixture.requests.clear()
+            runtime.broker(self.secret, ROOT / "ground-station", fixture.url + "/api/v5", attempts=1)
+            writes = [(method, path) for method, path, _ in fixture.requests if method != "GET"]
+            # A masked password cannot establish whether the connector secret
+            # changed. The remaining public resources can be compared exactly.
+            self.assertEqual(writes, [("PUT", "/api/v5/connectors/pgsql:ground_telemetry")])
+
+    def test_schema_mutations_have_a_bounded_compilation_budget(self):
+        seen = []
+        original = runtime._http
+        def tracked(url, method="GET", body=None, credentials=None, **kwargs):
+            seen.append((url, method, kwargs.get("timeout", 5)))
+            return original(url, method, body, credentials, **kwargs)
+        with http_fixture() as fixture, patch.object(runtime, "_http", side_effect=tracked):
+            runtime.broker(self.secret, ROOT / "ground-station", fixture.url + "/api/v5", attempts=1)
+        schema_writes = [budget for url, method, budget in seen if "/schema_registry" in url and method != "GET"]
+        self.assertEqual(len(schema_writes), 1)
+        self.assertGreater(schema_writes[0], 5)
+        self.assertLessEqual(schema_writes[0], 120)
+        self.assertTrue(all(budget <= 5 for url, method, budget in seen if "/schema_registry" not in url or method == "GET"))
+
     def test_broker_rejects_overlapping_unmanaged_rules_before_writes(self):
         self.assertTrue(hasattr(runtime, "broker"), "broker resource reconciler must exist")
         with http_fixture() as fixture:
@@ -317,6 +341,8 @@ def http_fixture():
             value = dict(body)
             if "/connectors/" in path or "/actions/" in path:
                 value["status"] = fixture.integration_status
+            if "/connectors/" in path:
+                value["password"] = "******"
             fixture.resources[path] = value
             self.send_response(201 if self.command == "POST" else 200)
             self.send_header("Content-Type", "application/json")

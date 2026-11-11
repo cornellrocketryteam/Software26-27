@@ -29,6 +29,8 @@ let
     finalImageTag = "sha256-${lib.removePrefix "sha256:" pin.imageDigest}";
   });
   container = name: {
+    # The background target requests startup; do not order boot behind retries.
+    autoStart = false;
     image = "${archives.${name}.imageName}:${archives.${name}.imageTag}";
     imageFile = archives.${name};
     pull = "never";
@@ -53,11 +55,12 @@ let
   emqxUnit = "docker-ground-emqx.service";
   migrationUnit = "ground-telemetry-database.service";
   grafanaUnit = "docker-ground-grafana.service";
+  supervisionTarget = "ground-telemetry.target";
   containerUnit = {
     # A failed Requires/After start does not run the container's Restart policy.
     # Re-request it in each prepare start transaction, including automatic
     # retries. Wants does not add ordering: prepare must never wait on these.
-    wantedBy = [ "ground-telemetry-prepare.service" ];
+    wantedBy = [ supervisionTarget "ground-telemetry-prepare.service" ];
     requires = [ "ground-telemetry-prepare.service" ];
     after = [ "ground-telemetry-prepare.service" ];
     unitConfig.StartLimitIntervalSec = 0;
@@ -116,6 +119,15 @@ in
       ];
     }
     (lib.mkIf active {
+      systemd.targets.ground-telemetry = {
+        description = "Background telemetry supervision (not operational readiness)";
+        wantedBy = [ "multi-user.target" ];
+        # A target normally orders itself after every wanted service. These
+        # bounded, retrying jobs must not hold the OS boot target indefinitely.
+        unitConfig.DefaultDependencies = false;
+        conflicts = [ "shutdown.target" ];
+        before = [ "shutdown.target" ];
+      };
       system.build.groundTelemetryImages = archives;
       systemd.tmpfiles.rules = [
         "d ${cfg.stateDirectory} 0750 root root - -"
@@ -199,12 +211,12 @@ in
         docker-ground-grafana = lib.recursiveUpdate containerUnit {
           # Migration can fail before Grafana ever executes. A migration retry
           # must request Grafana again as well as broker reconciliation.
-          wantedBy = [ "ground-telemetry-prepare.service" migrationUnit ];
+          wantedBy = [ supervisionTarget "ground-telemetry-prepare.service" migrationUnit ];
           requires = [ "ground-telemetry-prepare.service" migrationUnit ];
           after = [ "ground-telemetry-prepare.service" migrationUnit ];
         };
         ground-telemetry-prepare = lib.recursiveUpdate retry {
-          wantedBy = [ "multi-user.target" ];
+          wantedBy = [ supervisionTarget ];
           serviceConfig = {
             RemainAfterExit = true;
             RuntimeDirectory = "ground-telemetry";
@@ -215,7 +227,7 @@ in
           };
         };
         ground-telemetry-database = lib.recursiveUpdate retry {
-          wantedBy = [ "multi-user.target" dbUnit ];
+          wantedBy = [ supervisionTarget dbUnit ];
           requires = [ "ground-telemetry-prepare.service" dbUnit ];
           after = [ "ground-telemetry-prepare.service" dbUnit ];
           bindsTo = [ dbUnit ];
@@ -227,13 +239,14 @@ in
           };
         };
         ground-telemetry-broker = lib.recursiveUpdate retry {
-          wantedBy = [ "multi-user.target" emqxUnit migrationUnit ];
+          wantedBy = [ supervisionTarget emqxUnit migrationUnit ];
           requires = [ "ground-telemetry-prepare.service" migrationUnit emqxUnit ];
           after = [ "ground-telemetry-prepare.service" migrationUnit emqxUnit ];
           bindsTo = [ migrationUnit emqxUnit ];
           partOf = [ migrationUnit emqxUnit ];
           serviceConfig = {
             RemainAfterExit = true;
+            TimeoutStartSec = 240;
             ExecStart = "${executable} broker --secrets-file ${cfg.secretsFile} --assets ${assets} --api-url http://127.0.0.1:18083/api/v5";
           };
         };

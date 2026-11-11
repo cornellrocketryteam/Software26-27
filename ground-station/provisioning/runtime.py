@@ -213,7 +213,7 @@ def _local_url(url, allow_query=False):
     return parsed
 
 
-def _http(url, method="GET", body=None, credentials=None):
+def _http(url, method="GET", body=None, credentials=None, timeout=5):
     _local_url(url, allow_query=True)
     headers = {"Accept": "application/json"}
     if body is not None:
@@ -226,7 +226,7 @@ def _http(url, method="GET", body=None, credentials=None):
     # Local administration must not inherit a workstation/service HTTP proxy.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
     try:
-        with opener.open(request, timeout=5) as response:
+        with opener.open(request, timeout=timeout) as response:
             if response.status == 204:
                 return 204, None
             raw = response.read(1048577)
@@ -298,18 +298,30 @@ def _rule_topics(sql):
     return topics
 
 
+def _matches_config(actual, expected):
+    """Compare owned fields while tolerating vendor response defaults/metadata."""
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(
+            key in actual and _matches_config(actual[key], value) for key, value in expected.items())
+    return actual == expected
+
+
 def broker(secrets_file, assets, api_url, attempts=15):
     parsed = _local_url(api_url)
     if parsed.path != "/api/v5":
         raise ProvisionError("Broker management endpoint must end at /api/v5.")
     values = load_secrets(secrets_file)
     credentials = (values["emqxApiKey"], values["emqxApiSecret"])
-    deadline = time.monotonic() + 120
+    deadline = time.monotonic() + 180
 
     def request(path, method="GET", body=None):
-        if time.monotonic() >= deadline:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             raise ProvisionError("Broker provisioning exceeded its deadline.")
-        return _http(api_url + path, method, body, credentials)
+        # Protobuf registration compiles source; a read-style five-second
+        # deadline can abandon a valid compilation and trigger concurrent work.
+        budget = 120 if path.startswith("/schema_registry") and method in {"POST", "PUT"} else 5
+        return _http(api_url + path, method, body, credentials, timeout=min(budget, remaining))
 
     # Match the e5.8.8 management API, never infer enterprise capabilities from
     # a mutable Docker tag or PostgreSQL authentication support alone.
@@ -351,12 +363,15 @@ def broker(secrets_file, assets, api_url, attempts=15):
 
     def reconcile(collection, identifier, body, immutable):
         resource = collection + "/" + identifier
-        status, _ = request(resource)
+        status, current = request(resource)
+        update = {key: value for key, value in body.items() if key not in immutable}
         if status == 404:
             status, _ = request(collection, "POST", body)
             expected = 201
         elif status == 200:
-            status, _ = request(resource, "PUT", {key: value for key, value in body.items() if key not in immutable})
+            if _matches_config(current, update):
+                return
+            status, _ = request(resource, "PUT", update)
             expected = 200
         else:
             raise ProvisionError("Broker resource inventory failed.")
