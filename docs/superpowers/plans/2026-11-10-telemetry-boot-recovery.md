@@ -62,9 +62,10 @@ after it (59 total). Diagnostic reruns completed degraded boot and started
 containers automatically after the fixture credentials were supplied. The final
 direct-macOS run completed all acceptance cases below.
 
-The reverse activation edges also cause immediate client-requested retries after
-some preparation failures, bypassing the configured restart delay. That is distinct
-from the boot barrier; do not claim a fixed retry cadence from configuration alone.
+The November 10 graph also exposed immediate client-requested retries after some
+preparation failures, bypassing the configured restart delay. That was distinct
+from the boot barrier. The [November 11 follow-up](2026-11-11-telemetry-retry-cadence.md)
+replaces those activation edges and measures automatic retry cadence directly.
 
 The full x86 guest starts the unmodified amd64 EMQX image successfully, unlike
 the Docker Desktop/Rosetta attempt. It also automatically retries a deliberately

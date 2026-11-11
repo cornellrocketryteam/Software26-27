@@ -54,13 +54,14 @@ let
   dbUnit = "docker-ground-timescaledb.service";
   emqxUnit = "docker-ground-emqx.service";
   migrationUnit = "ground-telemetry-database.service";
+  brokerUnit = "ground-telemetry-broker.service";
   grafanaUnit = "docker-ground-grafana.service";
   supervisionTarget = "ground-telemetry.target";
+  # ExecStartPost runs only after a successful start. Never wait here for a
+  # consumer ordered After this unit: enqueue its start and let this job finish.
+  wake = units: [ "${pkgs.systemd}/bin/systemctl --no-block start ${lib.concatStringsSep " " units}" ];
   containerUnit = {
-    # A failed Requires/After start does not run the container's Restart policy.
-    # Re-request it in each prepare start transaction, including automatic
-    # retries. Wants does not add ordering: prepare must never wait on these.
-    wantedBy = [ supervisionTarget "ground-telemetry-prepare.service" ];
+    wantedBy = [ supervisionTarget ];
     requires = [ "ground-telemetry-prepare.service" ];
     after = [ "ground-telemetry-prepare.service" ];
     unitConfig.StartLimitIntervalSec = 0;
@@ -208,10 +209,13 @@ in
       };
 
       systemd.services = lib.genAttrs (map (name: "docker-ground-${name}") names) (_: containerUnit) // {
+        docker-ground-timescaledb = lib.recursiveUpdate containerUnit {
+          serviceConfig.ExecStartPost = wake [ migrationUnit ];
+        };
+        docker-ground-emqx = lib.recursiveUpdate containerUnit {
+          serviceConfig.ExecStartPost = wake [ brokerUnit ];
+        };
         docker-ground-grafana = lib.recursiveUpdate containerUnit {
-          # Migration can fail before Grafana ever executes. A migration retry
-          # must request Grafana again as well as broker reconciliation.
-          wantedBy = [ supervisionTarget "ground-telemetry-prepare.service" migrationUnit ];
           requires = [ "ground-telemetry-prepare.service" migrationUnit ];
           after = [ "ground-telemetry-prepare.service" migrationUnit ];
         };
@@ -224,10 +228,11 @@ in
             RuntimeDirectoryPreserve = "yes";
             TimeoutStartSec = 30;
             ExecStart = "${executable} prepare --secrets-file ${cfg.secretsFile} --output /run/ground-telemetry";
+            ExecStartPost = wake [ dbUnit emqxUnit grafanaUnit ];
           };
         };
         ground-telemetry-database = lib.recursiveUpdate retry {
-          wantedBy = [ supervisionTarget dbUnit ];
+          wantedBy = [ supervisionTarget ];
           requires = [ "ground-telemetry-prepare.service" dbUnit ];
           after = [ "ground-telemetry-prepare.service" dbUnit ];
           bindsTo = [ dbUnit ];
@@ -236,10 +241,11 @@ in
             RemainAfterExit = true;
             TimeoutStartSec = 240;
             ExecStart = "${executable} database --docker ${config.virtualisation.docker.package}/bin/docker --assets ${assets}";
+            ExecStartPost = wake [ grafanaUnit brokerUnit ];
           };
         };
         ground-telemetry-broker = lib.recursiveUpdate retry {
-          wantedBy = [ supervisionTarget emqxUnit migrationUnit ];
+          wantedBy = [ supervisionTarget ];
           requires = [ "ground-telemetry-prepare.service" migrationUnit emqxUnit ];
           after = [ "ground-telemetry-prepare.service" migrationUnit emqxUnit ];
           bindsTo = [ migrationUnit emqxUnit ];
@@ -251,9 +257,10 @@ in
           };
         };
         ground-telemetry-grafana-ready = lib.recursiveUpdate retry {
-          requires = [ grafanaUnit ];
+          # A health probe must observe availability, not start a broken stack
+          # and override its automatic restart delays through Requires/BindsTo.
+          requisite = [ grafanaUnit ];
           after = [ grafanaUnit ];
-          bindsTo = [ grafanaUnit ];
           partOf = [ grafanaUnit ];
           serviceConfig = {
             RemainAfterExit = false;

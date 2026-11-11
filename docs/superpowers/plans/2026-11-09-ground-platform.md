@@ -66,7 +66,7 @@ module image archives built with verified hashes for the disposable test version
 those fixtures are not production image choices. See the
 [telemetry runbook](../../operations/telemetry-stack.md). Production compatibility,
 restore and physical UM560 acceptance remain unchecked.
-All 59 telemetry and 121 foundation module contracts passed; the host suite ran
+All 60 telemetry and 121 foundation module contracts passed; the host suite ran
 110 tests with one Linux-only skip. The isolated mixed-platform test passed real
 JSON/protobuf ingestion, role authentication, Grafana provisioning and restart
 persistence without duplicate rows. It used a native ARM64 broker because the
@@ -77,9 +77,12 @@ forced migration failure retries, and database/broker/Grafana SIGKILLs recover
 automatically. Fourteen saved rows and unchanged credentials survive a cold
 restart; a third batch produces 21 correct rows without duplicates. The Grafana
 probe completes successfully and physical commanding stays disabled. This test
-ran directly on macOS in 1,492 seconds; the 8 GiB Linux runner hit a confirmed
-host OOM before acceptance completed. See the
-[boot/recovery evidence](2026-11-10-telemetry-boot-recovery.md).
+last ran directly on macOS in 994 seconds on November 11, after success-only
+recovery activation removed the rapid retry loop. The controlled scheduling VM
+also passes with the probe active during degraded boot. The earlier 8 GiB Linux
+runner hit a confirmed host OOM before acceptance completed. See the
+[boot/recovery evidence](2026-11-10-telemetry-boot-recovery.md) and
+[retry scheduling evidence](2026-11-11-telemetry-retry-cadence.md).
 Native x86 hardware startup remains unverified.
 
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
@@ -245,8 +248,10 @@ and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
   device permissions, and logs. Browser failure must not stop recording.
 - [x] Add bounded telemetry preparation/migration/provisioning and recurring
   Grafana probes, restart/recovery edges, private credentials and scoped listeners.
-- [ ] Rate-limit failed preparation transactions across dependent activation
-  edges; client-requested retries can bypass the configured restart delay.
+- [x] Remove automatic dependency activation feedback that bypasses restart
+  delays; wake consumers after prerequisite success and make probes observational.
+  The controlled VM measures preparation/migration/broker cadence and verifies
+  unattended recovery. Explicit administrator starts retain systemd semantics.
 - [x] Verify telemetry recovery edges in the actual NixOS services inside an
   isolated x86 VM: degraded boot, failed migration retry, three container SIGKILLs,
   persisted rows/credentials and new ingestion after a populated-disk cold restart.

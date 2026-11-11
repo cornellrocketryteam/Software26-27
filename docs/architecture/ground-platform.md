@@ -1,6 +1,6 @@
 # Ground station, build cache, and fill-station deployment
 
-Status: approved architecture; initial implementation committed, 2026-11-10.
+Status: approved architecture; implementation progress updated, 2026-11-11.
 Requirements below were confirmed with the user. The NixOS foundation and
 build/cache CLI exist; the operational stack and station deployment remain pending.
 This document describes the intended architecture, not a deployed system.
@@ -37,6 +37,9 @@ for commands that exist today.
   persisted-data checks through a cold restart, ending with 21 correct fixture
   rows. Production image/edition/license inventory, backup restore and physical
   UM560 cold-boot acceptance remain required before replacing Compose.
+  Success-only recovery activation removes rapid failure retry loops. The
+  recurring Grafana probe observes the stack without starting its prerequisites;
+  controlled scheduling and real-image VM regression tests passed.
 
 The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
 see [cache acceptance](../operations/build-cache.md) before enabling it. A separate

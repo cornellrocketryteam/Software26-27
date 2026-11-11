@@ -189,8 +189,10 @@ systemctl status ground-telemetry-grafana-ready.timer
 journalctl -b -u ground-telemetry-database -u ground-telemetry-broker
 ```
 
-Preparation and provisioning failures retry with bounded attempts; recovery edges
-request dependent services again. A failed prerequisite leaves consumers degraded
+Preparation and provisioning failures retry with bounded attempts. A successful
+prerequisite enqueues its consumers with a nonblocking `ExecStartPost` command;
+failed attempts do not request consumers that would immediately restart the
+failed prerequisite. A failed prerequisite leaves consumers degraded
 instead of declaring success. Service retries never send a launch, arm, wipe or
 network-device power command. Closing the browser does not stop recording.
 
@@ -200,9 +202,15 @@ services. The normal OS boot target therefore does not wait forever for missing
 credentials or repeatedly failing provisioning. Target activity means supervision
 was requested; inspect the individual units and health checks for actual status.
 The services retain their prerequisite, filesystem and shutdown dependencies.
-Some failed preparation transactions request immediate retries through their
-dependent activation edges. The configured restart delay therefore does not
-establish a fixed retry cadence; rate-limiting that feedback remains open.
+With unchanged prerequisites, failed attempts use the configured five-second
+restart delay. A successful prerequisite can request immediate consumer recovery;
+explicit administrator start/restart requests can also override a pending delay.
+This removes the failure feedback loop, rather than imposing a global limit on
+all start requests. The Grafana probe uses `Requisite`/`After` instead
+of `Requires`/`BindsTo`: it checks an already-running Grafana without starting
+Grafana or its prerequisites. `PartOf` retains stop/restart propagation. See the
+[systemd dependency definitions](https://www.freedesktop.org/software/systemd/man/262/systemd.unit.html)
+and [success-hook ordering](https://www.freedesktop.org/software/systemd/man/262/systemd.service.html).
 
 The overall `/readyz` deliberately remains **503**. Successful static UI serving,
 Grafana process health and a running broker are separate evidence. Actual
@@ -291,7 +299,7 @@ The actual module's amd64 archive outputs use
 and Linux/amd64 image configuration were verified separately.
 
 Current source checks passed: 17 runtime tests on both Darwin and x86 Linux helper
-builds, 59 telemetry module contracts and 121 existing foundation contracts.
+builds, 60 telemetry module contracts and 121 existing foundation contracts.
 The platform suite ran 110 tests with one Linux-only skip. The Docker Desktop
 amd64 EMQX startup failure remains recorded above. The separate full x86 NixOS VM
 result below supplies service boot/recovery evidence; physical mini-PC acceptance
@@ -337,8 +345,9 @@ Do not treat those partial runs as a pass or fix them by changing the service
 images. The direct macOS runner avoids that particular host limit. A Linux test
 host still needs enough memory and workspace for QEMU and all prepared images.
 
-**Observed 2026-11-10: passed**, using the direct macOS runner, in 1,492 seconds.
-The result is `/nix/store/js5rm5j0zlr2vfdgz1n62psa6xnf962m-vm-test-run-ground-telemetry-offline-recovery`.
+**Latest observed 2026-11-11: passed**, using the direct macOS runner, in 994 seconds,
+after the retry activation change. The result is
+`/nix/store/bndmzk2bzi9avmfz597gjcyx8dg4sp55-vm-test-run-ground-telemetry-offline-recovery`.
 It verified degraded boot and UI availability, automatic credential/migration
 recovery, real JSON/protobuf ingestion, separate database/broker/Grafana SIGKILL
 recovery, and fourteen persisted rows through a complete shutdown/start on the
@@ -349,3 +358,27 @@ all NICs remained absent, `/readyz` stayed 503 and commanding stayed disabled.
 This emulated x86 guest result is separate from the earlier mixed-platform
 container test. Native UM560 timing, hardware installation, Ethernet/display
 behavior, abrupt whole-machine power loss and field acceptance remain unverified.
+
+### Automatic retry scheduling regression
+
+`tests/platform/test_telemetry_retry_vm.nix` retains the production dependency
+graph but substitutes controlled failing preparation/migration/broker executables
+and inert container processes. It does not test Docker images or ingestion.
+Monotonic invocation timestamps must show at least 4.8 seconds between attempts
+while prerequisites and failing inputs stay unchanged, with the configured
+five-second restart delay. Preparation is checked with the
+normal probe active; the probe is then withheld so recovery cannot depend on it.
+Marker releases and container-process kills must restore the expected consumers
+and fresh provisioning invocations without manually starting production units.
+
+```sh
+nix build --impure --expr 'let f = builtins.getFlake (toString ./.); pkgs = import f.inputs.nixpkgs { system = "aarch64-darwin"; }; in import ./tests/platform/test_telemetry_retry_vm.nix { inherit pkgs; }' -o /private/tmp/ground-telemetry-retry-vm --option timeout 1200 -L
+```
+
+The original graph failed with preparation attempts about 0.8–1 second apart.
+On 2026-11-11 the fixed graph passed in 140 seconds: minimum observed preparation,
+migration and broker gaps were 5.85, 5.93 and 5.95 seconds. The timer fired during
+degraded boot without starting Grafana or executing its probe service; the probe
+executed after recovery. These are emulated scheduling observations, not native
+station performance measurements. See the
+[retry implementation evidence](../superpowers/plans/2026-11-11-telemetry-retry-cadence.md).

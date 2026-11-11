@@ -51,11 +51,12 @@ let
   unitNames = map (name: "${name}.service") serviceNames;
   unit = name: services.${lib.removeSuffix ".service" name};
   # A Requires/After failure never executes the blocked service, so its own
-  # Restart policy cannot recover it. Check the reverse activation edges used
-  # by a fresh start transaction of each successfully retried prerequisite.
+  # Restart policy cannot recover it. A successful prerequisite must enqueue
+  # consumers without pulling them into its failed start transactions.
   requestedBy = upstream: downstream:
-    builtins.elem upstream enabled.systemd.units.${downstream}.wantedBy
-    || builtins.elem downstream (unit upstream).wants;
+    lib.any (command: lib.hasInfix "/bin/systemctl --no-block start " command
+      && builtins.elem downstream (lib.splitString " " command))
+      ((unit upstream).serviceConfig.ExecStartPost or [ ]);
   ordering = lib.toposort (a: b:
     builtins.elem a (unit b).after || builtins.elem b (unit a).before) unitNames;
   checks = {
@@ -122,9 +123,9 @@ let
       && !(builtins.elem "network-online.target" s.wants)
       && !(builtins.elem "network-online.target" s.requires)) (serviceNames ++ [ "docker" ]);
     boundedContainerAttempts = lib.all (name: services."docker-ground-${name}".serviceConfig.TimeoutStartSec == 300) names;
-    recoveryRequestsDependenciesAgain = lib.all (name:
-      builtins.elem "ground-telemetry-prepare.service" services."docker-ground-${name}".wantedBy) names
-      && builtins.elem "ground-telemetry-database.service" services.docker-ground-grafana.wantedBy;
+    noReverseActivationFeedback = lib.all (upstream: lib.all (downstream:
+      !(builtins.elem upstream enabled.systemd.units.${downstream}.wantedBy)
+      && !(builtins.elem downstream (unit upstream).wants)) unitNames) unitNames;
     prepareRecoveryRequestsContainers = lib.all (name:
       requestedBy "ground-telemetry-prepare.service" "docker-ground-${name}.service") names;
     databaseRecoveryRequestsConsumers = lib.all (name:
@@ -227,7 +228,10 @@ let
       builtins.elem name services.ground-telemetry-broker.bindsTo)
         [ "docker-ground-emqx.service" "ground-telemetry-database.service" ];
     probeTracksGrafanaRestarts = builtins.elem "docker-ground-grafana.service" services.ground-telemetry-grafana-ready.partOf
-      && builtins.elem "docker-ground-grafana.service" services.ground-telemetry-grafana-ready.bindsTo;
+      && builtins.elem "docker-ground-grafana.service" services.ground-telemetry-grafana-ready.after;
+    probeCannotActivateStack = services.ground-telemetry-grafana-ready.requires == [ ]
+      && services.ground-telemetry-grafana-ready.bindsTo == [ ]
+      && services.ground-telemetry-grafana-ready.requisite == [ "docker-ground-grafana.service" ];
     recurringNonStickyProbe = !services.ground-telemetry-grafana-ready.serviceConfig.RemainAfterExit
       && enabled.systemd.timers.ground-telemetry-grafana-ready.timerConfig.OnUnitInactiveSec == "30s"
       && lib.hasInfix "wait --url http://127.0.0.1:3000/grafana/api/health" services.ground-telemetry-grafana-ready.serviceConfig.ExecStart;
