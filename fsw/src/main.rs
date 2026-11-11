@@ -2,7 +2,6 @@
 
 #![no_std]
 #![no_main]
-#[cfg(feature = "test_ads7128")] //only for testing purposes -- can remove after 
 use embassy_executor::{Executor, Spawner};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::multicore::{spawn_core1, Stack};
@@ -16,7 +15,8 @@ pub mod actuator;
 pub mod airbrake_task;
 mod constants;
 mod driver;
-mod ads7128_test; 
+#[cfg(feature = "test_ads7128")] //only for testing purposes -- can remove after
+mod ads7128_test;
 mod flight_loop;
 #[cfg(any(
     feature = "sim_simple",
@@ -865,16 +865,22 @@ async fn main(spawner: Spawner) {
             if period_samples >= 200 {
                 let n = period_samples as u64;
                 let avg_us = period_sum_us / n;
-                log::warn!(
-                    "LOOP period us: avg={} min={} max={} => {} Hz | execute() us: avg={} max={} (target {} us)",
-                    avg_us, period_min_us, period_max_us, 1_000_000 / avg_us.max(1),
-                    exec_sum_us / n, exec_max_us, constants::LOOP_PERIOD_MS * 1000,
+                // print_str, not log::warn! — the logger is compiled out of release builds.
+                let mut msg = heapless::String::<192>::new();
+                let _ = core::fmt::write(
+                    &mut msg,
+                    format_args!(
+                        "LOOP period us: avg={} min={} max={} => {} Hz | execute() us: avg={} max={} (target {} us)\n",
+                        avg_us, period_min_us, period_max_us, 1_000_000 / avg_us.max(1),
+                        exec_sum_us / n, exec_max_us, constants::LOOP_PERIOD_MS * 1000,
+                    ),
                 );
+                crate::umbilical::print_str(msg.as_str());
                 (period_samples, period_sum_us, period_min_us, period_max_us, exec_sum_us, exec_max_us) =
                     (0, 0, u64::MAX, 0, 0, 0);
             }
 
-            Timer::after_millis(constants::MAIN_LOOP_DELAY_MS).await;
+            ticker.next().await;
         }
     }
 }
