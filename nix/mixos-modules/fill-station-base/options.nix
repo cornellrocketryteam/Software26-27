@@ -17,6 +17,12 @@
       description = "Fill-station build mode (Cargo feature passed to the fill-station package).";
     };
 
+    extraFeatures = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Extra Cargo features for the fill-station binary (e.g. bench-test builds).";
+    };
+
     debug = lib.mkEnableOption "debug tools (ADC CLI helpers, tcpdump, util-linux), too big for the production (OSPI) image";
   };
 }

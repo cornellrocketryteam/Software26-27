@@ -8,6 +8,8 @@
   withHelpers ? false,
   # Build mode: "none", "liquid", or "hybrid"
   mode ? "none",
+  # Extra Cargo features (e.g. [ "ereg-test" ] for bench-test images)
+  extraFeatures ? [ ],
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fill-station";
@@ -22,9 +24,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
       "--bin"
       "fill-station"
     ]
-    ++ lib.optionals (mode != "none") [
+    ++ lib.optionals (mode != "none" || extraFeatures != [ ]) [
       "--features"
-      mode
+      (lib.concatStringsSep "," (lib.optional (mode != "none") mode ++ extraFeatures))
     ];
 
   # build.rs generates the telemetry protobuf code with nanopb (Python + protoc,
