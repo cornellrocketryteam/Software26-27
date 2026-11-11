@@ -39,9 +39,13 @@ generated public configuration and explicit disconnected defaults. See
 [operator UI startup](../../../docs/operations/operator-ui.md). `/readyz` remains
 503 even when UI assets are available. No npm or device discovery runs at boot.
 
-Grafana has an optional native module requiring a runtime secret and reviewed
-URL, but database/broker/datasource/dashboard provisioning, pinned OCI archives,
-prepared tile coverage and kiosk startup remain pending. Commanding is disabled until an
+An opt-in [telemetry module](../../../docs/operations/telemetry-stack.md) now
+loads pinned local OCI archives and provisions the database, broker, Grafana
+datasource and dashboard. It requires three explicitly reviewed image pins and
+private runtime credentials; no production versions are guessed. Native Grafana
+must remain disabled when selecting that container stack. Production compatibility,
+backup restore and physical cold-boot acceptance remain pending, along with
+prepared tile coverage and kiosk startup. Commanding is disabled until an
 inspected device and endpoint are configured; legacy button firmware is limited
 to monitoring. See [the listener gate](../../../ground-station/LaunchButton/README.md).
 

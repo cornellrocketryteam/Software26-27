@@ -56,8 +56,8 @@ in
     };
     grafanaUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = if cfg.enable then "/grafana/" else null;
-      description = "Public HTTP(S) or root-relative Grafana URL without credentials. Native Grafana defaults to /grafana/.";
+      default = if cfg.enable || config.groundStation.telemetry.enable then "/grafana/" else null;
+      description = "Public HTTP(S) or root-relative Grafana URL without credentials. Native or container Grafana defaults to /grafana/.";
     };
     tileUrl = lib.mkOption {
       type = lib.types.str;
@@ -81,7 +81,7 @@ in
     rootUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      description = "Reviewed external HTTP(S) URL ending in /grafana/, required for LAN access. Null uses the loopback HTTP endpoint.";
+      description = "Reviewed external HTTP(S) URL ending in /grafana/, shared by native or telemetry-container Grafana and required for LAN access. Null uses the loopback HTTP endpoint.";
     };
   };
 
@@ -155,7 +155,7 @@ in
           "/cache/" = lib.mkIf config.services.harmonia.cache.enable {
             proxyPass = "http://127.0.0.1:5000/";
           };
-          "/grafana/" = lib.mkIf cfg.enable {
+          "/grafana/" = lib.mkIf (cfg.enable || config.groundStation.telemetry.enable) {
             proxyPass = "http://127.0.0.1:3000";
             proxyWebsockets = true;
           };

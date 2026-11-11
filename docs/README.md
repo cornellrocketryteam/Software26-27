@@ -19,6 +19,7 @@ This page is the starting point for software documentation in the repository.
 | [Cache publication and acceptance](operations/build-cache.md) | Signed cache setup, receipt configuration, SSH ingestion and live acceptance |
 | [Build-worker setup and acceptance](operations/build-worker.md) | Runtime health, guarded sessions, field admission and pending hardware validation |
 | [Operator UI startup](operations/operator-ui.md) | Static UI build, runtime configuration, local serving and application-readiness boundaries |
+| [Telemetry startup](operations/telemetry-stack.md) | Pinned offline containers, private credentials, database/broker/Grafana provisioning and migration acceptance |
 | [Ground-station NixOS foundation](../nix/nixos-configurations/ground-station/README.md) | Existing targets, configuration gates, and pending hardware/service work |
 | [Fill-station deployment](operations/fill-station-deployment.md) | Current SD/OSPI build, network update, and manual recovery procedure |
 | [Development readiness](operations/development-readiness.md) | Evidence and signoff required before operational use |

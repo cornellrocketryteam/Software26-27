@@ -57,6 +57,22 @@ see [UI startup acceptance](../../operations/operator-ui.md) for its exact scope
 The existing Python platform suite also passed (93 tests, one Linux-only skip).
 This does not complete telemetry, prepared map coverage, kiosk or UM560 acceptance.
 
+The telemetry increment adds an opt-in NixOS container graph, a packaged local
+provisioner, distinct administrator/insert/read credentials and explicit loopback
+SCRAM authentication. The database setup is repeatable, broker provisioning checks
+capabilities and conflicting rules, and Grafana loads a local datasource/dashboard.
+Darwin and x86 Linux helper packages each passed 15 runtime tests. All three actual
+module image archives built with verified hashes for the disposable test versions;
+those fixtures are not production image choices. See the
+[telemetry runbook](../../operations/telemetry-stack.md). Production compatibility,
+restore, NixOS service cold boot and physical UM560 acceptance remain unchecked.
+All 56 telemetry and 121 foundation module contracts passed; the host suite ran
+108 tests with one Linux-only skip. The isolated mixed-platform test passed real
+JSON/protobuf ingestion, role authentication, Grafana provisioning and restart
+persistence without duplicate rows. It used a native ARM64 broker because the
+amd64 EMQX fixture fails QUIC-library initialization on this Mac. Native x86
+broker startup remains an explicit acceptance gap, not a successful test.
+
 A real Liquid FIT build through `scripts/platform` completed using the Mac's
 ARM64 Linux worker. Release `20261110T040717Z-c36b10ad543f467bb563a579b2901ebb`
 contains an 18,727,192-byte FIT with SHA256
@@ -192,11 +208,18 @@ packages under `nix/packages/crt/`, and versioned provisioning under
 `ground-station/provisioning/`. Modify `ground-station/LaunchButton/pc_listener.py`
 and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
 
-- [ ] Pin container image digests, preload archives, and declare persistent volumes.
-  Retain current EMQX/TimescaleDB/Grafana behavior during host migration.
-- [ ] Provision the database and availability migration idempotently; preserve data.
-- [ ] Provision broker protobuf schema, both topic rules, and shared SQL action.
-- [ ] Provision Grafana datasource and dashboard; test NULL/unavailable vs zero.
+- [x] Add an opt-in module requiring immutable image digests/verified archives,
+  preload-only startup and separate persistent service directories.
+- [ ] Inventory/pin production images and edition/license; prepare the actual
+  system closure and validate persistent mounts before host migration.
+- [x] Implement repeatable database/availability setup; isolated Timescale tests
+  preserve fixture data and distinguish unavailable NULL from valid zero.
+- [ ] Restore the existing database backup into the isolated migration target;
+  verify its data, schema, major version and recovery procedure.
+- [x] Implement named broker protobuf schema, both topic rules and shared SQL
+  action reconciliation, with capability/conflicting-rule checks.
+- [x] Package the local Grafana datasource/dashboard and availability semantics;
+  keep unconfigured camera feeds explicit and use a separate read-only role.
 - [ ] Replace hard-coded UI/listener/broker addresses with one deployment config.
 - [x] Remove the UI's fixed board address and load validated public settings
   before connecting; missing settings render a disconnected local UI.
@@ -206,6 +229,10 @@ and `Ground_Station_UI/src/App.tsx` for explicit endpoint configuration.
   selection with configured stable device identity and controlled retries.
 - [ ] Add dependency/readiness checks and restart policies, visible service status,
   device permissions, and logs. Browser failure must not stop recording.
+- [x] Add bounded telemetry preparation/migration/provisioning and recurring
+  Grafana probes, restart/recovery edges, private credentials and scoped listeners.
+- [ ] Verify those recovery edges by booting/restarting the actual NixOS services;
+  pure module ordering checks and manually restarted containers are distinct evidence.
 - [ ] Test startup/restart/unplug/replug with a simulator: no launch, arm, or wipe
   is emitted without a new valid physical input in the intended session.
 - [ ] Power-cycle offline: UI, broker, database, Grafana, and listener recover

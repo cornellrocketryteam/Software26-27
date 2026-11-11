@@ -2,7 +2,7 @@
 
 The existing React UI now has a reproducible Nix package and an optional NixOS
 nginx integration. This is the first application-startup increment. It does not
-provision the broker/database/Grafana stack, open a kiosk, migrate Ethernet,
+itself provision the broker/database/Grafana stack, open a kiosk, migrate Ethernet,
 enable physical-button firmware or implement network/power controls.
 
 ## Development and local inspection
@@ -118,6 +118,11 @@ Native Grafana, if separately enabled/configured, defaults the public UI link to
 dashboard. Preserve the current Compose deployment until migration/restore and
 startup acceptance pass.
 
+The later [telemetry module](telemetry-stack.md) adds opt-in container packaging
+and provisioning, with the same public Grafana link. Its production migration
+and complete host acceptance remain pending; native/container Grafana cannot run
+together on the same ports.
+
 ## Verification and remaining acceptance
 
 Unit tests cover schema/URLs, fail-closed config loading and legacy credential
@@ -155,6 +160,6 @@ and delegated to its existing Linux builder. The x86 guest uses software
 emulation; this does not establish UM560 timing or physical boot compatibility.
 
 Still required: actual Ethernet configuration and device endpoint testing, a
-complete telemetry stack with pinned/preloaded images, migration/restore and
-Grafana provisioning, kiosk startup, map coverage, physical controls and offline
+reviewed production telemetry images, migration/restore and full-stack host
+acceptance, kiosk startup, map coverage, physical controls and offline
 cold-boot acceptance on the mini PC.

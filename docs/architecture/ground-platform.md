@@ -30,6 +30,11 @@ for commands that exist today.
   the browser's fixed board address; missing settings show disconnected status.
   Browser and nginx routing checks passed. Offline tile preparation, kiosk and
   complete telemetry-stack startup remain pending; `/readyz` still returns 503.
+- [Telemetry packaging](../operations/telemetry-stack.md): opt-in prepared-image
+  containers, private runtime credentials, idempotent database/availability setup,
+  named broker resource reconciliation and local Grafana provisioning now exist.
+  Production image/edition/license inventory, backup restore and NixOS/UM560
+  cold-boot acceptance remain required before replacing Compose.
 
 The opt-in SSH cache ingestion/receipt module now exists, disabled by default;
 see [cache acceptance](../operations/build-cache.md) before enabling it. A separate

@@ -1,0 +1,12 @@
+{
+  "platform": {
+    "timescaledb": "linux/amd64",
+    "emqx": "linux/arm64",
+    "grafana": "linux/amd64",
+    "client": "linux/amd64"
+  },
+  "timescaledb": "timescale/timescaledb@sha256:fd4181d3c7ba4c8c7e044629a3bb446d07936da24dfe09fa8de6288c1ad7e98a",
+  "emqx": "emqx/emqx-enterprise@sha256:d5e33500f472b2643f47e933b57255e8ee14bc8014076d4d4cb0f867c09b0841",
+  "grafana": "grafana/grafana-oss@sha256:b8f6abae513b839b2f3487343fa5e44d9c9d7871271fdd17689c4c452cb8098e",
+  "client": "python@sha256:d76f585fb0d5107dd47143da5e61554fd9cae656a30f3470f815cb8475769b6a"
+}
