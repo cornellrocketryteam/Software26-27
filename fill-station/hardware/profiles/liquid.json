@@ -9,14 +9,14 @@
       "enabled": true,
       "connections": {
         "continuity": {
-          "pin": "main:0x00a0",
-          "function": "GPIO0_39",
-          "bias": "pull-down",
+          "pin": "main:0x01ac",
+          "function": "GPIO1_19",
+          "bias": "none",
           "schmitt": true
         },
         "signal": {
-          "pin": "main:0x009c",
-          "function": "GPIO0_38",
+          "pin": "main:0x01a8",
+          "function": "GPIO1_18",
           "bias": "pull-down",
           "schmitt": true
         }
@@ -30,39 +30,19 @@
       "enabled": true,
       "connections": {
         "continuity": {
-          "pin": "main:0x0208",
-          "function": "GPIO1_42",
+          "pin": "main:0x01b4",
+          "function": "GPIO1_21",
           "bias": "none",
           "schmitt": true
         },
         "signal": {
-          "pin": "main:0x00a4",
-          "function": "GPIO0_40",
+          "pin": "main:0x01b0",
+          "function": "GPIO1_20",
           "bias": "pull-down",
           "schmitt": true
         }
       },
       "settings": {}
-    },
-    {
-      "id": "adc1",
-      "type": "ads1015",
-      "role": "adc1",
-      "enabled": true,
-      "connections": {},
-      "settings": {},
-      "bus": "main_i2c2",
-      "address": 72
-    },
-    {
-      "id": "adc2",
-      "type": "ads1015",
-      "role": "adc2",
-      "enabled": true,
-      "connections": {},
-      "settings": {},
-      "bus": "main_i2c2",
-      "address": 73
     },
     {
       "id": "sv1",
@@ -71,14 +51,14 @@
       "enabled": true,
       "connections": {
         "control": {
-          "pin": "main:0x00ac",
-          "function": "GPIO0_42",
+          "pin": "main:0x0164",
+          "function": "GPIO1_1",
           "bias": "pull-down",
           "schmitt": true
         },
         "sense": {
-          "pin": "main:0x022c",
-          "function": "GPIO1_51",
+          "pin": "main:0x0160",
+          "function": "GPIO1_0",
           "bias": "none",
           "schmitt": true
         }
@@ -94,14 +74,14 @@
       "enabled": true,
       "connections": {
         "control": {
-          "pin": "main:0x0084",
-          "function": "GPIO0_32",
+          "pin": "main:0x016c",
+          "function": "GPIO1_3",
           "bias": "pull-down",
           "schmitt": true
         },
         "sense": {
-          "pin": "main:0x0090",
-          "function": "GPIO0_35",
+          "pin": "main:0x0168",
+          "function": "GPIO1_2",
           "bias": "none",
           "schmitt": true
         }
@@ -117,14 +97,14 @@
       "enabled": true,
       "connections": {
         "control": {
-          "pin": "main:0x0210",
-          "function": "GPIO1_44",
+          "pin": "main:0x0174",
+          "function": "GPIO1_5",
           "bias": "pull-down",
           "schmitt": true
         },
         "sense": {
-          "pin": "main:0x0098",
-          "function": "GPIO0_37",
+          "pin": "main:0x0170",
+          "function": "GPIO1_4",
           "bias": "none",
           "schmitt": true
         }
@@ -140,14 +120,14 @@
       "enabled": true,
       "connections": {
         "control": {
-          "pin": "main:0x00a8",
-          "function": "GPIO0_41",
+          "pin": "main:0x017c",
+          "function": "GPIO1_7",
           "bias": "pull-down",
           "schmitt": true
         },
         "sense": {
-          "pin": "main:0x0094",
-          "function": "GPIO0_36",
+          "pin": "main:0x0178",
+          "function": "GPIO1_6",
           "bias": "none",
           "schmitt": true
         }
@@ -163,14 +143,14 @@
       "enabled": true,
       "connections": {
         "control": {
-          "pin": "main:0x0220",
-          "function": "GPIO1_48",
+          "pin": "main:0x0184",
+          "function": "GPIO1_9",
           "bias": "pull-down",
           "schmitt": true
         },
         "sense": {
-          "pin": "main:0x0218",
-          "function": "GPIO1_46",
+          "pin": "main:0x0180",
+          "function": "GPIO1_8",
           "bias": "none",
           "schmitt": true
         }
@@ -180,35 +160,43 @@
       }
     },
     {
-      "id": "mav",
-      "type": "mav_servo",
-      "role": "mav",
+      "id": "sv6",
+      "type": "solenoid_valve",
+      "role": null,
       "enabled": true,
       "connections": {
-        "pwm": {
-          "pin": "main:0x008c",
-          "function": "EHRPWM4_B",
+        "sense": {
+          "pin": "main:0x0188",
+          "function": "GPIO1_10",
           "bias": "none",
+          "schmitt": true
+        },
+        "control": {
+          "pin": "main:0x018c",
+          "function": "GPIO1_11",
+          "bias": "pull-down",
           "schmitt": true
         }
       },
-      "settings": {}
+      "settings": {
+        "valve_type": "normally_closed"
+      }
     },
     {
       "id": "ball_valve",
       "type": "ball_valve",
-      "role": "ball_valve",
+      "role": null,
       "enabled": true,
       "connections": {
-        "on_off": {
-          "pin": "main:0x025c",
-          "function": "GPIO1_63",
+        "signal": {
+          "pin": "main:0x01a0",
+          "function": "GPIO1_16",
           "bias": "pull-down",
           "schmitt": true
         },
-        "signal": {
-          "pin": "main:0x0258",
-          "function": "GPIO1_62",
+        "on_off": {
+          "pin": "main:0x01a4",
+          "function": "GPIO1_17",
           "bias": "pull-down",
           "schmitt": true
         }
@@ -216,31 +204,50 @@
       "settings": {}
     },
     {
-      "id": "qd_stepper",
-      "type": "qd_stepper",
-      "role": "qd_stepper",
-      "enabled": false,
+      "id": "quick_disconnect1",
+      "type": "solenoid_valve",
+      "role": null,
+      "enabled": true,
       "connections": {
-        "step": {
-          "pin": "main:0x0248",
-          "function": "GPIO1_58",
+        "control": {
+          "pin": "main:0x0190",
+          "function": "GPIO1_12",
           "bias": "pull-down",
           "schmitt": true
         },
-        "direction": {
-          "pin": "main:0x020c",
-          "function": "GPIO1_43",
-          "bias": "pull-down",
-          "schmitt": true
-        },
-        "enable": {
-          "pin": "main:0x0260",
-          "function": "GPIO1_64",
+        "sense": {
+          "pin": "main:0x0194",
+          "function": "GPIO1_13",
           "bias": "none",
           "schmitt": true
         }
       },
-      "settings": {}
+      "settings": {
+        "valve_type": "normally_closed"
+      }
+    },
+    {
+      "id": "quick_disconnect2",
+      "type": "solenoid_valve",
+      "role": null,
+      "enabled": true,
+      "connections": {
+        "control": {
+          "pin": "main:0x0198",
+          "function": "GPIO1_14",
+          "bias": "pull-down",
+          "schmitt": true
+        },
+        "sense": {
+          "pin": "main:0x019c",
+          "function": "GPIO1_15",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {
+        "valve_type": "normally_closed"
+      }
     }
   ],
   "buses": [

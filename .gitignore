@@ -213,3 +213,6 @@ board-snapshots/
 
 # fill-station: optional local venv for the nanopb generator (not needed with nix develop)
 fill-station/.venv/
+
+# shush
+FDR_nanopb.md

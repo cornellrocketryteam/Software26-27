@@ -8,6 +8,8 @@ liquid = []
 hybrid = []
 # Also publish the payload as JSON on a debug topic (readable in an MQTT client)
 debug-json = []
+# Run the E-REG sweep test at startup instead of the normal fill station tasks
+ereg-test = []
 default = [
     "tracing/max_level_debug", "tracing/release_max_level_info",
     "log/max_level_debug", "log/release_max_level_info",
