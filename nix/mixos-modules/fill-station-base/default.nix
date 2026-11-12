@@ -11,7 +11,7 @@ let
   # The one fill-station build used by both init and /bin
   fill-station = pkgs.crt.fill-station.override {
     withHelpers = debug; # ADC CLI tools only in debug
-    inherit (config.fillStation) mode extraFeatures;
+    inherit (config.fillStation) mode;
   };
 in
 {
@@ -73,8 +73,7 @@ in
     };
 
     fill-station = {
-      # The E-REG bench test exits when done; run it once instead of looping.
-      action = if lib.elem "ereg-test" config.fillStation.extraFeatures then "once" else "respawn";
+      action = "respawn";
       process = lib.getExe fill-station;
     };
 
