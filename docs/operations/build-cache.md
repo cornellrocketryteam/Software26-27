@@ -26,8 +26,11 @@ artifact links, builder selection, timeouts and offline limits.
 
 ## Station configuration prerequisites
 
-1. Inspect hardware and boot configuration; preserve service/database backups
-   before installing NixOS. The physical target is intentionally not install-ready.
+1. Use the inspected UM560 hardware foundation and separate
+   [offline installer](ground-station-install.md). Physical foundation boot,
+   Ethernet, SSH and UI were confirmed by the operator; cache acceptance remains
+   separate. The owner waived preservation of old Ubuntu/container state; legacy
+   backups are not an installation gate.
 2. Assign an explicit LAN address/name and interfaces, and verify the SSH host
    identity independently before pinning it in each developer's known-hosts file.
    Default SSH/web listeners remain loopback until the LAN is configured.

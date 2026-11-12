@@ -5,27 +5,21 @@ as supervised containers. It loads prepared Linux/amd64 archives from the Nix
 system closure and uses `--pull never`. Building is a preparation step; startup
 does not fetch images, install plugins or require a fill-station connection.
 
-The current Compose installation remains the migration baseline. Nothing in this
-increment activates production services, replaces their volumes or changes a physical device.
-Do not enable the new stack against the existing data directories without the
-inventory, backup restore and compatibility checks below.
+The repository's Compose schema, rules and dashboards remain the functional
+baseline. The owner accepted loss of legacy Ubuntu/container data on November 12:
+use fresh service directories and the default `telemetry` database. Legacy
+backups and restore are not prerequisites. Nothing here erases a physical device.
+Future operational backup and recovery requirements remain separate.
 
 ## Inventory before choosing production pins
 
-The Compose file's `latest` tags do not identify installed versions. On the
-existing host, record the three running container image IDs and repository digests
-without dumping their environment or complete inspect output:
+The [foundation installation](ground-station-install.md) initializes fresh state
+using `telemetry`; no legacy database restore or mount inventory is required.
 
-```sh
-docker inspect --format '{{.Name}} {{.Config.Image}} {{.Image}}' emqx timescaledb grafana
-```
-
-For each recorded image ID, inspect `RepoDigests`, OS and architecture only.
-Record PostgreSQL server and Timescale extension versions, the actual database
-name, EMQX version/edition/license metadata and stable node name, all broker rules,
-and Grafana version/datasource/dashboard identity. Capture an admin export and a
-database-consistent backup; restore into an isolated instance before migration.
-Keep tokens, passwords, license keys and full environment dumps outside the repo.
+Choose immutable production image digests and verify Linux/amd64 archives,
+PostgreSQL/Timescale compatibility, EMQX edition/license and required APIs, and
+Grafana datasource/dashboard behavior. Installed legacy versions are reference,
+not mandatory pins. Keep tokens, passwords and license keys outside the repo.
 
 The broker helper follows the officially versioned **EMQX Enterprise 5.8.8** API
 contract. That edition provides Schema Registry and the PostgreSQL action; the
@@ -305,7 +299,7 @@ amd64 EMQX startup failure remains recorded above. The separate full x86 NixOS V
 result below supplies service boot/recovery evidence; physical mini-PC acceptance
 remains pending.
 
-Physical UM560 installation, production pin/license inventory, backup restore,
+Production pin/license validation,
 physical cold boot/recovery with the three services, prepared maps, kiosk, wired
 device telemetry and physical commanding remain separate acceptance work.
 

@@ -1,13 +1,17 @@
 # Ground-station NixOS foundation
 
-This is an initial configuration scaffold, **not a ready-to-install UM560 image**.
-The physical target rejects activation/building a system until inspected root
+This provides a UM560 foundation and a separate offline installer; the full
+operational station is not provisioned. See the
+[installation runbook](../../../docs/operations/ground-station-install.md).
+The generic physical target rejects activation/building a system until inspected root
 mounts/bootloader settings and `groundStation.hardwareConfigured` are supplied.
 It does not guess disk names, network interfaces, USB IDs, cache keys or secrets.
 
 Current flake outputs:
 
 - `nixosConfigurations.ground-station`: physical x86-64 target with install gate.
+- `nixosConfigurations.ground-station-um560`: inspected hardware foundation, with planned fresh filesystem labels.
+- `nixosConfigurations.ground-station-installer`: separate live ISO embedding the UM560 closure.
 - `nixosConfigurations.ground-station-vm`: separate virtual evaluation/test target.
 - `nixosModules.ground-station`: reusable modules.
 - `checks.x86_64-linux.ground-station-vm`: VM test derivation; evaluation alone is
@@ -19,8 +23,10 @@ The foundation enables key-only non-root administrator SSH, scoped networking,
 persistent journals, and a local offline landing page. Its `/healthz` is liveness;
 `/readyz` deliberately returns 503 because the operational stack is not provisioned.
 LAN interfaces must be explicitly configured; default SSH/web listeners are loopback.
-The intended physical LAN interface is the mini PC's Ethernet NIC. Its exact name,
-MAC and addressing are pending inventory; normal startup will not require Wi-Fi.
+The UM560 profile matches Ethernet MAC `58:47:CA:7E:6E:15` to `lan0` (Ubuntu
+called it `eno1`) and uses IPv4 DHCP without wait-online. Configure a router
+reservation for the intended `192.168.1.206`; no static gateway is assumed.
+It enables the packaged UI with field mode; other operational services stay off.
 
 The cache is off until a runtime signing-key path is configured. Harmonia signs
 HTTP metadata; `nix.settings.secret-key-files` also signs newly built store outputs
@@ -44,7 +50,7 @@ loads pinned local OCI archives and provisions the database, broker, Grafana
 datasource and dashboard. It requires three explicitly reviewed image pins and
 private runtime credentials; no production versions are guessed. Native Grafana
 must remain disabled when selecting that container stack. Production compatibility,
-backup restore and physical cold-boot acceptance remain pending, along with
+physical cold-boot acceptance remain pending, along with
 prepared tile coverage and kiosk startup. Commanding is disabled until an
 inspected device and endpoint are configured; legacy button firmware is limited
 to monitoring. See [the listener gate](../../../ground-station/LaunchButton/README.md).
@@ -70,5 +76,21 @@ The first command requires the locked Nixpkgs source already available locally.
 It checks the installation, signing, resource, networking and command-policy gates;
 it does not build or boot a complete system.
 
-Follow the [approved roadmap](../../../docs/superpowers/plans/2026-11-09-ground-platform.md)
-for hardware inventory, service migration, cache/builder admission, and acceptance.
+Use the [installation runbook](../../../docs/operations/ground-station-install.md)
+for installation, console recovery and the confirmed physical checks.
+
+## UM560 foundation build
+
+```sh
+nix build .#nixosConfigurations.ground-station-um560.config.system.build.toplevel
+```
+
+This profile expects new ext4 `/` labeled `CRT-GS-ROOT` and FAT `/boot` labeled
+`CRT-GS-EFI`, with UEFI systemd-boot and AMD microcode/firmware. These are planned
+labels, not claims about the existing Ubuntu partitions. Building formats nothing
+and does not produce an installer. The separate installer output embeds this
+closure and provides local console access/recovery. The operator confirmed SSD
+boot, console login, Ethernet at 192.168.1.206, SSH, nginx health and the UI on
+the physical UM560. Kiosk and operational service acceptance remain pending. SSH uses the existing contributor keys as `ground-admin`,
+with root/password login disabled. The owner waived old Ubuntu/container backup
+and restore. Future operational data/key retention remains a separate requirement.
