@@ -1,8 +1,9 @@
 # Explicit/manual real-service acceptance. No physical host activation or NICs.
 # Host pkgs may be aarch64-darwin/linux; guest and service images stay x86_64.
-{ pkgs }:
+{ pkgs, imagePinsFile ? ./telemetry_nix_pins.json, expectedEmqxVersion ? "e5.8.8" }:
 pkgs.testers.runNixOSTest {
-  name = "ground-telemetry-offline-recovery";
+  name = if expectedEmqxVersion == "e5.8.8" then "ground-telemetry-offline-recovery"
+    else "ground-telemetry-deployment-offline-recovery";
   requiredFeatures = { kvm = false; nixos-test = false; apple-virt = false; };
   node.pkgs = pkgs.lib.mkForce (import pkgs.path { system = "x86_64-linux"; });
   qemu = { package = pkgs.qemu; forceAccel = false; };
@@ -40,11 +41,7 @@ pkgs.testers.runNixOSTest {
       state = Path("/var/lib/ground-telemetry-vm")
       private = state / "secrets.json"
       if not private.exists():
-          fd = os.open(private, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-          with os.fdopen(fd, "w") as stream:
-              json.dump({key: secrets.token_urlsafe(32) for key in runtime.SECRET_KEYS}, stream)
-              stream.flush()
-              os.fsync(stream.fileno())
+          runtime.initialize_secrets(private)
       output = Path("/run/ground-telemetry-vm")
       shutil.copyfile(private, output / "secrets.json")
       (output / "secrets.json").chmod(0o600)
@@ -57,7 +54,8 @@ pkgs.testers.runNixOSTest {
     check = pkgs.writeShellScriptBin "ground-telemetry-vm-check" ''
       exec ${pkgs.python3}/bin/python3 ${./telemetry_vm_check.py} \
         --stack-source ${./telemetry_stack_integration.py} \
-        --docker ${config.virtualisation.docker.package}/bin/docker "$@"
+        --docker ${config.virtualisation.docker.package}/bin/docker \
+        --emqx-version ${pkgs.lib.escapeShellArg expectedEmqxVersion} "$@"
     '';
   in {
     imports = [ ../../nix/nixos-configurations/ground-station ];
@@ -72,7 +70,7 @@ pkgs.testers.runNixOSTest {
       telemetry = {
         enable = true;
         secretsFile = "/var/lib/ground-telemetry-vm/secrets.json";
-        imagePins = builtins.fromJSON (builtins.readFile ./telemetry_nix_pins.json);
+        imagePins = builtins.fromJSON (builtins.readFile imagePinsFile);
       };
     };
     virtualisation = {

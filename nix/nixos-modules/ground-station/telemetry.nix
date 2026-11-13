@@ -120,6 +120,7 @@ in
       ];
     }
     (lib.mkIf active {
+      environment.systemPackages = [ helper ];
       systemd.targets.ground-telemetry = {
         description = "Background telemetry supervision (not operational readiness)";
         wantedBy = [ "multi-user.target" ];

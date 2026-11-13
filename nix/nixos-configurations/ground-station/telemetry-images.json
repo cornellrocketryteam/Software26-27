@@ -1,0 +1,17 @@
+{
+  "timescaledb": {
+    "imageName": "timescale/timescaledb",
+    "imageDigest": "sha256:64e885d2cd7e809da3cdd263a2933951f8d41ab593897f585dfdb8f3d5996299",
+    "sha256": "sha256-fkuf94ik2LJRskmGno9AE611alNbg9+sMPh1oVj9gO4="
+  },
+  "emqx": {
+    "imageName": "emqx/emqx",
+    "imageDigest": "sha256:f9cbb20a53adcd6cfac6037075d802443509b88ad9ffdaf511054fc2852ec89a",
+    "sha256": "sha256-dznLD0QiSULt2k8TlQqDfw/NF1H+oIamOPLQOVe7tsA="
+  },
+  "grafana": {
+    "imageName": "grafana/grafana",
+    "imageDigest": "sha256:7c064e627d9cb50c3485c9ded5ca0222de89a08e41403322a0c3ca6f1777a8d1",
+    "sha256": "sha256-zASxcL0YHmM4ocFq2ngHUwRzsnh2dzE0yr4NWtJJqFY="
+  }
+}

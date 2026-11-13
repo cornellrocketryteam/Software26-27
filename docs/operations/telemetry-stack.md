@@ -11,6 +11,11 @@ use fresh service directories and the default `telemetry` database. Legacy
 backups and restore are not prerequisites. Nothing here erases a physical device.
 Future operational backup and recovery requirements remain separate.
 
+For the separate UM560 services profile, prepared offline bundle, private
+credential initialization and activation/rollback steps, see the
+[services update guide](ground-station-update.md). The foundation target stays
+unchanged and services-off.
+
 ## Inventory before choosing production pins
 
 The [foundation installation](ground-station-install.md) initializes fresh state

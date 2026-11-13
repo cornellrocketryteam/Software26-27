@@ -364,5 +364,64 @@ def http_fixture():
         thread.join()
 
 
+
+
+class CredentialInitialization(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix='telemetry-init-')
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.path = self.root / 'private.json'
+
+    def test_creates_complete_distinct_private_credentials(self):
+        runtime.initialize_secrets(self.path)
+        values = runtime.load_secrets(self.path)
+        self.assertEqual(set(values), runtime.SECRET_KEYS)
+        self.assertEqual(len(set(values.values())), len(values))
+        self.assertTrue(all(len(v) >= 43 for v in values.values()))
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
+
+    def test_refuses_overwrite(self):
+        self.path.write_text('existing private bytes')
+        with self.assertRaises(runtime.ProvisionError):
+            runtime.initialize_secrets(self.path)
+        self.assertEqual(self.path.read_text(), 'existing private bytes')
+
+    def test_refuses_symlink_destination_and_parent(self):
+        target = self.root / 'target'
+        target.write_text('keep')
+        self.path.symlink_to(target)
+        with self.assertRaises(runtime.ProvisionError):
+            runtime.initialize_secrets(self.path)
+        self.assertEqual(target.read_text(), 'keep')
+        parent_link = self.root / 'alias'
+        parent_link.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaises(runtime.ProvisionError):
+            runtime.initialize_secrets(parent_link / 'other.json')
+        self.assertFalse((self.root / 'other.json').exists())
+
+    def test_refuses_writable_parent_or_store_or_relative_paths(self):
+        unsafe = self.root / 'unsafe'
+        unsafe.mkdir(mode=0o777)
+        unsafe.chmod(0o777)
+        for path in [unsafe / 'private.json', Path('relative.json'), Path('/nix/store/private.json')]:
+            with self.subTest(path=path), self.assertRaises(runtime.ProvisionError):
+                runtime.initialize_secrets(path)
+        self.assertEqual(list(unsafe.iterdir()), [])
+
+    def test_cli_never_prints_generated_credentials(self):
+        output, errors = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+            self.assertEqual(runtime.main(['init-secrets', '--secrets-file', str(self.path)]), 0)
+        for value in runtime.load_secrets(self.path).values():
+            self.assertNotIn(value, output.getvalue() + errors.getvalue())
+
+    def test_write_failure_removes_only_new_incomplete_file(self):
+        with patch.object(runtime.json, 'dump', side_effect=OSError('write failed')):
+            with self.assertRaises(runtime.ProvisionError):
+                runtime.initialize_secrets(self.path)
+        self.assertFalse(self.path.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

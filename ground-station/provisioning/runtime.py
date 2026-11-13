@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import stat
 import subprocess
@@ -25,6 +26,40 @@ SECRET_KEYS = {
     "databasePassword", "ingestPassword", "readerPassword", "grafanaAdminPassword", "emqxAdminPassword",
     "emqxApiKey", "emqxApiSecret", "emqxNodeCookie",
 }
+
+
+def initialize_secrets(path):
+    """Create fresh credentials once; never overwrite or rotate existing state."""
+    path = Path(path)
+    if (not path.is_absolute() or ".." in path.parts
+            or path == Path("/nix/store") or Path("/nix/store") in path.parents
+            or any(ord(char) < 32 or ord(char) == 127 for char in str(path))):
+        raise ProvisionError("Credentials require an absolute private path outside the Nix store.")
+    parent_fd = None
+    created = False
+    try:
+        parent_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        metadata = os.fstat(parent_fd)
+        if metadata.st_uid not in {0, os.geteuid()} or metadata.st_mode & 0o022:
+            raise ProvisionError("Credential parent must be owned and not writable by group or others.")
+        fd = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                     0o600, dir_fd=parent_fd)
+        created = True
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            values = {key: secrets.token_urlsafe(32) for key in sorted(SECRET_KEYS)}
+            json.dump(values, stream)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.fsync(parent_fd)
+    except (OSError, ValueError):
+        if created:
+            os.unlink(path.name, dir_fd=parent_fd)
+        raise ProvisionError("Cannot initialize credentials; check the private parent directory and existing file.") from None
+    finally:
+        if parent_fd is not None:
+            os.close(parent_fd)
 
 
 def load_secrets(path):
@@ -408,6 +443,8 @@ def broker(secrets_file, assets, api_url, attempts=15):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    init = commands.add_parser("init-secrets", help="Create fresh private runtime credentials without overwriting")
+    init.add_argument("--secrets-file", required=True, type=Path)
     prep = commands.add_parser("prepare")
     prep.add_argument("--secrets-file", required=True, type=Path)
     prep.add_argument("--output", required=True, type=Path)
@@ -425,7 +462,10 @@ def main(argv=None):
     integration.add_argument("--api-url", required=True)
     args = parser.parse_args(argv)
     try:
-        if args.command == "prepare":
+        if args.command == "init-secrets":
+            initialize_secrets(args.secrets_file)
+            print("Private telemetry credentials initialized.")
+        elif args.command == "prepare":
             prepare(args.secrets_file, args.output)
         elif args.command == "database":
             database(args.docker, args.assets)

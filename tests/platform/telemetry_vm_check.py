@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stack-source", type=Path, required=True)
     parser.add_argument("--docker", required=True)
+    parser.add_argument("--emqx-version", default="e5.8.8")
     parser.add_argument("phase", choices=["inventory", "grafana", "publish", "rows"])
     parser.add_argument("--cycles", type=int, default=1)
     args = parser.parse_args()
@@ -38,7 +39,7 @@ def main():
             stack.require(actual == expected, "Telemetry rows differ after startup/recovery.")
             print(f"PASS: {len(expected)} correct synthetic rows; no duplicates.")
         else:
-            stack.client_phase(args.phase, args.cycles - 1)
+            stack.client_phase(args.phase, args.cycles - 1, args.emqx_version)
     except (stack.AcceptanceError, OSError, ValueError, subprocess.TimeoutExpired):
         print("VM telemetry assertion failed; private details suppressed.", file=sys.stderr)
         return 1

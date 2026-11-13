@@ -18,6 +18,10 @@ in
     nixosConfigurations = {
       ground-station = station [ ];
       ground-station-um560 = station [ ../nixos-configurations/ground-station/um560.nix ];
+      ground-station-um560-services = station [
+        ../nixos-configurations/ground-station/um560.nix
+        ../nixos-configurations/ground-station/services.nix
+      ];
       ground-station-installer = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs.groundStationSystem = self.nixosConfigurations.ground-station-um560.config.system.build.toplevel;

@@ -181,7 +181,7 @@ def mqtt_publish(cycle):
         stream.sendall(b"\xe0\x00")
 
 
-def client_phase(phase, cycle):
+def client_phase(phase, cycle, expected_emqx_version="e5.8.8"):
     runtime = load_runtime(FIXTURE / "runtime.py")
     private = FIXTURE / "secrets.json"
     assets = FIXTURE / "assets"
@@ -279,9 +279,13 @@ def client_phase(phase, cycle):
                     and rule["enable"] and rule["actions"] == ["pgsql:ground_telemetry"],
                     "A reconciled rule differs from its SQL asset or shared action.")
         status, status_body = runtime._http("http://127.0.0.1:18083/status?format=json")
-        require(status == 200 and status_body["rel_vsn"] == "e5.8.8", "EMQX version/edition is unexpected.")
+        actual_version = status_body.get("rel_vsn") if isinstance(status_body, dict) else None
+        require(status == 200 and isinstance(actual_version, str)
+                and bool(re.fullmatch(r"[A-Za-z0-9.+_-]{1,64}", actual_version)), "EMQX status version is malformed.")
+        require(actual_version == expected_emqx_version,
+                "EMQX version/edition is unexpected (" + actual_version + ").")
         license_info = get("/license")
-        require(license_info.get("expiry") is False, "The evaluation fixture license is expired.")
+        require(license_info.get("expiry") is False, "The fixture license is expired.")
     elif phase == "publish":
         mqtt_publish(cycle)
     elif phase == "grafana":
@@ -334,12 +338,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--docker", default="docker")
     parser.add_argument("--images-file", type=Path)
+    parser.add_argument("--emqx-version", default="e5.8.8")
     for component in COMPONENTS:
         parser.add_argument("--" + component + "-image")
     parser.add_argument("--client-phase", choices=("prepare", "broker", "inventory", "publish", "grafana"),
                         help=argparse.SUPPRESS)
     parser.add_argument("--cycle", type=int, default=0, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    require(bool(re.fullmatch(r"e?[0-9]+\.[0-9]+\.[0-9]+", args.emqx_version)), "Invalid expected EMQX version.")
     if args.client_phase:
         return args, None
     if args.images_file:
@@ -375,7 +381,8 @@ def stack(args, pins):
 
     def phase(name, cycle=0):
         result = docker.run("exec", "-i", created["client"], "python", "/fixtures/stack_test.py",
-                            "--client-phase", name, "--cycle", str(cycle), check=False, timeout=300)
+                            "--client-phase", name, "--cycle", str(cycle), "--emqx-version", args.emqx_version,
+                            check=False, timeout=300)
         if result.returncode:
             if name == "broker":
                 state = docker.json("container", "inspect", created["emqx"])[0]["State"]
@@ -575,7 +582,7 @@ def stack(args, pins):
             phase("broker")
             phase("broker")
             phase("inventory")
-            print("PASS: EMQX e5.8.8 Enterprise bootstrap and twice-reconciled five owned resources.", flush=True)
+            print("PASS: EMQX " + args.emqx_version + " bootstrap and twice-reconciled five owned resources.", flush=True)
             stage = "Grafana startup and datasource authentication"
             grafana_env = {
                 "GF_SERVER_HTTP_ADDR": "127.0.0.1", "GF_SERVER_HTTP_PORT": "3000",
@@ -647,7 +654,7 @@ def main():
     try:
         args, pins = parse_args()
         if args.client_phase:
-            client_phase(args.client_phase, args.cycle)
+            client_phase(args.client_phase, args.cycle, args.emqx_version)
         else:
             stack(args, pins)
     except AcceptanceError as error:

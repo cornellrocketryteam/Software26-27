@@ -11,6 +11,7 @@ Current flake outputs:
 
 - `nixosConfigurations.ground-station`: physical x86-64 target with install gate.
 - `nixosConfigurations.ground-station-um560`: inspected hardware foundation, with planned fresh filesystem labels.
+- `nixosConfigurations.ground-station-um560-services`: optional pinned telemetry services, with private runtime credentials.
 - `nixosConfigurations.ground-station-installer`: separate live ISO embedding the UM560 closure.
 - `nixosConfigurations.ground-station-vm`: separate virtual evaluation/test target.
 - `nixosModules.ground-station`: reusable modules.
@@ -94,3 +95,7 @@ boot, console login, Ethernet at 192.168.1.206, SSH, nginx health and the UI on
 the physical UM560. Kiosk and operational service acceptance remain pending. SSH uses the existing contributor keys as `ground-admin`,
 with root/password login disabled. The owner waived old Ubuntu/container backup
 and restore. Future operational data/key retention remains a separate requirement.
+
+The separate [services update guide](../../../docs/operations/ground-station-update.md)
+prepares and transfers a complete offline closure without reinstalling the SSD.
+Use `switch-to-configuration test` before making its boot generation persistent.
