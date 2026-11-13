@@ -176,8 +176,17 @@ datasource keeps UID `bfk1elo58d3pca`; the dashboard keeps UID `adrc2lg` and the
 existing NULL/unavailable behavior. Two exported flight velocity queries referenced
 a nonexistent `timestamp` column: the packaged copy now derives seconds from
 `ms_since_boot_cfc`, returning NULL across duplicate/reset timestamps. The original
-manual dashboard export remains unchanged. Packaged camera panels show
-unconfigured status until reviewed camera endpoints are supplied.
+manual dashboard export remains unchanged. Newly built services profiles select
+the packaged FillOps JSON as Grafana's default home dashboard. Existing organization
+or personal home preferences can override the instance default. Older bundles can
+open the provisioned page directly at `/grafana/d/adrc2lg/fillops`.
+
+Packaged camera panels show unconfigured status until reviewed camera endpoints
+and a stream relay are supplied. The old export points at go2rtc streams, not
+camera login pages. Camera web-page access alone does not establish an RTSP/WebRTC
+stream or reachability from the mini PC. Keep changed camera credentials in a
+separate private runtime file when camera integration is configured; do not put
+them in dashboard URLs, Git or public UI settings.
 
 Useful status commands on an enabled test host:
 
@@ -381,3 +390,20 @@ degraded boot without starting Grafana or executing its probe service; the probe
 executed after recovery. These are emulated scheduling observations, not native
 station performance measurements. See the
 [retry implementation evidence](../superpowers/plans/2026-11-11-telemetry-retry-cadence.md).
+
+### Focused Grafana home check
+
+After preparing the pinned Grafana and Python client images, export the public
+container environment and run the disposable check:
+
+```sh
+nix eval --json .#nixosConfigurations.ground-station-um560-services.config.virtualisation.oci-containers.containers.ground-grafana.environment > /tmp/grafana-home-environment.json
+python3 tests/platform/grafana_home_integration.py --environment-json /tmp/grafana-home-environment.json
+```
+
+The check starts only its own Grafana/client containers, with no network adapter
+or published ports, and verifies the anonymous home API selects FillOps. It does
+not contact cameras or the physical station, and it removes its own containers
+and volumes afterward. It failed with the previous default home configuration
+and passed after setting `GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH` to the already
+mounted `/var/lib/grafana/dashboards/dashboard.json`.
