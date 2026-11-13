@@ -1,41 +1,47 @@
 # Ground Station
 
-This directory contains the current telemetry stack (`compose.yml`), database
-schema/migrations, Grafana dashboard, and physical-command listener. The React
+This directory contains the telemetry schema/migrations, Grafana dashboard,
+legacy Compose/camera-relay configuration and physical-command listener. The React
 operator application is in `../Ground_Station_UI`; the Python bench dashboard
 is in `../fill-station/client`.
 
-The intended NixOS service startup, LAN cache/build worker, offline fallback,
-and local-boot deployment architecture is described in
-[ground-platform.md](../docs/architecture/ground-platform.md). Work against its
-[implementation and acceptance checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md).
-The [NixOS foundation](../nix/nixos-configurations/ground-station/README.md) and
-[build/cache CLI](../tools/platform/README.md) are implemented. They are not a
-deployed operational stack. The Compose stack and manual provisioning below
-remain current until their replacement passes. The updated
-[physical-command listener](LaunchButton/README.md) is monitoring-only with
-existing firmware; review its compatibility gate before changing its deployment.
+Start with the [network and device reference](../docs/operations/ground-station-network.md)
+for current device addresses, usernames, the corrected credential-reference
+location, the full port map and the optional Starlink topology.
 
-The React UI now has a [static package and optional local startup integration](../docs/operations/operator-ui.md),
-with explicit runtime endpoints and disconnected defaults. An opt-in
-[telemetry startup module](../docs/operations/telemetry-stack.md) now packages
-database/broker/Grafana provisioning with prepared immutable images. Production
-version/license inventory, backup restore, host migration and kiosk startup remain
-pending; a served UI is not complete station readiness.
+The UM560 now runs the [NixOS foundation](../nix/nixos-configurations/ground-station/README.md).
+The operator confirmed SSD boot, console/SSH access, wired `lan0`, and the static
+operator UI. The separate [services update](../docs/operations/ground-station-update.md)
+has been test-activated on the PC: telemetry provisioners/containers are active and
+Grafana storage health/browser access passed. Persistence of that services boot
+generation has not yet been reported, and physical SK-AM64B ingestion is untested
+while the board is off. Full field readiness is not established by UI/health alone.
 
-Ground Station software covers operator presentation, recording, network-device control, and non-time-critical commands. Keep time-critical Fill Station behavior independent of the Ground Station.
+The [telemetry module](../docs/operations/telemetry-stack.md) prepares pinned local
+images and provisions the database, broker and dashboard. The camera relay is
+not deployed by that profile; its packaged camera panel remains unconfigured.
+FillOps can currently be opened directly at
+`http://192.168.1.206:8080/grafana/d/adrc2lg/fillops`. The default-home fix is tested
+in code for the next update. Kiosk and signed cache/build-worker admission remain
+separate work. The [build/cache CLI](../tools/platform/README.md) is available,
+with its admission/acceptance gates still applying.
 
-The mini PC will use Ethernet for normal network access; the fill station will
-also migrate to Ethernet. Interface/address inventory and the fill-station
-configuration change remain planned work. An EAP215 wireless bridge may still
-connect the LAN segments. Follow the
-[wired-network checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md#1a-move-fill-station-networking-to-ethernet-and-configure-wired-mini-pc-access).
+The PC's normal network connection is Ethernet. The SK-AM64B cable terminates at
+fill switch 2 port 1, with reported address `.106`; its interface/traffic still
+need verification after power-on. The EAP215 pair carries the inter-site wireless
+bridge. Three ES205GP switch addresses and port assignments are now recorded;
+PoE controls and bridge metrics still need supported local API/firmware validation.
+Two Shelly Plug US Gen4 addresses and load mappings remain to be supplied.
 
-Planned operator features now include Omada ES205GP PoE-port controls,
-EAP215-Bridge KIT wireless-link metrics and two Shelly Plug US Gen4 controls.
-These are not implemented or connected; IPs, firmware/API compatibility and
-port/load mapping are pending. Follow the
-[network/power checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md#2a-add-networkpower-controls-and-bridge-metrics-to-the-operator-ui).
+The [physical-command listener](LaunchButton/README.md) remains monitoring-only
+with existing firmware. Keep time-critical fill-station behavior independent of
+the Ground Station. For the wider intended architecture and remaining work, see
+[ground-platform.md](../docs/architecture/ground-platform.md) and its
+[checklist](../docs/superpowers/plans/2026-11-09-ground-platform.md).
+
+The manual instructions below are for legacy Compose/manual deployments. The
+NixOS services profile performs its managed provisioning automatically; do not
+recreate its owned rules/dashboard manually.
 
 ## EMQX telemetry rules
 

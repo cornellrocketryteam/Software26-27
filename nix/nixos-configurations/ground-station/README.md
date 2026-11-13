@@ -2,7 +2,9 @@
 
 This provides a UM560 foundation and a separate offline installer; the full
 operational station is not provisioned. See the
-[installation runbook](../../../docs/operations/ground-station-install.md).
+[installation runbook](../../../docs/operations/ground-station-install.md). The
+[current network reference](../../../docs/operations/ground-station-network.md)
+records addresses, device roles, port assignments and the local login lookup.
 The generic physical target rejects activation/building a system until inspected root
 mounts/bootloader settings and `groundStation.hardwareConfigured` are supplied.
 It does not guess disk names, network interfaces, USB IDs, cache keys or secrets.
