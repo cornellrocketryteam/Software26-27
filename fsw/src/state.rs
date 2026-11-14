@@ -5,7 +5,6 @@ use crate::packet::{Packet, FastRecord};
 
 use crate::driver::bmp390::Bmp390Sensor;
 use crate::driver::lsm6dsox::Lsm6dsoxSensor;
-use crate::driver::rfd900x::Rfd900x;
 use crate::driver::ublox_max_m10s::{UbloxMaxM10s, GpsError};
 use crate::driver::ads1015::Ads1015Sensor;
 use crate::driver::onboard_flash::OnboardFlash;
@@ -13,7 +12,7 @@ use crate::driver::onboard_flash::OnboardFlash;
 use blims::blims_state::BlimsDataIn;
 
 use embassy_rp::gpio::{Input, Output};
-use embassy_rp::uart::{Async, Uart, UartTx};
+use embassy_rp::uart::{Async, UartTx};
 use embassy_time::{Duration, Instant, with_timeout};
 
 use crate::actuator::{Ssa, Buzzer, Mav, SV, Chute, AirbrakeActuator};
@@ -116,9 +115,6 @@ pub struct FlightState {
     blims_in_downwind_phase: bool,
     blims_targets_dirty: bool, // force immediate snapshot when targets change
 
-    // telemetry
-    radio: Rfd900x<'static>,
-
     // QSPI Flash
     flash: OnboardFlash<'static>,
 
@@ -143,7 +139,6 @@ impl FlightState {
         altimeter_cs: Output<'static>,
         arming_switch: Input<'static>,
         cfc_arm: Input<'static>,
-        uart: Uart<'static, Async>,
         ssa: Ssa<'static>,
         buzzer: Buzzer<'static>,
         mav: Mav<'static>,
@@ -314,9 +309,6 @@ impl FlightState {
             }
         };
         log::info!("STATE: IMU and ADC init complete");
-        log::info!("STATE: Initializing radio (RFD900x)...");
-        let radio = Rfd900x::new(uart);
-        log::info!("STATE: Radio ready");
 
         // Restore actuator states from the most recent snapshot so a mid-flight
         // reboot doesn't leave MAV/SV in their power-on defaults.
@@ -358,7 +350,6 @@ impl FlightState {
             cfc_arm: cfc_arm,
             cfc_arm_active: false,
             arming_altitude: stored_arming_altitude,
-            radio: radio,
             reference_pressure: 0.0,
             ssa,
             buzzer,
@@ -734,74 +725,23 @@ impl FlightState {
         log::warn!("IMU calibration complete. Gyro offsets: {:.2}, {:.2}, {:.2}", self.gyro_offsets[0], self.gyro_offsets[1], self.gyro_offsets[2]);
     }
 
-    pub async fn transmit(&mut self) {
-        let data = self.packet.to_bytes();
-
-        match self.radio.send(&data).await {
-            Ok(_) => {
-                log::info!("RFD | Data transmitted successfully!");
-            }
-            Err(e) => {
-                log::warn!("RFD | Failed to transmit packet via radio: {:?}", e);
-            }
-        }
+    /// Queue the current packet for the radio task and emit it over USB.
+    /// Never waits: the radio task sends the latest packet at its own rate.
+    pub fn transmit(&mut self) {
+        crate::radio_task::queue_telemetry(self.packet.to_bytes());
 
         // Emit telemetry as a parseable text line over USB
         crate::umbilical::emit_telemetry(&self.packet);
     }
 
-    pub async fn receive_radio(&mut self, buffer: &mut [u8]) -> Result<(), embassy_rp::uart::Error> {
-        let result = self.radio.receive_packet(buffer).await;
-        if result.is_ok() {
-            log::info!("RFD | Packet received successfully!");
-        }
-        result
-    }
-
-    /// Receive and decode a full telemetry packet
-    pub async fn receive_telemetry(&mut self) -> Result<Packet, embassy_rp::uart::Error> {
-        let mut buf = [0u8; Packet::SIZE];
-        self.radio.receive_packet(&mut buf).await?;
-        let packet = Packet::from_bytes(&buf);
-        log::info!("RFD | Telemetry packet decoded successfully!");
-        Ok(packet)
-    }
-
-    pub async fn poll_radio_command(&mut self) -> Option<crate::packet::Command> {
+    /// Next ground command received by the radio task, if any. Never waits.
+    pub fn poll_radio_command(&mut self) -> Option<crate::packet::Command> {
         #[cfg(feature = "sim_payload")]
         if let Some(cmd) = self.sim_radio_command.take() {
             return Some(cmd);
         }
 
-        let mut buf = [0u8; 32];
-        // Short timeout read to check for commands without blocking the loop
-        // We use the basic receive here as commands might not have the sync-word
-        // unless they are sent by another FSW board. 
-        if let Ok(Ok(_)) = embassy_time::with_timeout(
-            embassy_time::Duration::from_millis(10),
-            self.radio.receive(&mut buf),
-        )
-        .await
-        {
-            // Simple string-based command parsing
-            if buf.starts_with(b"VNT") {
-                return Some(crate::packet::Command::Vent);
-            } else if buf.starts_with(b"N1") {
-                return Some(crate::packet::Command::N1);
-            } else if buf.starts_with(b"N2") {
-                return Some(crate::packet::Command::N2);
-            } else if buf.starts_with(b"N3") {
-                return Some(crate::packet::Command::N3);
-            } else if buf.starts_with(b"N4") {
-                return Some(crate::packet::Command::N4);
-            } else if buf.starts_with(b"FM") {
-                // Example: "FM2" for Coast
-                if let Some(digit) = (buf[2] as char).to_digit(10) {
-                    return Some(crate::packet::Command::ForceMode(digit as u32));
-                }
-            }
-        }
-        None
+        crate::radio_task::try_recv_command()
     }
 
     // Appends the current packet as CSV to the onboard QSPI Flash memory

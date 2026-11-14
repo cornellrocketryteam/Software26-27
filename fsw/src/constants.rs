@@ -39,6 +39,13 @@ pub const SPI_MOSI_PIN: u8 = 3;
 /// UART1 baudrate for RFD900x radio (115200 baud, 8N1)
 pub const UART_BAUDRATE: u32 = 115200;
 
+/// Radio telemetry downlink period (10 Hz). Independent of LOOP_HZ: a 197-byte
+/// frame every loop cycle is more than the radio link can carry.
+pub const RADIO_TX_PERIOD_MS: u64 = 100;
+
+/// A gap this long on the radio RX line marks the end of a ground command.
+pub const RADIO_CMD_IDLE_MS: u64 = 20;
+
 // UART Pin Assignments
 
 /// UART1 TX (Transmit) pin for RFD900x radio

@@ -33,6 +33,7 @@ mod flight_loop;
 mod flight_sim;
 mod module;
 mod packet;
+mod radio_task;
 mod state;
 pub mod umbilical;
 mod watchdog;
@@ -93,6 +94,16 @@ async fn main(spawner: Spawner) {
     let (payload_tx, payload_rx) = payload_uart.split();
     log::info!("INIT [3/8]: UARTs ready");
 
+    // Radio: TX and RX run in their own tasks so the flight loop never waits on the UART.
+    let (radio_tx, radio_rx) = driver::rfd900x::split(uart);
+    spawner.spawn(radio_task::radio_tx_task(radio_tx).unwrap());
+
+    // The radio bench tests read whole telemetry packets themselves, so they keep the RX half.
+    #[cfg(not(any(feature = "test_radio_tx", feature = "test_radio_rx")))]
+    spawner.spawn(radio_task::radio_rx_task(radio_rx).unwrap());
+    #[cfg(any(feature = "test_radio_tx", feature = "test_radio_rx"))]
+    let mut radio_rx = radio_rx;
+
     #[cfg(feature = "test_payload_uart")]
     spawner.spawn(payload_loopback_task(payload_rx).unwrap());
 
@@ -143,7 +154,6 @@ async fn main(spawner: Spawner) {
         altimeter_cs,
         arming_switch,
         cfc_arm,
-        uart,
         ssa,
         buzzer,
         mav,
@@ -382,7 +392,7 @@ async fn main(spawner: Spawner) {
                 "Transmitting telemetry packet (counter={})...",
                 test_counter
             );
-            flight_state.transmit().await;
+            flight_state.transmit();
 
             // 2. Listen for response
             log::info!("Listening for 500ms...");
@@ -390,7 +400,7 @@ async fn main(spawner: Spawner) {
             // Read with shorter timeout so the loop stays responsive
             match embassy_time::with_timeout(
                 embassy_time::Duration::from_millis(500),
-                flight_state.receive_radio(&mut buf),
+                radio_rx.receive_packet(&mut buf),
             )
             .await
             {
@@ -417,8 +427,10 @@ async fn main(spawner: Spawner) {
         log::info!("Starting Radio RECEIVE ONLY mode...");
         log::info!("Waiting for telemetry packets from another board...");
         loop {
-            match flight_state.receive_telemetry().await {
-                Ok(p) => {
+            let mut buf = [0u8; crate::packet::Packet::SIZE];
+            match radio_rx.receive_packet(&mut buf).await {
+                Ok(_) => {
+                    let p = crate::packet::Packet::from_bytes(&buf);
                     log::info!("--- PACKET RECEIVED ---");
                     log::info!(
                         "Mode: {}, Alt: {:.2}m, Temp: {:.2}C",
