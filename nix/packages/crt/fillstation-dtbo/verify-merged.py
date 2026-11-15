@@ -6,6 +6,58 @@ import subprocess
 import sys
 
 
+def verify_pru(dtb, expectations):
+    """Check firmware identity and prevent GPIO/other remoteproc clients sharing outputs."""
+    outputs = expectations.get('pru_pwm', [])
+    if not outputs:
+        return
+
+    def get(path, prop, fmt='s'):
+        return subprocess.check_output(['fdtget', '-t' + fmt, str(dtb), path, prop], text=True).strip()
+
+    def children(path):
+        return subprocess.check_output(['fdtget', '-l', str(dtb), path], text=True).split()
+
+    def props(path):
+        return subprocess.check_output(['fdtget', '-p', str(dtb), path], text=True).split()
+
+    def symbol(name):
+        return get('/__symbols__', name)
+
+    parent = symbol('icssg0')
+    if get(parent, 'compatible') != 'ti,am642-icssg' or get(parent, 'status') != 'okay':
+        raise ValueError('PRU PWM requires enabled AM64x ICSSG0')
+    owned_phandles = set()
+    for core in sorted({o['core'] for o in outputs}):
+        name = f'pru0_{core}'
+        path = symbol(name)
+        if not path.startswith(parent + '/') or get(path, 'compatible') != 'ti,am642-pru':
+            raise ValueError(f'{name}: incorrect PRU identity')
+        if get(path, 'status') != 'okay' or get(path, 'firmware-name') != f'fill-station-{name}-fw':
+            raise ValueError(f'{name}: incorrect firmware identity or disabled core')
+        owned_phandles.add(int(get(path, 'phandle', 'x'), 16))
+    for output in outputs:
+        gpio = symbol(output['gpio_controller'])
+        for child in children(gpio):
+            path = gpio + '/' + child
+            if 'gpio-hog' in props(path):
+                cells = [int(v, 16) for v in get(path, 'gpios', 'x').split()]
+                if output['gpio_line'] in cells[::2]:
+                    raise ValueError(f'{path}: GPIO hog claims PRU-owned line {output["gpio_line"]}')
+
+    def check_clients(path):
+        properties = props(path)
+        if 'status' in properties and get(path, 'status') not in ('okay', 'ok'):
+            return
+        if 'ti,prus' in properties:
+            cells = {int(v, 16) for v in get(path, 'ti,prus', 'x').split()}
+            if owned_phandles & cells:
+                raise ValueError(f'{path}: competing client claims PRU PWM core')
+        for child in children(path):
+            check_clients(path.rstrip('/') + '/' + child)
+    check_clients('/')
+
+
 def verify(dtb, expectations):
     def get(path, prop, hexadecimal=False):
         args = ['fdtget'] + (['-tx'] if hexadecimal else []) + [str(dtb), path, prop]
@@ -53,6 +105,7 @@ def verify(dtb, expectations):
     eeprom = symbol('main_i2c0') + '/eeprom@51'
     if get(eeprom, 'reg', True) != '51' or get(eeprom, 'compatible') != 'atmel,24c512':
         raise ValueError('shared I2C0 board EEPROM was changed')
+    verify_pru(dtb, expectations)
     print(f'Pinmux verified: {len(expectations["pins"])} pads, '
           f'{len(expectations["controllers"])} controller states, consumer attachments')
 

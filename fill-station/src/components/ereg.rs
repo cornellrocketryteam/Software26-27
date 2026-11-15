@@ -1,9 +1,5 @@
 use anyhow::{bail, Result};
-#[cfg(any(target_os = "linux", target_os = "android"))]
-use anyhow::Context;
-#[cfg(any(target_os = "linux", target_os = "android"))]
-use std::fs;
-use std::path::PathBuf;
+use super::pwm::{PulseConfig, PulseOutput, PwmConnection};
 use std::sync::atomic::{AtomicU32, Ordering};
 use tracing::info;
 
@@ -18,6 +14,17 @@ pub struct EregConfig {
 }
 
 impl EregConfig {
+    /// Servo timing shared with the MAV (330 Hz, 800-2200 us) over 0-90 degrees.
+    /// Used for E-REGs declared in the hardware profile.
+    // TODO: confirm the E-REG angle range that maps onto that pulse range.
+    pub const DEFAULT: Self = Self {
+        period_us: 1_000_000 / super::mav::FREQUENCY_HZ,
+        min_pulse_us: super::mav::MIN_US,
+        max_pulse_us: super::mav::MAX_US,
+        min_angle_deg: 0.0,
+        max_angle_deg: 90.0,
+    };
+
     fn validate(&self) -> Result<()> {
         if self.period_us == 0
             || self.min_pulse_us >= self.max_pulse_us
@@ -35,11 +42,11 @@ impl EregConfig {
     }
 }
 
-/// E-REG actuator driven by a Linux sysfs PWM channel (same scheme as `Mav`).
+/// E-REG actuator driven by a configured PWM output (same scheme as `Mav`).
 pub struct Ereg {
     name: String,
-    #[allow(dead_code)]
-    pwm_path: PathBuf,
+    pwm: PulseOutput,
+    safe_pulse_us: u32,
     config: EregConfig,
     pulse_us: AtomicU32,
 }
@@ -48,71 +55,36 @@ impl Ereg {
     /// Initialize the E-REG on the PWM controller whose platform device name is
     /// `device_addr` (e.g. "23040000.pwm"). Exports the channel, sets the period,
     /// parks the actuator at `min_pulse_us` and enables output.
-    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub async fn new(device_addr: &str, channel_nr: u32, name: &str, config: EregConfig) -> Result<Self> {
-        config.validate()?;
-
-        let chip_path = super::mav::find_pwmchip(device_addr)?;
-        let pwm_path = chip_path.join(format!("pwm{}", channel_nr));
-
-        if !pwm_path.exists() {
-            info!("Exporting PWM {} channel {}", chip_path.display(), channel_nr);
-            let export = chip_path.join("export");
-            smol::unblock(move || fs::write(export, channel_nr.to_string()))
-                .await
-                .context("Failed to export PWM channel")?;
-        }
-
-        // The sysfs entry can take a moment to appear after export
-        if !pwm_path.exists() {
-            smol::Timer::after(std::time::Duration::from_millis(100)).await;
-        }
-
-        let ereg = Self {
-            name: name.to_string(),
-            pwm_path,
-            config,
-            pulse_us: AtomicU32::new(config.min_pulse_us),
-        };
-
-        // Linux rejects duty_cycle > period, so set period before duty and
-        // keep output disabled while reconfiguring.
-        ereg.write_file("enable", "0").await.context("Failed to disable PWM")?;
-        let period_ns = config.period_us * 1000;
-        ereg.write_file("period", &period_ns.to_string()).await.context("Failed to set period")?;
-        ereg.set_pulse_width(config.min_pulse_us).await?;
-        ereg.write_file("enable", "1").await.context("Failed to enable PWM")?;
-
-        info!("E-REG '{}' initialized on {} (period {} us, parked at {} us)",
-              name, ereg.pwm_path.display(), config.period_us, config.min_pulse_us);
-
+        let timing = PulseConfig { period_ns: config.period_us * 1000,
+            min_pulse_us: config.min_pulse_us, max_pulse_us: config.max_pulse_us,
+            safe_pulse_us: config.min_pulse_us };
+        let ereg = Self::with_pwm(&PwmConnection::Epwm { device: device_addr.to_owned(), channel: channel_nr }, name, config, timing).await?;
+        ereg.enable().await?;
         Ok(ereg)
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    pub async fn new(device_addr: &str, channel_nr: u32, name: &str, config: EregConfig) -> Result<Self> {
+    pub async fn with_pwm(connection: &PwmConnection, name: &str, config: EregConfig, timing: PulseConfig) -> Result<Self> {
         config.validate()?;
-        info!("E-REG '{}' mocked for non-Linux platform ({} ch {}, period {} us)",
-              name, device_addr, channel_nr, config.period_us);
-        Ok(Self {
-            name: name.to_string(),
-            pwm_path: PathBuf::from("/tmp/mock_ereg"),
-            config,
-            pulse_us: AtomicU32::new(config.min_pulse_us),
-        })
+        let pwm = PulseOutput::new(connection, timing).await?;
+        info!("E-REG '{}' initialized on {:?}, parked at {} us", name, connection, timing.safe_pulse_us);
+        Ok(Self { name: name.to_owned(), pwm, config, safe_pulse_us: timing.safe_pulse_us,
+            pulse_us: AtomicU32::new(timing.safe_pulse_us) })
+    }
+
+    pub async fn enable(&self) -> Result<()> { self.pwm.enable().await }
+    pub async fn enable_native(&self) -> Result<()> { self.pwm.enable_native().await }
+
+    /// Park at the configured safe pulse without changing the angle calibration.
+    pub async fn park_safe(&self) -> Result<()> {
+        self.set_pulse_width(self.safe_pulse_us).await
     }
 
     /// Set a pulse width in microseconds, clamped to the configured range.
     async fn set_pulse_width(&self, pulse_us: u32) -> Result<()> {
         let pulse = pulse_us.clamp(self.config.min_pulse_us, self.config.max_pulse_us);
 
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        self.write_file("duty_cycle", &(pulse * 1000).to_string())
-            .await
-            .context("Failed to set duty cycle")?;
-
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
-        info!("[Mock] E-REG '{}' set to {} us", self.name, pulse);
+        self.pwm.set_pulse_us(pulse).await?;
 
         self.pulse_us.store(pulse, Ordering::Relaxed);
         Ok(())
@@ -138,13 +110,6 @@ impl Ereg {
         self.pulse_us.load(Ordering::Relaxed)
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    async fn write_file(&self, file: &str, content: &str) -> Result<()> {
-        let path = self.pwm_path.join(file);
-        let content = content.to_string();
-        smol::unblock(move || fs::write(path, content)).await?;
-        Ok(())
-    }
 }
 
 // E-REG controller -- based on the equations from the slides 
@@ -233,5 +198,32 @@ impl EregController {
             .map_err(|_| EregError::ActuatorFailure)?;
 
         Ok(angle)
+    }
+}
+
+#[cfg(all(test, not(target_os = "linux")))]
+mod tests {
+    use super::*;
+    #[test]
+    fn angle_mapping_and_shutdown_use_the_configured_pulses() {
+        smol::block_on(async {
+            let timing = PulseConfig { period_ns: 20_000_000, min_pulse_us: 900,
+                max_pulse_us: 2100, safe_pulse_us: 1000 };
+            let config = EregConfig { period_us: 20_000, min_pulse_us: 900,
+                max_pulse_us: 2100, ..EregConfig::DEFAULT };
+            let ereg = Ereg::with_pwm(&PwmConnection::Pru { subsystem: 0, core: 1, bit: 12 },
+                "test", config, timing).await.unwrap();
+            assert_eq!(ereg.pulse_width_us(), 1000);
+            ereg.set_angle_degrees(-10.0).await.unwrap();
+            assert_eq!(ereg.pulse_width_us(), 900);
+            ereg.set_angle_degrees(45.0).await.unwrap();
+            assert_eq!(ereg.pulse_width_us(), 1500);
+            ereg.set_angle_degrees(100.0).await.unwrap();
+            assert_eq!(ereg.pulse_width_us(), 2100);
+            assert!(ereg.set_angle_degrees(f32::NAN).await.is_err());
+            assert_eq!(ereg.pulse_width_us(), 2100);
+            ereg.park_safe().await.unwrap();
+            assert_eq!(ereg.pulse_width_us(), 1000);
+        });
     }
 }

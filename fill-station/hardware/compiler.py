@@ -62,7 +62,7 @@ def compile_profile(profile):
         if not isinstance(function, str) or function not in pin['functions']:
             raise ValueError(f'{owner}: invalid function mapping {function!r} on {pin_id}')
         actual_kind, controller, member = pinmux.classify(function)
-        if actual_kind != kind or expected and function != expected:
+        if (actual_kind != kind and not (kind == 'pwm' and actual_kind == 'pru')) or expected and function != expected:
             raise ValueError(f'{owner}: expected {expected or kind}, got function {function}')
         bias = conn['bias']
         if bias not in ('none', 'pull-up', 'pull-down') or type(conn['schmitt']) is not bool:
@@ -83,8 +83,10 @@ def compile_profile(profile):
         if kind == 'gpio':
             chip = 'gpiochip0' if controller == 'mcu_gpio0' else 'gpiochip1' if controller == 'main_gpio0' else 'gpiochip2'
             return {'chip': chip, 'line': int(function.rsplit('_', 1)[1])}
+        if actual_kind == 'pru':
+            return {'backend': 'pru', 'subsystem': 0, 'core': int(controller[-1]), 'bit': member}
         if kind == 'pwm':
-            return {'device': f'{0x23000000 + int(controller[4:]) * 0x10000:x}.pwm', 'channel': 0 if member == 'A' else 1}
+            return {'backend': 'epwm', 'device': f'{0x23000000 + int(controller[4:]) * 0x10000:x}.pwm', 'channel': 0 if member == 'A' else 1}
         return controller
 
     buses = {}
@@ -129,8 +131,19 @@ def compile_profile(profile):
         settings = {}
         for key, setting in spec['settings'].items():
             value = device['settings'].get(key, setting['default'])
-            if value not in setting['choices']: raise ValueError(f'{name}: invalid setting {key}: {value!r}')
+            if setting['type'] == 'integer':
+                if type(value) is not int or not setting['min'] <= value <= setting['max']:
+                    raise ValueError(f'{name}: invalid PWM setting {key}: {value!r}')
+            elif value not in setting['choices']:
+                raise ValueError(f'{name}: invalid setting {key}: {value!r}')
             settings[key] = value
+        if dtype in ('mav_servo', 'ereg'):
+            if not (settings['min_pulse_us'] < settings['max_pulse_us']
+                    and settings['min_pulse_us'] <= settings['safe_pulse_us'] <= settings['max_pulse_us']
+                    and settings['max_pulse_us'] * 1000 + 100000 <= settings['period_ns']):
+                raise ValueError(f'{name}: invalid PWM pulse range, safe pulse or minimum low time')
+            if dtype == 'mav_servo' and not (settings['min_pulse_us'] <= 883 and settings['max_pulse_us'] >= 1950):
+                raise ValueError(f'{name}: MAV pulse range must include calibrated close 883 and open 1950 us')
         resolved = dict(id=name, type=dtype, role=role, settings=settings, connections={})
         for port, definition in spec['ports'].items():
             value = connection(device['connections'][port], definition['kind'], definition['direction'], f'{name}.{port}', claim=enabled)
@@ -161,6 +174,16 @@ def compile_profile(profile):
         prefix = bus['controller'].upper().replace('MAIN_', '')
         for port in ('scl', 'sda'):
             connection(bus['connections'][port], 'i2c', 'input', f'{bus_id}.{port}', f'{prefix}_{port.upper()}')
+
+    # ePWM A/B share their controller's timebase. PRU software channels do not.
+    epwm_periods = {}
+    for device in runtime:
+        pwm = device.get('pwm', {})
+        if pwm.get('backend') == 'epwm':
+            controller, period = pwm['device'], device['settings']['period_ns']
+            if controller in epwm_periods and epwm_periods[controller] != period:
+                raise ValueError(f'ePWM {controller}: A/B channels must use the same period')
+            epwm_periods[controller] = period
 
     # USB host VBUS is board policy, never a writable device record.
     connection(dict(pin='main:0x02a8', function='USB0_DRVVBUS', bias='none', schmitt=True),

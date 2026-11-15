@@ -9,3 +9,4 @@ pub mod umbilical;
 pub mod qd_stepper;
 pub mod quick_disconnect;
 pub mod ereg;
+pub mod pwm;

@@ -13,7 +13,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fill-station";
   version = "0.1.0";
 
-  src = ../../../../fill-station;
+  src = lib.cleanSourceWith {
+    src = ../../../../fill-station;
+    filter = path: type:
+      lib.cleanSourceFilter path type
+      && !(type == "directory" && builtins.elem (baseNameOf path) [ "target" ".venv" ]);
+  };
   cargoLock.lockFile = finalAttrs.src + /Cargo.lock;
 
   # Only build the main binary unless the helpers are wanted

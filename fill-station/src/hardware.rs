@@ -2,8 +2,10 @@ use crate::components::{
     ads1015::Ads1015,
     ads7128::Ads7128,
     ball_valve::BallValve,
+    ereg::{Ereg, EregConfig},
     igniter::Igniter,
     mav::Mav,
+    pwm::PulseConfig,
     qd_stepper::QdStepper,
     solenoid_valve::{LinePull, SolenoidValve},
 };
@@ -55,11 +57,7 @@ pub struct GpioConnection {
     pub chip: String,
     pub line: u32,
 }
-#[derive(Debug, Deserialize)]
-pub struct PwmConnection {
-    pub device: String,
-    pub channel: u32,
-}
+pub use crate::components::pwm::PwmConnection;
 impl HardwareConfig {
     pub fn parse(json: &str) -> Result<Self> {
         let config: Self = serde_json::from_str(json)?;
@@ -91,6 +89,7 @@ pub struct Hardware {
     pub adcs: BTreeMap<String, Ads1015>,
     pub ads7128s: BTreeMap<String, Ads7128>,
     pub mavs: BTreeMap<String, Mav>,
+    pub eregs: BTreeMap<String, Ereg>,
     pub ball_valves: BTreeMap<String, BallValve>,
     pub steppers: BTreeMap<String, QdStepper>,
 }
@@ -170,7 +169,24 @@ impl Hardware {
                     let pwm = d.pwm.as_ref().context("missing PWM")?;
                     hw.mavs.insert(
                         d.id.clone(),
-                        Mav::new(&pwm.device, pwm.channel, &d.id).await?,
+                        Mav::with_pwm(pwm, &d.id, PulseConfig::from_settings(&d.settings, PulseConfig::mav())?).await?,
+                    );
+                }
+                "ereg" => {
+                    let pwm = d.pwm.as_ref().context("missing PWM")?;
+                    hw.eregs.insert(
+                        d.id.clone(),
+                        {
+                            let defaults = EregConfig::DEFAULT;
+                            let timing = PulseConfig::from_settings(&d.settings, PulseConfig {
+                                period_ns: defaults.period_us * 1000,
+                                min_pulse_us: defaults.min_pulse_us, max_pulse_us: defaults.max_pulse_us,
+                                safe_pulse_us: defaults.min_pulse_us,
+                            })?;
+                            let config = EregConfig { period_us: timing.period_ns / 1000,
+                                min_pulse_us: timing.min_pulse_us, max_pulse_us: timing.max_pulse_us, ..defaults };
+                            Ereg::with_pwm(pwm, &d.id, config, timing).await?
+                        },
                     );
                 }
                 "ball_valve" => {
@@ -192,6 +208,10 @@ impl Hardware {
                 hw.roles.insert(role, d.id);
             }
         }
+        // Native channels enable individually; all PRU channels arm together below.
+        for d in hw.mavs.values() { d.enable_native().await?; }
+        for d in hw.eregs.values() { d.enable_native().await?; }
+        crate::components::pwm::arm_pru_outputs().await?;
         Ok(hw)
     }
     pub fn has_role(&self, role: &str) -> bool {
@@ -243,6 +263,11 @@ impl Hardware {
                 tracing::error!("Shutdown {}: {}", id, e);
             }
         }
+        for (id, d) in &self.eregs {
+            if let Err(e) = d.park_safe().await {
+                tracing::error!("Shutdown {}: {}", id, e);
+            }
+        }
         for (id, d) in &self.steppers {
             if let Err(e) = d.disable().await {
                 tracing::error!("Shutdown {}: {}", id, e);
@@ -253,6 +278,22 @@ impl Hardware {
 #[cfg(test)]
 mod configuration_tests {
     use super::*;
+    #[test]
+    fn pru_pwm_descriptor_parses_without_epwm_fields() {
+        let pwm: PwmConnection = serde_json::from_str(r#"{"backend":"pru","subsystem":0,"core":1,"bit":12}"#).unwrap();
+        assert!(matches!(pwm, PwmConnection::Pru { subsystem: 0, core: 1, bit: 12 }));
+    }
+
+    #[test]
+    fn legacy_pwm_descriptor_keeps_epwm_backend() {
+        let pwm: PwmConnection = serde_json::from_str(r#"{"device":"23040000.pwm","channel":1}"#).unwrap();
+        assert!(matches!(pwm, PwmConnection::Epwm { channel: 1, .. }));
+    }
+
+    #[test]
+    fn unsupported_pwm_backend_is_rejected() {
+        assert!(serde_json::from_str::<PwmConnection>(r#"{"backend":"unknown","device":"23040000.pwm","channel":1}"#).is_err());
+    }
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
     #[test]
     fn selectable_ads7128_initializes_without_claiming_telemetry_roles() {
@@ -309,11 +350,26 @@ mod configuration_tests {
         smol::block_on(async {
             let hw = Hardware::new().await.unwrap();
             #[cfg(feature = "hybrid")]
-            { assert!(hw.missing_roles(&DEVICE_ROLES).is_empty()); assert_eq!(hw.configured_devices_mask, 4095); }
+            {
+                assert!(hw.missing_roles(&DEVICE_ROLES).is_empty());
+                assert_eq!(hw.configured_devices_mask, 4095);
+                assert_eq!(hw.adcs.len(), 2);
+                assert_eq!(hw.solenoids.len(), 5);
+            }
+            // Liquid binds only igniters and SV1-SV5; SV6, the QDs, the ball
+            // valve and the E-REG initialize without application roles.
             #[cfg(feature = "liquid")]
-            { assert_eq!(hw.missing_roles(&DEVICE_ROLES), vec!["qd_stepper"]); assert_eq!(hw.configured_devices_mask, 2047); }
-            assert_eq!(hw.adcs.len(), 2);
-            assert_eq!(hw.solenoids.len(), 5);
+            {
+                assert_eq!(
+                    hw.missing_roles(&DEVICE_ROLES),
+                    vec!["adc1", "adc2", "mav", "ball_valve", "qd_stepper"]
+                );
+                assert_eq!(hw.configured_devices_mask, 499);
+                assert_eq!(hw.adcs.len(), 0);
+                assert_eq!(hw.solenoids.len(), 8);
+                assert_eq!(hw.ball_valves.len(), 1);
+                assert_eq!(hw.eregs.len(), HardwareConfig::parse(HARDWARE_CONFIG_JSON).unwrap().devices.iter().filter(|d| d.kind == "ereg").count());
+            }
             hw.shutdown().await;
         });
     }

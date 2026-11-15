@@ -415,6 +415,7 @@ dependencies = [
  "bindgen",
  "cc",
  "i2cdev",
+ "libc",
  "log",
  "rumqttc",
  "serde",

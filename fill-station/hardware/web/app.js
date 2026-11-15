@@ -50,12 +50,13 @@ function portOptions(kind,current,owner,controller,port) {
     if(protectedPinForProfile(pin))continue;
     for(const signal of Object.keys(pin.functions||{})) {
       if(kind==='gpio'&&!signal.includes('GPIO'))continue;
-      if(kind==='pwm'&&!signal.startsWith('EHRPWM'))continue;
+      if(kind==='pwm'&&!signal.startsWith('EHRPWM')&&!/^PRG0_PRU[01]_GPO\d+$/.test(signal))continue;
       if(kind==='i2c'&&signal!==prefix+port.toUpperCase())continue;
       const value=`${key(pin)}|${signal}`;
       const occupied=(allocated.get(key(pin))||[]).filter(x=>x!==owner);
       const isCurrent=current?.pin===key(pin)&&current?.function===signal;
-      options.push({value,label:pinLabel(pin,signal)+(occupied.length?` — used by ${occupied.join(', ')}`:''),disabled:occupied.length>0&&!isCurrent});
+      const backend=kind==='pwm'?signal.startsWith('EHRPWM')?' · Hardware PWM':' · PRU PWM':'';
+      options.push({value,label:pinLabel(pin,signal)+backend+(occupied.length?` — used by ${occupied.join(', ')}`:''),disabled:occupied.length>0&&!isCurrent});
     }
   }
   return options;
@@ -106,11 +107,18 @@ function renderEditor() {
     }
     for(const [setting,definition]of Object.entries(meta?.settings||{})){
       item.settings ||= {};
+      if(definition.type==='integer'){
+        pane.append(field(definition.label||setting,el('input',{type:'number',step:1,min:definition.min,max:definition.max,
+          value:item.settings[setting]??definition.default,'aria-label':definition.label||setting,
+          onchange:e=>{item.settings[setting]=e.target.value===''?null:Number(e.target.value);markChanged();}})));
+        continue;
+      }
       const choices=(definition.choices||[]).map(v=>({value:v,label:v.replaceAll('_',' ')}));
       pane.append(field(definition.label||setting,chooseSelect(choices,item.settings[setting]??definition.default,v=>{item.settings[setting]=v;markChanged();},definition.label||setting)));
       if(setting==='valve_type')pane.append(el('p',{class:'muted'},'Valve type describes its mechanical unpowered state; it is separate from pin bias.'));
     }
     const ports=el('div',{class:'ports'});for(const [port,definition]of Object.entries(meta?.ports||{}))ports.append(connectionEditor(item,port,definition,`${item.id}.${port}`));pane.append(ports);
+    if(['mav_servo','ereg'].includes(item.type))pane.append(el('p',{class:'muted'},'PWM connections support hardware ePWM or direct PRU outputs. PRU owns its selected pad exclusively; GPIO devices and idle input hogs cannot share it. Periods support 20–500 Hz, with at least 100 µs high and low time. Safe pulse is applied on startup and host timeout. Saving takes effect after rebuilding and rebooting.'));
   } else {
     if(sharedBus(item))pane.append(el('div',{class:'notice'},'Always enabled in Liquid, including with no external devices. PRU 6 = SCL; PRU 8 = SDA. Shared with onboard devices: addresses 0x30, 0x50 and 0x51 are reserved. Disconnect the old QD enable wire from PRU 6. ADS1015 and ADS7128 support shared bus selection. Telemetry roles adc1/adc2 require ADS1015.'));
     else pane.append(field('Controller',chooseSelect(controllerChoices().filter(([value])=>value!=='main_i2c0').map(([value,label])=>({value,label})),item.controller,v=>{item.controller=v;item.connections={};markChanged();renderEditor();},'I2C controller')));

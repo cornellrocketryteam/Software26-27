@@ -168,6 +168,15 @@ class HardwareConfigTests(unittest.TestCase):
                 self.assertNotIn(1, result['expectations']['idle_gpio_lines']['main_gpio1'])
                 self.assertTrue(any(p['domain'] == 'main' and p['offset'] == 0x164
                                     for p in result['report']['assignments']))
+    def test_ereg_resolves_pwm_channel(self):
+        p=baseline_profile('liquid')
+        p['devices']=[d for d in p['devices'] if d['type']!='mav_servo']  # pin 33 goes to the E-REG
+        p['devices'].append(dict(id='ereg',type='ereg',role=None,enabled=True,settings={},
+            connections={'pwm':dict(pin='main:0x008c',function='EHRPWM4_B',bias='none',schmitt=True)}))
+        result=compiler.compile_profile(p)
+        ereg=next(d for d in result['runtime']['devices'] if d['type']=='ereg')
+        self.assertEqual(ereg['pwm'],{'backend':'epwm','device':'23040000.pwm','channel':1})
+        self.assertEqual(result['expectations']['controllers']['epwm4'],'okay')
     def test_duplicate_pad_across_devices_rejected(self):
         self.profile['devices'][1]['connections']['signal']=copy.deepcopy(self.profile['devices'][0]['connections']['signal'])
         with self.assertRaisesRegex(ValueError,'duplicate|claimed'):self.compile()

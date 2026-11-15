@@ -223,7 +223,8 @@
         "PRU:13"
       ],
       "functions": {
-        "GPIO1_0": 7
+        "GPIO1_0": 7,
+        "PRG0_PRU0_GPO0": 0
       },
       "gpio": "GPIO1_0",
       "idle": true,
@@ -238,7 +239,8 @@
         "PRU:14"
       ],
       "functions": {
-        "GPIO1_1": 7
+        "GPIO1_1": 7,
+        "PRG0_PRU0_GPO1": 0
       },
       "gpio": "GPIO1_1",
       "idle": true,
@@ -253,7 +255,8 @@
         "PRU:15"
       ],
       "functions": {
-        "GPIO1_2": 7
+        "GPIO1_2": 7,
+        "PRG0_PRU0_GPO2": 0
       },
       "gpio": "GPIO1_2",
       "idle": true,
@@ -268,7 +271,8 @@
         "PRU:16"
       ],
       "functions": {
-        "GPIO1_3": 7
+        "GPIO1_3": 7,
+        "PRG0_PRU0_GPO3": 0
       },
       "gpio": "GPIO1_3",
       "idle": true,
@@ -283,7 +287,8 @@
         "PRU:17"
       ],
       "functions": {
-        "GPIO1_4": 7
+        "GPIO1_4": 7,
+        "PRG0_PRU0_GPO4": 0
       },
       "gpio": "GPIO1_4",
       "idle": true,
@@ -298,7 +303,8 @@
         "PRU:18"
       ],
       "functions": {
-        "GPIO1_5": 7
+        "GPIO1_5": 7,
+        "PRG0_PRU0_GPO5": 0
       },
       "gpio": "GPIO1_5",
       "idle": true,
@@ -313,7 +319,8 @@
         "PRU:19"
       ],
       "functions": {
-        "GPIO1_6": 7
+        "GPIO1_6": 7,
+        "PRG0_PRU0_GPO6": 0
       },
       "gpio": "GPIO1_6",
       "idle": true,
@@ -328,7 +335,8 @@
         "PRU:20"
       ],
       "functions": {
-        "GPIO1_7": 7
+        "GPIO1_7": 7,
+        "PRG0_PRU0_GPO7": 0
       },
       "gpio": "GPIO1_7",
       "idle": true,
@@ -343,7 +351,8 @@
         "PRU:21"
       ],
       "functions": {
-        "GPIO1_8": 7
+        "GPIO1_8": 7,
+        "PRG0_PRU0_GPO8": 0
       },
       "gpio": "GPIO1_8",
       "idle": true,
@@ -358,7 +367,8 @@
         "PRU:22"
       ],
       "functions": {
-        "GPIO1_9": 7
+        "GPIO1_9": 7,
+        "PRG0_PRU0_GPO9": 0
       },
       "gpio": "GPIO1_9",
       "idle": true,
@@ -373,7 +383,8 @@
         "PRU:23"
       ],
       "functions": {
-        "GPIO1_10": 7
+        "GPIO1_10": 7,
+        "PRG0_PRU0_GPO10": 0
       },
       "gpio": "GPIO1_10",
       "idle": true,
@@ -388,7 +399,8 @@
         "PRU:24"
       ],
       "functions": {
-        "GPIO1_11": 7
+        "GPIO1_11": 7,
+        "PRG0_PRU0_GPO11": 0
       },
       "gpio": "GPIO1_11",
       "idle": true,
@@ -403,7 +415,8 @@
         "PRU:25"
       ],
       "functions": {
-        "GPIO1_12": 7
+        "GPIO1_12": 7,
+        "PRG0_PRU0_GPO12": 0
       },
       "gpio": "GPIO1_12",
       "idle": true,
@@ -418,7 +431,8 @@
         "PRU:26"
       ],
       "functions": {
-        "GPIO1_13": 7
+        "GPIO1_13": 7,
+        "PRG0_PRU0_GPO13": 0
       },
       "gpio": "GPIO1_13",
       "idle": true,
@@ -433,7 +447,8 @@
         "PRU:27"
       ],
       "functions": {
-        "GPIO1_14": 7
+        "GPIO1_14": 7,
+        "PRG0_PRU0_GPO14": 0
       },
       "gpio": "GPIO1_14",
       "idle": true,
@@ -448,7 +463,8 @@
         "PRU:28"
       ],
       "functions": {
-        "GPIO1_15": 7
+        "GPIO1_15": 7,
+        "PRG0_PRU0_GPO15": 0
       },
       "gpio": "GPIO1_15",
       "idle": true,
@@ -463,7 +479,8 @@
         "PRU:7"
       ],
       "functions": {
-        "GPIO1_16": 7
+        "GPIO1_16": 7,
+        "PRG0_PRU0_GPO16": 0
       },
       "gpio": "GPIO1_16",
       "idle": true,
@@ -478,7 +495,8 @@
         "PRU:30"
       ],
       "functions": {
-        "GPIO1_17": 7
+        "GPIO1_17": 7,
+        "PRG0_PRU0_GPO17": 0
       },
       "gpio": "GPIO1_17",
       "idle": true,
@@ -494,7 +512,8 @@
       ],
       "functions": {
         "EHRPWM8_A": 6,
-        "GPIO1_18": 7
+        "GPIO1_18": 7,
+        "PRG0_PRU0_GPO18": 0
       },
       "gpio": "GPIO1_18",
       "idle": true,
@@ -510,7 +529,8 @@
       ],
       "functions": {
         "EHRPWM8_B": 6,
-        "GPIO1_19": 7
+        "GPIO1_19": 7,
+        "PRG0_PRU0_GPO19": 0
       },
       "gpio": "GPIO1_19",
       "idle": true,
@@ -525,7 +545,8 @@
         "PRU:35"
       ],
       "functions": {
-        "GPIO1_20": 7
+        "GPIO1_20": 7,
+        "PRG0_PRU1_GPO0": 0
       },
       "gpio": "GPIO1_20",
       "idle": true,
@@ -541,7 +562,8 @@
         "EXPANSION:8"
       ],
       "functions": {
-        "GPIO1_21": 7
+        "GPIO1_21": 7,
+        "PRG0_PRU1_GPO1": 0
       },
       "gpio": "GPIO1_21",
       "idle": true,
@@ -556,7 +578,8 @@
         "PRU:37"
       ],
       "functions": {
-        "GPIO1_22": 7
+        "GPIO1_22": 7,
+        "PRG0_PRU1_GPO2": 0
       },
       "gpio": "GPIO1_22",
       "idle": true,
@@ -571,7 +594,8 @@
         "PRU:38"
       ],
       "functions": {
-        "GPIO1_23": 7
+        "GPIO1_23": 7,
+        "PRG0_PRU1_GPO3": 0
       },
       "gpio": "GPIO1_23",
       "idle": true,
@@ -586,7 +610,8 @@
         "PRU:39"
       ],
       "functions": {
-        "GPIO1_24": 7
+        "GPIO1_24": 7,
+        "PRG0_PRU1_GPO4": 0
       },
       "gpio": "GPIO1_24",
       "idle": true,
@@ -601,7 +626,8 @@
         "PRU:40"
       ],
       "functions": {
-        "GPIO1_25": 7
+        "GPIO1_25": 7,
+        "PRG0_PRU1_GPO5": 0
       },
       "gpio": "GPIO1_25",
       "idle": true,
@@ -616,7 +642,8 @@
         "PRU:41"
       ],
       "functions": {
-        "GPIO1_26": 7
+        "GPIO1_26": 7,
+        "PRG0_PRU1_GPO6": 0
       },
       "gpio": "GPIO1_26",
       "idle": true,
@@ -631,7 +658,8 @@
         "PRU:42"
       ],
       "functions": {
-        "GPIO1_27": 7
+        "GPIO1_27": 7,
+        "PRG0_PRU1_GPO7": 0
       },
       "gpio": "GPIO1_27",
       "idle": true,
@@ -646,7 +674,8 @@
         "PRU:43"
       ],
       "functions": {
-        "GPIO1_28": 7
+        "GPIO1_28": 7,
+        "PRG0_PRU1_GPO8": 0
       },
       "gpio": "GPIO1_28",
       "idle": true,
@@ -661,7 +690,8 @@
         "PRU:44"
       ],
       "functions": {
-        "GPIO1_29": 7
+        "GPIO1_29": 7,
+        "PRG0_PRU1_GPO9": 0
       },
       "gpio": "GPIO1_29",
       "idle": true,
@@ -676,7 +706,8 @@
         "PRU:45"
       ],
       "functions": {
-        "GPIO1_30": 7
+        "GPIO1_30": 7,
+        "PRG0_PRU1_GPO10": 0
       },
       "gpio": "GPIO1_30",
       "idle": true,
@@ -691,7 +722,8 @@
         "PRU:46"
       ],
       "functions": {
-        "GPIO1_31": 7
+        "GPIO1_31": 7,
+        "PRG0_PRU1_GPO11": 0
       },
       "gpio": "GPIO1_31",
       "idle": true,
@@ -706,7 +738,8 @@
         "PRU:47"
       ],
       "functions": {
-        "GPIO1_32": 7
+        "GPIO1_32": 7,
+        "PRG0_PRU1_GPO12": 0
       },
       "gpio": "GPIO1_32",
       "idle": true,
@@ -722,7 +755,8 @@
         "EXPANSION:10"
       ],
       "functions": {
-        "GPIO1_33": 7
+        "GPIO1_33": 7,
+        "PRG0_PRU1_GPO13": 0
       },
       "gpio": "GPIO1_33",
       "idle": true,
@@ -737,7 +771,8 @@
         "PRU:49"
       ],
       "functions": {
-        "GPIO1_34": 7
+        "GPIO1_34": 7,
+        "PRG0_PRU1_GPO14": 0
       },
       "gpio": "GPIO1_34",
       "idle": true,
@@ -752,7 +787,8 @@
         "PRU:50"
       ],
       "functions": {
-        "GPIO1_35": 7
+        "GPIO1_35": 7,
+        "PRG0_PRU1_GPO15": 0
       },
       "gpio": "GPIO1_35",
       "idle": true,
@@ -767,7 +803,8 @@
         "PRU:51"
       ],
       "functions": {
-        "GPIO1_36": 7
+        "GPIO1_36": 7,
+        "PRG0_PRU1_GPO16": 0
       },
       "gpio": "GPIO1_36",
       "idle": true,
@@ -782,7 +819,8 @@
         "PRU:52"
       ],
       "functions": {
-        "GPIO1_37": 7
+        "GPIO1_37": 7,
+        "PRG0_PRU1_GPO17": 0
       },
       "gpio": "GPIO1_37",
       "idle": true,

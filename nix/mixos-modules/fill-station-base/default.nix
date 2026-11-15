@@ -19,6 +19,7 @@ in
     ./fit
     ./options.nix
     ./ospi-image
+    ./pru-pwm
     ./sd-image
   ];
 
@@ -30,6 +31,7 @@ in
       config = "aarch64-unknown-linux-musl";
       gcc.cpu = "cortex-a53";
     };
+    config.allowUnfreePredicate = package: lib.getName package == "ti-pru-cgt";
     overlays = [
       inputs.self.overlays.default
       inputs.mixos.overlays.default

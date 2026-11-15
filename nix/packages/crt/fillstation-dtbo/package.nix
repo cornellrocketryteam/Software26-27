@@ -39,6 +39,7 @@ stdenvNoCC.mkDerivation {
   doCheck = true;
   checkPhase = ''
     HARDWARE_SOURCE="$PWD" python3 ${../../../../tests/test_hardware_config.py}
+    HARDWARE_SOURCE="$PWD" python3 ${../../../../tests/test_hardware_pru.py}
     PINMUX_SOURCE="$PWD" python3 ${../../../../tests/test_pinmux.py}
   '';
   installPhase = ''

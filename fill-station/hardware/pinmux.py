@@ -41,6 +41,8 @@ def pin_value(flags, mode):
 
 
 def classify(signal):
+    if m := re.fullmatch(r'PRG0_PRU([01])_GPO(\d+)', signal):
+        return 'pru', 'pru0_' + m[1], int(m[2])
     if re.fullmatch(r'(?:MCU_)?GPIO\d+_\d+', signal):
         controller = ('mcu_' if signal.startswith('MCU_') else 'main_') + 'gpio' + signal.split('GPIO')[1].split('_')[0]
         return 'gpio', controller, None
@@ -62,6 +64,7 @@ def generate(text, profile='hybrid'):
     bus_signals = defaultdict(list)
     gpio_controllers = set()
     idle_gpio_lines = defaultdict(set)
+    pru_pwm = []
     report = {'assignments': [], 'idle': [], 'protected': BOARD['protected'], 'idle_exceptions': BOARD['idle_exceptions']}
     matches = list(GROUP.finditer(text))
     # Reject malformed or unfamiliar output instead of returning an empty overlay.
@@ -107,6 +110,10 @@ def generate(text, profile='hybrid'):
             group_consumers.add('gpio:' + domain if kind == 'gpio' else controller)
             if kind == 'gpio':
                 gpio_controllers.add(controller)
+            if kind == 'pru':
+                pru_pwm.append(dict(subsystem=0, core=int(controller[-1]), bit=member,
+                                    domain=domain, offset=offset, gpio_controller='main_gpio1',
+                                    gpio_line=(offset - 0x160) // 4))
             if kind in ('i2c', 'pwm'):
                 bus_signals[controller].append(member)
             if kind == 'i2c' and (controller == 'main_i2c1' or controller == 'main_i2c0' and profile != 'liquid'):
@@ -171,6 +178,24 @@ def generate(text, profile='hybrid'):
             if 'i2c' in controller:
                 body += ['    clock-frequency = <400000>;']
         blocks.append(f'&{controller} {{\n' + '\n'.join(body) + '\n};')
+    pru_controllers = {}
+    if pru_pwm:
+        blocks.append('&icssg0 { status = "okay"; };')
+        pru_controllers['icssg0'] = 'okay'
+        for core in (0, 1):
+            controller = f'pru0_{core}'
+            active = controller in consumers
+            pru_controllers[controller] = 'okay' if active else 'disabled'
+            body = [f'status = "{pru_controllers[controller]}";']
+            if active:
+                body += ['pinctrl-names = "default";',
+                         'pinctrl-0 = <' + ' '.join('&' + label for label in consumers[controller]) + '>;',
+                         f'firmware-name = "fill-station-{controller}-fw";']
+            blocks.append(f'&{controller} {{ ' + ' '.join(body) + ' };')
+        # Unused auxiliary cores must not start unrelated firmware in this subsystem.
+        for controller in ('rtu0_0', 'rtu0_1', 'tx_pru0_0', 'tx_pru0_1', 'icssg0_iep0', 'icssg0_iep1'):
+            blocks.append(f'&{controller} {{ status = "disabled"; }};')
+            pru_controllers[controller] = 'disabled'
     for domain in ('main', 'mcu'):
         if consumers['gpio:' + domain]:
             blocks.append(f'&{domain}_pmx0 {{\n    pinctrl-names = "default";\n    pinctrl-0 = <' + ' '.join('&' + label for label in consumers['gpio:' + domain]) + '>;\n};')
@@ -196,7 +221,8 @@ def generate(text, profile='hybrid'):
         report['assignments'].append(entry)
     blocks.append('&usb0 { ' + ' '.join(usb_body) + ' };')
     return {'pins': pins, 'overlay': '\n\n'.join(blocks) + '\n', 'report': report,
-            'expectations': {'pins': expectations, 'pinctrl': dict(consumers), 'idle_gpio_lines': {c: sorted(lines) for c, lines in idle_gpio_lines.items()}, 'controllers': {c: ('okay' if c in consumers else 'disabled') for c in CONTROLLERS}}}
+            'expectations': {'pins': expectations, 'pinctrl': dict(consumers), 'idle_gpio_lines': {c: sorted(lines) for c, lines in idle_gpio_lines.items()}, 'controllers': {**{c: ('okay' if c in consumers else 'disabled') for c in CONTROLLERS}, **pru_controllers},
+                             **({'pru_pwm': pru_pwm} if pru_pwm else {})}}
 
 
 def main():

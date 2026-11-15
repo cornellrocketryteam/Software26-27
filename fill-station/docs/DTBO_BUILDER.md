@@ -25,6 +25,8 @@ All assets are local; no TI installation, account, or network service is needed.
 1. Choose Liquid or Hybrid.
 2. Select an existing device, or add an instance of a supported type.
 3. Assign its connections. Pin labels are physical connector positions, followed by GPIO/function and package ball.
+   MAV and E-REG PWM connections offer hardware ePWM and direct PRU output routes.
+   Direct PRU outputs use dedicated ICSSG0 firmware, independent of Linux GPIO scheduling.
 4. For an ADC, select/create a shared I²C bus and choose an address from 0x48–0x4b.
 5. Validate and save. Invalid profiles cannot be saved. Discard reloads the file.
 6. Build the matching image through the normal Nix workflow, then deploy and reboot.
@@ -39,7 +41,17 @@ Existing devices have application roles (`ig1`, `sv1`, `adc1`, etc.). Their inst
 may change without changing the role. Roles determine which existing commands and
 telemetry fields use a device. New instances are **initialized only**: they have no new
 control commands or telemetry bindings. Every initialized actuator participates in
-emergency shutdown. Driver timing, servo calibration and sensor scaling remain in Rust.
+emergency shutdown. PWM devices expose period, minimum pulse, maximum pulse and safe
+pulse settings. Defaults preserve existing MAV/E-REG timing. The accepted period range
+is 2,000,000–50,000,000 ns (500–20 Hz); pulse ranges must leave at least 100 µs high
+and 100 µs low time, with the safe pulse inside the configured range. Other driver
+timing and sensor scaling remain in Rust.
+MAV bounds must include the existing calibrated close/open pulses (883/1950 µs).
+Hardware ePWM A/B channels on one controller must use the same period; direct PRU
+PWM channels can use independent periods. Each PRU scheduler supports up to 20 output
+bits, limited further by the board's exposed pins and existing assignments. Simultaneous
+channel count, 500 Hz operation and edge tolerance require scope acceptance on hardware;
+compiler acceptance does not establish measured timing performance.
 
 A solenoid's normally-open/normally-closed option describes valve behavior, not its
 resistor pull configuration. Pin bias is a separate electrical setting.
@@ -67,11 +79,17 @@ Shared connector positions identify one SoC pad and cannot be allocated twice.
 - MCU I²C1 uses MCU16/22 (SDA/SCL), adapter `/dev/i2c-5`.
 - PRU6/8 are the shared board I²C0 pins. Liquid uses them as always-on I²C0 (`/dev/i2c-0`) with QD disabled; Hybrid keeps stepper enable on PRU6 and I²C0 disabled. They are not an extra free I²C controller.
 - Native I²C cannot be assigned arbitrarily to PRU GPO pins. The editor offers actual mux routes only.
+- The 54-pin PRU connector exposes 38 direct GPO routes: PRU0 bits0–15 on pins13–28,
+  bit16 on7, bit17 on30, bits18–19 on31–32; PRU1 bits0–17 on35–52. Power, ground,
+  I²C and board-control positions are not direct PRU outputs. A selected PRU PWM pad
+  belongs exclusively to its PRU core, uses mux0 and is excluded from Linux GPIO
+  device claims and idle hogs. Hardware ePWM uses its own fixed mux route.
 - Ethernet, board buses/control pins, boot resources and unlisted pads remain protected. USB host policy remains board-owned. PRU pin 14 (GPIO1_1) is available for device assignments.
 
 Kernel support is assumed configured; use [Linux kernel configuration](../../nix/linux-kernel.md)
-to enable missing drivers. SPI, PRU firmware, UARTs and new control protocols
-are outside this editor. Coordinate Linux ownership before adding MCU/PRU firmware use.
+to enable missing drivers. The image must include and start the matching PRU PWM firmware
+before devices initialize. Arbitrary PRU firmware, SPI, UARTs and new control protocols
+are outside this editor. Coordinate Linux ownership before adding other MCU/PRU firmware.
 
 ## Builds and generated files
 
@@ -93,7 +111,10 @@ has no boot-image pinmux profile.
 
 Nix's overlay build uses build-platform tools, including during cross compilation.
 The FIT merge verifier checks every generated register, controller attachment, idle hog
-and I²C alias against the real merged board tree. The old static DTSI/wrapper are historical
+and I²C alias against the real merged board tree. PRU selections also verify enabled core
+identity, firmware names, exclusive pinctrl attachments, absence of GPIO hogs on owned
+lines and absence of enabled competing clients referencing the same PRU cores.
+The old static DTSI/wrapper are historical
 references, not build inputs. SysConfig projects/import tools are retired.
 
 ## Availability and extending the catalog

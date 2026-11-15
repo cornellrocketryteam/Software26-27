@@ -69,4 +69,24 @@ class IntegrationTests(unittest.TestCase):
         result=subprocess.run(['python3',str(SOURCE/'verify-merged.py'),str(out/'merged.dtb'),str(out/'expectations.json')],capture_output=True,text=True)
         self.assertNotEqual(result.returncode,0);self.assertIn('DTB pinmux check failed',result.stderr)
 
+    def test_pru_pwm_cores_attach_pins_without_gpio_hogs(self):
+        profile=compiler.load_profile('liquid')
+        # Exercise both cores without changing checked-in wiring.
+        profile['devices']=[d for d in profile['devices'] if all(c['pin']!='main:0x0160' for c in d['connections'].values())]
+        for index,(core,bit,offset,period) in enumerate(((0,0,0x160,20000000),(1,2,0x1b8,10000000),(1,3,0x1bc,4000000),(1,4,0x1c0,3030000))):
+            profile['devices'].append(dict(id=f'pru_acceptance_{index}',type='ereg',role=None,
+                enabled=True,settings={'period_ns':period},connections={'pwm':dict(
+                    pin=f'main:0x{offset:04x}',function=f'PRG0_PRU{core}_GPO{bit}',bias='pull-down',schmitt=True)}))
+        out=self.build(profile,'pru-pwm')
+        for core in (0,1):
+            path=self.command(['fdtget',str(out/'merged.dtb'),'/__symbols__',f'pru0_{core}']).strip()
+            self.assertEqual(self.command(['fdtget',str(out/'merged.dtb'),path,'firmware-name']).strip(),f'fill-station-pru0_{core}-fw')
+        # A hostile extra hog must fail even if generated register/pinctrl cells remain intact.
+        gpio=self.command(['fdtget',str(out/'merged.dtb'),'/__symbols__','main_gpio1']).strip()
+        hog=gpio+'/unexpected_hog'
+        self.command(['fdtput','-p',str(out/'merged.dtb'),hog,'gpio-hog'])
+        self.command(['fdtput','-t','i',str(out/'merged.dtb'),hog,'gpios','22','0'])
+        result=subprocess.run(['python3',str(SOURCE/'verify-merged.py'),str(out/'merged.dtb'),str(out/'expectations.json')],capture_output=True,text=True)
+        self.assertNotEqual(result.returncode,0);self.assertIn('PRU-owned',result.stderr)
+
 if __name__=='__main__':unittest.main()

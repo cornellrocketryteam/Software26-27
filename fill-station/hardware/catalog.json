@@ -60,7 +60,36 @@
         "bias": "none"
       }
     },
-    "settings": {}
+    "settings": {
+      "period_ns": {
+        "label": "PWM period (ns)",
+        "type": "integer",
+        "min": 2000000,
+        "max": 50000000,
+        "default": 3030303
+      },
+      "min_pulse_us": {
+        "label": "Minimum pulse (\u00b5s)",
+        "type": "integer",
+        "min": 100,
+        "max": 49900,
+        "default": 800
+      },
+      "max_pulse_us": {
+        "label": "Maximum pulse (\u00b5s)",
+        "type": "integer",
+        "min": 100,
+        "max": 49900,
+        "default": 2200
+      },
+      "safe_pulse_us": {
+        "label": "Safe pulse (\u00b5s)",
+        "type": "integer",
+        "min": 100,
+        "max": 49900,
+        "default": 883
+      }
+    }
   },
   "ball_valve": {
     "label": "Ball valve",
@@ -98,5 +127,45 @@
       }
     },
     "settings": {}
+  },
+  "ereg": {
+    "label": "E-REG servo",
+    "ports": {
+      "pwm": {
+        "kind": "pwm",
+        "direction": "output",
+        "bias": "none"
+      }
+    },
+    "settings": {
+      "period_ns": {
+        "label": "PWM period (ns)",
+        "type": "integer",
+        "min": 2000000,
+        "max": 50000000,
+        "default": 3030000
+      },
+      "min_pulse_us": {
+        "label": "Minimum pulse (\u00b5s)",
+        "type": "integer",
+        "min": 100,
+        "max": 49900,
+        "default": 800
+      },
+      "max_pulse_us": {
+        "label": "Maximum pulse (\u00b5s)",
+        "type": "integer",
+        "min": 100,
+        "max": 49900,
+        "default": 2200
+      },
+      "safe_pulse_us": {
+        "label": "Safe pulse (\u00b5s)",
+        "type": "integer",
+        "min": 100,
+        "max": 49900,
+        "default": 800
+      }
+    }
   }
 }

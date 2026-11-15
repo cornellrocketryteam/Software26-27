@@ -1,9 +1,5 @@
+use super::pwm::{PulseConfig, PulseOutput, PwmConnection};
 use anyhow::Result;
-#[cfg(any(target_os = "linux", target_os = "android"))]
-use anyhow::{bail, Context};
-#[cfg(any(target_os = "linux", target_os = "android"))]
-use std::fs;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use tracing::{info, warn};
 
@@ -16,19 +12,36 @@ pub const MAX_US: u32 = 2200;
 pub const OPEN_US: u32 = 1950;
 pub const CLOSE_US: u32 = 883;
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-const PERIOD_NS: u32 = 1_000_000_000 / FREQUENCY_HZ;
-
-/// MAV (Mechanically Actuated Valve) servo driven by a sysfs PWM channel.
+/// MAV (Mechanically Actuated Valve) servo driven by a configured PWM output.
 pub struct Mav {
     name: String,
-    #[allow(dead_code)]
-    pwm_path: PathBuf,
+    pwm: PulseOutput,
+    config: PulseConfig,
     state_open: AtomicBool,
     pulse_us: AtomicU32,
     /// Bumped on every open/close so a pending timed auto-close can tell
     /// whether it has been superseded.
     generation: AtomicU64,
+}
+
+#[cfg(all(test, not(target_os = "linux")))]
+mod tests {
+    use super::*;
+    #[test]
+    fn superseded_timed_close_keeps_the_latest_mav_command() {
+        smol::block_on(async {
+            let mav = Mav::new("23040000.pwm", 1, "test").await.unwrap();
+            assert_eq!(mav.pulse_width_us(), CLOSE_US);
+            let old = mav.open().await.unwrap();
+            let latest = mav.open().await.unwrap();
+            assert!(!mav.close_if_generation(old).await.unwrap());
+            assert!(mav.is_open());
+            assert_eq!(mav.pulse_width_us(), OPEN_US);
+            assert!(mav.close_if_generation(latest).await.unwrap());
+            assert!(!mav.is_open());
+            assert_eq!(mav.pulse_width_us(), CLOSE_US);
+        });
+    }
 }
 
 impl Mav {
@@ -37,73 +50,59 @@ impl Mav {
     /// assigned by probe order, so it is looked up rather than hardcoded.
     ///
     /// Exports the channel, sets the 330 Hz period, closes the valve and enables output.
-    #[cfg(any(target_os = "linux", target_os = "android"))]
     pub async fn new(device_addr: &str, channel_nr: u32, name: &str) -> Result<Self> {
-        let chip_path = find_pwmchip(device_addr)?;
-        let pwm_path = chip_path.join(format!("pwm{}", channel_nr));
-
-        if !pwm_path.exists() {
-            info!("Exporting PWM {} channel {}", chip_path.display(), channel_nr);
-            let export = chip_path.join("export");
-            smol::unblock(move || fs::write(export, channel_nr.to_string()))
-                .await
-                .context("Failed to export PWM channel")?;
-        }
-
-        // The sysfs entry can take a moment to appear after export
-        if !pwm_path.exists() {
-            smol::Timer::after(std::time::Duration::from_millis(100)).await;
-        }
-
-        let mav = Self {
-            name: name.to_string(),
-            pwm_path,
-            state_open: AtomicBool::new(false),
-            pulse_us: AtomicU32::new(CLOSE_US),
-            generation: AtomicU64::new(0),
-        };
-
-        mav.set_enable(false).await?;
-        mav.write_file("period", &PERIOD_NS.to_string()).await.context("Failed to set period")?;
-        mav.set_pulse_width_us(CLOSE_US).await?;
-        mav.set_enable(true).await?;
-
-        info!("MAV '{}' initialized on {} (Freq: {} Hz, closed at {} us)",
-              name, mav.pwm_path.display(), FREQUENCY_HZ, CLOSE_US);
-
+        let mav = Self::with_pwm(
+            &PwmConnection::Epwm {
+                device: device_addr.to_owned(),
+                channel: channel_nr,
+            },
+            name,
+            PulseConfig::mav(),
+        )
+        .await?;
+        mav.enable().await?;
         Ok(mav)
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    pub async fn new(device_addr: &str, channel_nr: u32, name: &str) -> Result<Self> {
-        info!("MAV '{}' mocked for non-Linux platform ({} ch {}, Freq: {} Hz)",
-              name, device_addr, channel_nr, FREQUENCY_HZ);
-        Ok(Self {
-            name: name.to_string(),
-            pwm_path: PathBuf::from("/tmp/mock_mav"),
+    pub async fn with_pwm(
+        connection: &PwmConnection,
+        name: &str,
+        config: PulseConfig,
+    ) -> Result<Self> {
+        let pwm = PulseOutput::new(connection, config).await?;
+        let mav = Self {
+            name: name.to_owned(),
+            pwm,
+            config,
             state_open: AtomicBool::new(false),
-            pulse_us: AtomicU32::new(CLOSE_US),
+            pulse_us: AtomicU32::new(config.safe_pulse_us),
             generation: AtomicU64::new(0),
-        })
+        };
+        info!(
+            "MAV '{}' initialized on {:?}, parked at {} us",
+            name, connection, config.safe_pulse_us
+        );
+        Ok(mav)
+    }
+
+    pub async fn enable(&self) -> Result<()> {
+        self.pwm.enable().await
+    }
+    pub async fn enable_native(&self) -> Result<()> {
+        self.pwm.enable_native().await
     }
 
     /// Set pulse width in microseconds, clamped to MIN_US..MAX_US (same as FSW).
     pub async fn set_pulse_width_us(&self, us: u32) -> Result<()> {
-        let clamped = us.clamp(MIN_US, MAX_US);
+        let clamped = us.clamp(self.config.min_pulse_us, self.config.max_pulse_us);
         if clamped != us {
-            warn!("MAV '{}' pulse width {} us clamped to {} us", self.name, us, clamped);
+            warn!(
+                "MAV '{}' pulse width {} us clamped to {} us",
+                self.name, us, clamped
+            );
         }
 
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        {
-            let ns = clamped * 1000;
-            self.write_file("duty_cycle", &ns.to_string()).await.context("Failed to set duty cycle")?;
-        }
-
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
-        {
-            info!("[Mock] MAV '{}' set to {} us", self.name, clamped);
-        }
+        self.pwm.set_pulse_us(clamped).await?;
 
         self.pulse_us.store(clamped, Ordering::Relaxed);
         Ok(())
@@ -142,31 +141,4 @@ impl Mav {
     pub fn pulse_width_us(&self) -> u32 {
         self.pulse_us.load(Ordering::Relaxed)
     }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    async fn set_enable(&self, enable: bool) -> Result<()> {
-        self.write_file("enable", if enable { "1" } else { "0" }).await.context("Failed to set enable")
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    async fn write_file(&self, file: &str, content: &str) -> Result<()> {
-        let path = self.pwm_path.join(file);
-        let content = content.to_string();
-        smol::unblock(move || fs::write(path, content)).await?;
-        Ok(())
-    }
-}
-
-/// Find `/sys/class/pwm/pwmchipN` whose `device` symlink points at `device_addr`.
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub(crate) fn find_pwmchip(device_addr: &str) -> Result<PathBuf> {
-    for entry in fs::read_dir("/sys/class/pwm").context("Failed to read /sys/class/pwm")? {
-        let path = entry?.path();
-        if let Ok(target) = fs::read_link(path.join("device")) {
-            if target.file_name().map_or(false, |n| n == device_addr) {
-                return Ok(path);
-            }
-        }
-    }
-    bail!("No pwmchip found for device {}", device_addr)
 }
