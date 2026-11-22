@@ -3,8 +3,10 @@
 The build CLI, durable receiver and opt-in NixOS SSH ingestion module are
 implemented. They have host tests, local real-Nix receiver evidence and isolated
 signed-HTTP VM acceptance. The
-UM560 has not been configured: LAN substitution, two-developer access, daemon
-containment, storage retention and offline operation still need live acceptance.
+UM560 operations and the fixed real-daemon maintenance probe are operator-confirmed.
+The [signed read-cache update](ground-station-signed-cache-update.md) prepares the
+next separate acceptance gate. LAN substitution, two-developer access, full worker
+containment and archive retention still need live acceptance.
 
 ## Current local use
 
@@ -12,7 +14,7 @@ From the repository root:
 
 ```sh
 ./scripts/platform check
-./scripts/platform build fill-station --vehicle liquid --artifact fit --builder local
+./scripts/platform build fill-station --vehicle liquid --artifact ospi --builder local
 ./scripts/platform status
 ./scripts/platform cache-sync
 ```
@@ -20,7 +22,8 @@ From the repository root:
 No configured cache is required. A successful build is locally rooted, with a
 manifest and pending publication record under the CLI state directory. Retrying
 publication does not build, flash, reboot or activate a release. Use
-`--artifact release` for SD, OSPI and DATA outputs from the same source snapshot.
+the default `ospi` for routine updates. Request `--artifact release` explicitly
+only when SD, OSPI and DATA provisioning outputs are all needed.
 See [CLI configuration](../../tools/platform/README.md) for state locations,
 artifact links, builder selection, timeouts and offline limits.
 
@@ -59,6 +62,10 @@ stable receipts and registered indirect roots. No automatic archive pruning or
 GC is enabled. Monitor free disk space and keep database/archive backups separate.
 
 ## Developer configuration after station setup
+
+For this Mac's prepared optional signed cache and bounded outage behavior, see
+[Mac station cache](mac-station-cache.md). Its installer preserves existing
+caches/trust and keeps the production public identity outside Git.
 
 Configure the signed HTTP cache URL and matching public trust key in the client's
 Nix settings. Keep `require-sigs` enabled. The HTTP URL serves reads; it is not

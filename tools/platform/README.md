@@ -1,4 +1,4 @@
-# Build/cache CLI foundation
+# Build/cache and explicit deployment CLI
 
 Run from any directory using the repository's `scripts/platform`. Python 3.10+
 and the standard library are sufficient. Import using `tools.platform` so the
@@ -8,21 +8,23 @@ standard library `platform` module remains available. Nix, nix-store, Git and
 ```sh
 ./scripts/platform check
 ./scripts/platform check --station --build-platform x86_64-linux
-./scripts/platform build fill-station --vehicle liquid --artifact release --builder auto
+./scripts/platform build fill-station --vehicle liquid --artifact ospi --builder auto
 ./scripts/platform build fill-station --vehicle hybrid --artifact fit --builder local --offline
 ./scripts/platform build fill-station --vehicle liquid --artifact fit --build-platform x86_64-linux --builder station
-./scripts/platform build ground-station --builder station
+./scripts/platform build ground-station --profile um560-services --builder station
 ./scripts/platform cache-sync
 ./scripts/platform status
 ./scripts/platform --config /absolute/path/to/config.json build fill-station --vehicle liquid --dry-run
 ```
 
 `--config` is a global option, before the command. `--artifact` defaults to
-`release`; `release` builds `sd`, `ospi`, `data` from one frozen source. OSPI
-contains the FIT. Individual `fit`, `sd`, `ospi`, `data` are supported. No
-`deploy` or `prepare-offline` command is advertised or implemented. Invalid
-commands return nonzero. `status` reports local build/publication information,
-not board health or activation. No operation reboots, flashes or deploys.
+`ospi`, so routine builds do not regenerate SD/DATA cards. Explicit
+`release` builds `sd`, `ospi`, `data` from one frozen source for provisioning. OSPI
+contains the FIT. Individual `fit`, `sd`, `ospi`, `data` are supported. `prepare-offline` is not implemented. Invalid/incomplete commands return nonzero.
+Build, cache-sync, transfer-resume, check and status never deploy or reboot.
+The separate explicit `deploy` command writes only a verified release's FIT and
+never builds/reboots. `status` includes deployment attempt records, not live board
+health or runtime acceptance.
 
 ## Files and configuration
 
@@ -90,13 +92,24 @@ Default fill-station graph/platform remains `aarch64-linux`:
 - Hybrid: `mixosConfigurations.fill-station.config.system.build.*`
 - `sdImage`, `fitImage`, `ospiImage`, `dataCardImage` are existing attributes.
 
+The agreed station route is native x86-to-ARM cross-compilation; full image and
+board acceptance remains pending. See [the cross-build guide](../../docs/operations/fill-station-cross-build.md).
 Explicit `--build-platform x86_64-linux` selects the parent's
 `mixosBuildConfigurations."x86_64-linux".<machine>.config.system.build.*` graph.
 The manifest records the selected build platform. Neither this option nor a
 successful evaluation establishes that an image works on hardware.
-Ground station always uses x86 and
-`nixosConfigurations.ground-station.config.system.build.toplevel`; that physical
-target is gated until inspected hardware and boot configuration are supplied.
+Ground station always uses x86. `--profile foundation` (the unchanged default)
+selects `nixosConfigurations.ground-station`; `--profile um560` selects the
+inspected foundation, and `--profile um560-services` selects the installed
+telemetry/display/camera system. Each builds `config.system.build.toplevel`.
+For example, on a native x86 Linux builder:
+
+```sh
+./scripts/platform build ground-station --profile um560-services --builder local
+```
+
+This builds and records the selected system; it never activates it. Include the
+UI navigation fix in the next explicitly prepared/deployed station update.
 
 Local preflight checks the Nix store daemon and configured native/extra platforms
 or external-builder system declarations. This preserves the signed-in Determinate
@@ -113,12 +126,13 @@ and a successful health protocol. Explicit station mode reports missing/invalid
 configuration as an error. Offline rejects explicit station and only considers
 local execution. The default station has never been contacted or validated.
 
-A station build uses `nix build --store ssh-ng://... --no-link`, then copies the
-result into the local store and registers permanent local roots. It does not
-create a local filesystem out-link in the remote store. A remote GC race during
-that unrooted build/copy interval is a surfaced failure, never an acknowledged
-release; server-side build retention remains integration work. Remote worker
-isolation, scheduling and actual external-builder behavior require station tests.
+A station build reserves a durable worker retention slot through the fixed
+`crt-platform-builder-retain-v1` protocol before realization. It copies the result
+into the local store, verifies permanent local roots, then releases the worker
+reservation. Interrupted transfers retain a recovery journal and worker roots;
+there is no fallback to the old unrooted remote build. See the
+[worker retention protocol](../../docs/operations/build-worker.md). Actual station
+SSH, signing, worker isolation, scheduling and performance still require testing.
 
 Only selection/preflight infrastructure failure can switch workers. Once Nix
 starts evaluating/building the snapshot, any failure surfaces with its stderr and
@@ -159,7 +173,7 @@ lock for its lifetime. The daemon's pre-build hook separately enforces field/fre
 space policy at every derivation start. Health is not a reservation; busy covers
 guarded remote sessions, not all local daemon jobs. Active builds are not cancelled
 by entering field mode. See [worker setup and live acceptance](../../docs/operations/build-worker.md)
-for signing, untrusted import, Linux containment and remote retention gaps. None
+for signing, untrusted import, Linux containment and live retention acceptance. None
 of those hardware properties is proven by a successful health probe.
 
 ## Durable source, release and outbox
@@ -295,3 +309,70 @@ interrupted receipt writes and re-registration on retry. A separate manual check
 has exercised the receiver against the previously built FIT using real local Nix;
 it does not establish station SSH, signing, LAN substitution or physical power-loss
 behavior.
+
+## Resume an interrupted worker transfer without requesting a new release
+
+```sh
+./scripts/platform status
+./scripts/platform transfer-resume --dry-run
+./scripts/platform transfer-resume
+```
+
+`status` includes `workerTransfers` in addition to cache publication records.
+Dry-run lists local journal metadata with no worker contact or state writes.
+Explicit resume reuses the original retained worker requests, imports/roots
+outputs and acknowledges release only after local retention is verified. It
+creates no new release manifest and does not publish or deploy. If the original
+realization reply was lost, recovery may resume that original realization; it is
+not a promise of zero compilation for an unfinished request. Already realized
+transfers do not request another realization merely to recover a lost release ack.
+Failures leave the remaining journal/roots available for retry. Local builds can
+proceed while these transfers are deferred; eligible station builds also recover
+them under the existing transfer lock.
+
+## Explicit FIT deployment
+
+Use the exact manifest path printed by a normal build. In these commands,
+`$manifest` is that explicitly selected path, not an automatically chosen latest
+release. `fillstation-deploy` is the reviewed SSH alias described in the deployment
+guide; the dedicated PC identity still needs to be generated/enrolled on hardware.
+
+```sh
+./scripts/platform deploy --manifest "$manifest" --target fillstation-deploy --dry-run
+./scripts/platform deploy --manifest "$manifest" --target fillstation-deploy
+./scripts/platform status
+```
+
+The dry-run validates the six-file OSPI bundle, recorded SHA256 inventory and
+partition mapping without SSH or state writes. Actual deployment stages an
+independent verified copy, uses the packaged `flash-ospi.sh` in FIT-only mode,
+checks remote capacity, transfer checksum and flashcp read-back, and writes a
+separate durable attempt/log. The installed `crt-platform` includes that script
+and required shell tools, so deployment can run outside a source checkout.
+
+Build manifests remain unchanged to preserve publication receipt identity.
+`flash-verified` does not mean booted/tested/active; runtime acceptance remains
+pending. The command never writes bootloaders, reboots or automatically retries.
+A failed/interrupted attempt is unconfirmed and retains its diagnostic record.
+No overall timer automatically kills an active erase/write. SSH handshake timeout
+remains bounded. Hash comparisons establish agreement with the selected manifest,
+not an independent signer identity; choose a trusted build/archive manifest.
+
+
+### Prepare independent board SSH (local setup only)
+
+Run as the deployment user, without sudo, with a plain independently verified
+ED25519 public host-key file:
+
+```sh
+scripts/platform deploy-ssh-init --host-key "$HOME/fill-station-host.pub" --dry-run
+scripts/platform deploy-ssh-init --host-key "$HOME/fill-station-host.pub"
+```
+
+Creates/reuses a PC-owned key and configures `fillstation-deploy` with strict host
+pinning and no SSH agent. `--host` overrides the default `192.168.1.106` with an
+IPv4 address. Dry-run writes nothing. Neither mode contacts the board. Setup
+refuses conflicting aliases, symlinked files and changed pins rather than replacing
+them silently. Enroll the returned public key through a reviewed board image;
+`boardEnrolled:false` remains explicit because local setup cannot prove enrollment.
+See [enrollment and acceptance](../../docs/operations/ground-station-accepted-system.md).

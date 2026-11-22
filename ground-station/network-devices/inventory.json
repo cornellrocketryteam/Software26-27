@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "source": "operator-provided addresses and port wiring; no live scan",
+  "devices": [
+    {
+      "id": "ground-poe",
+      "kind": "omada-switch",
+      "model": "ES205GP",
+      "address": "192.168.1.100",
+      "adapterEnabled": false,
+      "pending": "installed firmware and local interface inspection",
+      "ports": [
+        {
+          "port": 1,
+          "connectedDevice": "ground-bridge",
+          "poeCapable": true,
+          "connectivityCritical": true,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 2,
+          "connectedDevice": null,
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 3,
+          "connectedDevice": null,
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 4,
+          "connectedDevice": null,
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 5,
+          "connectedDevice": "router",
+          "poeCapable": false,
+          "connectivityCritical": true,
+          "powerControlEnabled": false
+        }
+      ]
+    },
+    {
+      "id": "fill-poe-1",
+      "kind": "omada-switch",
+      "model": "ES205GP",
+      "address": "192.168.1.107",
+      "adapterEnabled": false,
+      "pending": "installed firmware and local interface inspection",
+      "ports": [
+        {
+          "port": 1,
+          "connectedDevice": "fillcam0",
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 2,
+          "connectedDevice": "fillcam1",
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 3,
+          "connectedDevice": "fillcam2",
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 4,
+          "connectedDevice": "fill-bridge",
+          "poeCapable": true,
+          "connectivityCritical": true,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 5,
+          "connectedDevice": "fill-poe-2",
+          "poeCapable": false,
+          "connectivityCritical": true,
+          "powerControlEnabled": false
+        }
+      ]
+    },
+    {
+      "id": "fill-poe-2",
+      "kind": "omada-switch",
+      "model": "ES205GP",
+      "address": "192.168.1.108",
+      "adapterEnabled": false,
+      "pending": "installed firmware and local interface inspection",
+      "ports": [
+        {
+          "port": 1,
+          "connectedDevice": "fill-station",
+          "poeCapable": true,
+          "connectivityCritical": true,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 2,
+          "connectedDevice": null,
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 3,
+          "connectedDevice": null,
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 4,
+          "connectedDevice": null,
+          "poeCapable": true,
+          "connectivityCritical": false,
+          "powerControlEnabled": false
+        },
+        {
+          "port": 5,
+          "connectedDevice": "fill-poe-1",
+          "poeCapable": false,
+          "connectivityCritical": true,
+          "powerControlEnabled": false
+        }
+      ]
+    },
+    {
+      "id": "ground-bridge",
+      "kind": "omada-bridge",
+      "model": "EAP215-Bridge KIT",
+      "address": "192.168.1.101",
+      "adapterEnabled": false,
+      "pending": "installed firmware and radio metric interface inspection"
+    },
+    {
+      "id": "fill-bridge",
+      "kind": "omada-bridge",
+      "model": "EAP215-Bridge KIT",
+      "address": "192.168.1.109",
+      "adapterEnabled": false,
+      "pending": "installed firmware and radio metric interface inspection"
+    },
+    {
+      "id": "shelly-plug-1",
+      "kind": "shelly",
+      "model": "Shelly Plug US Gen4",
+      "enabled": false,
+      "address": null,
+      "componentId": 0,
+      "connectedLoad": null,
+      "credentialRef": null
+    },
+    {
+      "id": "shelly-plug-2",
+      "kind": "shelly",
+      "model": "Shelly Plug US Gen4",
+      "enabled": false,
+      "address": null,
+      "componentId": 0,
+      "connectedLoad": null,
+      "credentialRef": null
+    }
+  ]
+}

@@ -10,8 +10,9 @@ import signal
 import subprocess
 import sys
 import time
+import tempfile
 
-from .runtime import PlatformError, json_response, read_json, run
+from .runtime import PlatformError, atomic_json, json_response, read_json, run, sync_dir
 
 DAEMON_STORE = 'unix:///nix/var/nix/daemon-socket/socket'
 SYSTEMS = ('x86_64-linux', 'aarch64-linux')
@@ -227,6 +228,145 @@ def guard(policy, *, daemon_program, lock, field_marker, store_path, binfmt_root
                 signal.signal(sig, handler)
 
 
+# Deliberately fixed bounds: no peer-controlled paths, commands, limits or TTL.
+RETENTION_LIMIT = 32
+RETENTION_BYTES = 4096
+STORE_NAME = r'/nix/store/[0123456789abcdfghijklmnpqrsvwxyz]{32}-[A-Za-z0-9+._?=-]{1,178}'
+
+
+def retention_request(raw):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate key')
+            result[key] = value
+        return result
+    try:
+        if len(raw) > RETENTION_BYTES:
+            raise ValueError('oversized')
+        request = json.loads(raw, object_pairs_hook=unique)
+        if (not isinstance(request, dict)
+                or set(request) != {'protocol', 'action', 'workerId', 'token', 'drvPath'}
+                or type(request['protocol']) is not int or request['protocol'] != 1
+                or request['action'] not in ('realise', 'release')
+                or not isinstance(request['workerId'], str)
+                or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}', request['workerId'])
+                or not isinstance(request['token'], str)
+                or not re.fullmatch(r'[0-9a-f]{32}', request['token'])
+                or not isinstance(request['drvPath'], str)
+                or not re.fullmatch(STORE_NAME + r'\.drv', request['drvPath'])):
+            raise ValueError('invalid fields')
+        return request
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise PlatformError('invalid bounded retention request') from exc
+
+
+def _retained_realise(drv, root, timeout, lock_fd):
+    # One output only: nix-store appends suffixes to multi-output roots. Reject
+    # that graph before realization, rather than accidentally leaving a gap.
+    outputs = run(['nix-store', '--store', DAEMON_STORE, '--query', '--outputs', drv],
+                  timeout=10).splitlines()
+    if len(outputs) != 1 or not re.fullmatch(STORE_NAME, outputs[0]) or outputs[0].endswith('.drv'):
+        raise PlatformError('retention requires one statically known derivation output')
+    env = {**os.environ, 'NIX_REMOTE': DAEMON_STORE, 'NIX_USER_CONF_FILES': '/dev/null'}
+    # Nix registers the indirect root as part of realization, while its temporary
+    # roots protect the result. Never build first and root in a second command.
+    with tempfile.TemporaryFile() as stdout:
+        child = subprocess.Popen(['nix-store', '--store', DAEMON_STORE, '--realise', drv,
+                                  '--add-root', str(root), '--indirect'],
+                                 stdin=subprocess.DEVNULL, stdout=stdout, stderr=sys.stderr,
+                                 env=env, start_new_session=True, pass_fds=(lock_fd,),
+                                 preexec_fn=_parent_death_setup())
+        try:
+            child.wait(timeout=timeout)
+            if child.returncode:
+                raise PlatformError('retained realization failed')
+        finally:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.wait()
+        stdout.seek(0)
+        if stdout.read(RETENTION_BYTES + 1).decode().splitlines() != [str(root)]:
+            raise PlatformError('retained realization returned unexpected outputs')
+    return outputs[0]
+
+
+def retain(policy, raw, *, state, lock, field_marker, store_path, capacity=RETENTION_LIMIT):
+    request = retention_request(raw)
+    if (not policy['remoteEnabled'] or not policy['enabled'] or not policy['validated']
+            or request['workerId'] != policy['workerId']):
+        raise PlatformError('retention worker identity or admission mismatch')
+    state = Path(state)
+    with _session_lock(lock) as lock_fd:
+        slots = sorted(state.iterdir())
+        chosen = None
+        for slot in slots:
+            if slot.is_symlink() or not slot.is_dir() or not re.fullmatch(r'[0-9]+', slot.name):
+                raise PlatformError('invalid retention state; operator repair required')
+            # A crash before reservation can leave only atomic-write temporary
+            # files. No realization starts before the metadata rename completes.
+            # A crash during release can leave an empty slot. Neither has roots.
+            entries = list(slot.iterdir())
+            if all(not entry.is_symlink() and entry.is_file()
+                   and re.fullmatch(r'\.request\.json\.[A-Za-z0-9_-]+\.tmp', entry.name)
+                   for entry in entries):
+                for entry in entries:
+                    entry.unlink()
+                slot.rmdir()
+                sync_dir(state)
+                continue
+            if any(entry.name not in ('request.json', 'root') for entry in entries):
+                raise PlatformError('unexpected retention state; operator repair required')
+            metadata = slot / 'request.json'
+            if metadata.is_symlink() or not metadata.is_file():
+                raise PlatformError('invalid retention metadata file')
+            with metadata.open('rb') as stream:
+                record = retention_request(stream.read(RETENTION_BYTES + 1))
+            if record['action'] != 'realise':
+                raise PlatformError('invalid retention reservation action')
+            if record.get('token') == request['token']:
+                if any(record.get(k) != request[k] for k in ('protocol', 'workerId', 'drvPath')):
+                    raise PlatformError('conflicting retention token replay')
+                chosen = slot
+        slots = list(state.iterdir())
+        response = {**request}
+        if request['action'] == 'release':
+            if chosen is not None:
+                (chosen / 'root').unlink(missing_ok=True)
+                sync_dir(chosen)
+                (chosen / 'request.json').unlink()
+                sync_dir(chosen)
+                chosen.rmdir()
+                sync_dir(state)
+            return {**response, 'released': True}
+        admit(policy, field_marker=field_marker, store_path=store_path)
+        if chosen is None:
+            if len(slots) >= capacity:
+                raise PlatformError('retention capacity exhausted; no roots evicted')
+            chosen = next(state / str(i) for i in range(capacity) if not (state / str(i)).exists())
+            chosen.mkdir()
+            atomic_json(chosen / 'request.json', request)
+            sync_dir(state)
+        root = chosen / 'root'
+        if root.is_symlink():
+            store = os.readlink(root)
+        elif root.exists():
+            raise PlatformError('invalid retention root')
+        else:
+            store = _retained_realise(request['drvPath'], root, policy['sessionTimeoutSeconds'], lock_fd)
+        if (not isinstance(store, str) or not re.fullmatch(STORE_NAME, store)
+                or store.endswith('.drv') or not root.is_symlink() or os.readlink(root) != store):
+            raise PlatformError('expected retained GC root was not established')
+        run(['nix-store', '--store', DAEMON_STORE, '--check-validity', store], timeout=10)
+        registered = run(['nix-store', '--store', DAEMON_STORE, '--query', '--roots', store], timeout=10).splitlines()
+        if str(root) not in registered and f'{root} -> {store}' not in registered:
+            raise PlatformError('worker retention root is not registered with Nix')
+        sync_dir(chosen)
+        sync_dir(state)
+        return {**response, 'storePath': store, 'retained': True}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='crt-platform-worker-v1', description=__doc__)
     parser.add_argument('--policy', type=Path, required=True)
@@ -235,13 +375,26 @@ def main(argv=None):
     parser.add_argument('--store-path', type=Path, default=Path('/nix/store'))
     parser.add_argument('--binfmt-root', type=Path, default=Path('/proc/sys/fs/binfmt_misc'))
     parser.add_argument('--daemon-program', default='nix-daemon')
-    parser.add_argument('mode', choices=('health', 'guard', 'admit'))
+    parser.add_argument('--retention-state', type=Path, default=Path('/var/lib/ground-builder-retention'))
+    parser.add_argument('mode', choices=('health', 'guard', 'admit', 'retain'))
     args = parser.parse_args(argv)
     try:
         policy = load_policy(args.policy)
         paths = {name: getattr(args, name) for name in ('field_marker', 'store_path')}
         if args.mode == 'admit':
             admit(policy, **paths)
+            return 0
+        if args.mode == 'retain':
+            def input_timeout(_signum, _frame):
+                raise PlatformError('retention input timed out')
+            previous_alarm = signal.signal(signal.SIGALRM, input_timeout)
+            signal.alarm(5)
+            try:
+                raw = sys.stdin.buffer.read(RETENTION_BYTES + 1)
+            finally:
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, previous_alarm)
+            print(json.dumps(retain(policy, raw, state=args.retention_state, lock=args.lock, **paths), sort_keys=True))
             return 0
         paths.update(lock=args.lock, binfmt_root=args.binfmt_root)
         if args.mode == 'health':

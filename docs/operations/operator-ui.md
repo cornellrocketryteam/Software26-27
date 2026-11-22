@@ -1,5 +1,10 @@
 # Packaged operator UI and local startup
 
+For direct monitor use, see the [automatic local display](ground-station-display.md)
+and [camera relay](ground-station-cameras.md). The UM560 services profile now
+configures a local session; the generic foundation remains opt-in. Physical
+multi-monitor and camera acceptance are separate from packaging tests.
+
 The existing React UI now has a reproducible Nix package and an optional NixOS
 nginx integration. This is the first application-startup increment. It does not
 itself provision the broker/database/Grafana stack, open a kiosk, migrate Ethernet,

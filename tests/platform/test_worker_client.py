@@ -44,9 +44,10 @@ class WorkerClientTests(BuildFixture):
         self.assert_ok(result)
         self.assertIn('unavailable', json.loads(result.stdout)['local'])
 
-    def test_matching_worker_identity_preserves_station_build_route(self):
-        config = self.station_config()
-        config['station']['workerId'] = 'fixture-worker'
-        self.config.write_text(json.dumps(config))
-        self.assert_ok(self.build('--artifact','fit','--builder','station'))
-        self.assertEqual(self.manifests()[0]['build']['worker'], 'station')
+    def test_station_retention_requires_an_explicit_pinned_worker_identity(self):
+        self.station_config()
+        result = self.build('--artifact', 'fit', '--builder', 'station')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('pinned workerId', result.stderr)
+        self.assertFalse(any('build' in call for call in self.calls('nix')))
+        self.assertEqual(self.manifests(), [])

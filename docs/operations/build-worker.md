@@ -1,7 +1,10 @@
 # Station build-worker setup and acceptance
 
-The worker helper and opt-in NixOS SSH endpoint are implemented. The UM560 is
-not installed or validated; station builds remain disabled. No new SD/OSPI or
+The worker helper and opt-in NixOS SSH endpoint are implemented. The UM560 now
+runs the operator-confirmed NixOS/telemetry installation, but its build worker is
+not validated and station builds remain disabled. The agreed normal build route
+is [native x86-to-ARM cross-compilation](fill-station-cross-build.md); ARM
+emulation is an optional alternative. No new SD/OSPI or
 dashboard test is required from the user for this host-side increment.
 
 ## Implemented behavior
@@ -9,7 +12,8 @@ dashboard test is required from the user for this host-side increment.
 - Separate `ground-builder` account with explicit keys, locked password and no
   sudo, cache-group membership or Nix trusted-user grant. It forwards Nix RPC
   through the local daemon socket, keeping builds under that daemon's limits.
-- Exact forced commands: `crt-platform-builder-health-v1` and `nix-daemon --stdio`.
+- Exact forced commands: `crt-platform-builder-health-v1`,
+  `crt-platform-builder-retain-v1` and `nix-daemon --stdio`.
   Caller arguments, shell commands, forwarding and TTY are rejected.
 - Immutable policy controls enabled/validated status, field mode, supported
   platforms, free-space reserve, worker identity and session deadline.
@@ -36,16 +40,17 @@ current field configuration prohibits compilation.
 
 ## Configuration sequence
 
-1. Complete hardware/boot inventory and initial local NixOS setup first. Back up
-   existing telemetry data and preserve the operational Compose setup.
+1. Preserve the installed NixOS services, telemetry state and recovery generation.
+   Do not repeat the completed Ubuntu-to-NixOS migration.
 2. Validate native local builds, actual daemon CPU/RAM containment and field-mode
    behavior before setting `groundStation.builder.validated`. The initial bounds
    are one job, three cores, 300% CPU and 6 GiB RAM; measure operator latency before
    allowing heavy field workloads. Defaults continue to inhibit them.
-3. For ARM emulation, prove the entire chosen graph before enabling
-   `groundStation.builder.aarch64.enable` and its `validated` flag. The alternative
-   x86 cross-build graph has only component evidence so far. Native x86 hardware
-   alone does not make the ARM64 default graph executable.
+3. First prove complete OSPI builds with the explicit x86 cross-build graph.
+   Native x86 tools still target the ARM board; this route does not require
+   advertising ARM execution. Only if ARM emulation is deliberately selected,
+   prove that graph before enabling `groundStation.builder.aarch64.enable` and
+   its `validated` flag. Full cross-built image acceptance is still pending.
 4. Provision a daemon runtime signing key and pin its public key on clients.
    This is required for input-addressed build outputs to copy back with signature
    verification. HTTP caching may remain disabled; daemon signing is separate.
@@ -98,7 +103,8 @@ can observe a station while client routing is unvalidated or its local builder i
 unavailable. Plain `./scripts/platform check` continues to make no SSH connection.
 
 Routing still requires explicit client validation and matching platform capability.
-Worker identity pinning is recommended and rejects mismatched/missing identities.
+Station builds require an explicit pinned `station.workerId`; mismatched/missing
+identities and workers without retention protocol support are rejected.
 There is no automatic retry of compiler failures or mid-build infrastructure errors.
 
 ## Required live tests before routine station builds
@@ -113,10 +119,11 @@ There is no automatic retry of compiler failures or mid-build infrastructure err
   termination and lock recovery. Test Linux parent-death behavior on Linux.
 - Actual daemon cgroup membership/CPU/RAM limits under load, with measured UI and
   recording latency. Evaluated settings do not prove containment.
-- Remote output retention during build/download: the current CLI still has an
-  unrooted interval after a remote build returns and before local copying/receipt
-  retention. No automatic GC is enabled, but this race must be fixed and tested
-  before claiming reliable remote releases. The session lock does not solve it.
+- Remote retention over actual untrusted SSH: disconnect before/after the
+  realization reply, run station GC, reconnect, finish download, verify client
+  roots, then release. Repeat with a lost release acknowledgement and simultaneous
+  GC on the client. Disposable-store host tests cover import/root/GC semantics;
+  actual daemon transport and signature policy still require this acceptance.
 - Benchmarks against the Mac's accepted Linux builder. Leave laptop-first policy
   in place unless identical-workload measurements justify station preference.
 
@@ -132,3 +139,165 @@ nix build .#checks.aarch64-linux.ground-worker-admission
 The same check is exposed for `x86_64-linux`. This verifies real Linux process
 behavior with a modeled Nix proxy; it does not prove live station SSH, x86/ARM
 image execution, actual daemon containment or board behavior.
+
+
+## Bounded output-retention protocol v1
+
+Station realization uses the exact forced command
+`crt-platform-builder-retain-v1`. Stdin is one JSON object (maximum 4096 bytes,
+EOF required within five seconds). No command arguments, shell fragments, store
+URLs, output paths, root paths or timeouts are accepted from the peer:
+
+```json
+{
+  "protocol": 1,
+  "action": "realise",
+  "workerId": "reviewed-station-worker-v1",
+  "token": "0123456789abcdef0123456789abcdef",
+  "drvPath": "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-example.drv"
+}
+```
+
+Only these five fields are accepted, with integer protocol 1, `realise` or
+`release`, an exact worker identity, a 32-character lowercase hexadecimal token,
+and a canonical top-level Nix derivation path. Duplicate JSON keys, booleans for
+protocol, unknown fields and malformed identities/paths are rejected before
+state changes. Responses echo the complete request; realization additionally
+returns `retained: true` and `storePath`, while release returns `released: true`.
+Clients validate protocol, action, identity, token, derivation and output path;
+a successful SSH exit alone cannot authorize release or publication.
+
+The client evaluates the frozen flake's derivation into the remote evaluation
+store without realizing its result. It durably writes the token, derivation,
+endpoint configuration and intended local root to `STATE/transfers/TOKEN.json`
+**before** requesting realization. The worker holds the existing session lock,
+checks admission, reserves a slot, then calls `nix-store --realise DRV --add-root
+SLOT/root --indirect` through the daemon as the untrusted `ground-builder` user.
+Nix registers the permanent root during realization while its temporary roots
+protect the output (see the [Nix realization reference](https://nix.dev/manual/nix/2.24/command-ref/nix-store/realise)).
+The helper verifies validity and registered-root identity
+before acknowledging. It does not use build-then-root or make the account trusted.
+
+The protocol currently accepts exactly one statically known output per
+derivation. Multi-output and dynamically addressed derivations fail explicitly;
+there is no fallback to the old unrooted remote build. Native local builds retain
+their existing route. The daemon's pre-build hook still applies to realization.
+The realization process inherits the session lock and uses the existing Linux
+parent-death protection; its configured session deadline kills/reaps it.
+
+Worker state is persistent under `/var/lib/ground-builder-retention`, owned by
+`ground-builder` with mode 0700. There are at most **32 outstanding slots**, shared
+across this worker account's keys. Each slot contains its immutable token/request
+and one root. A duplicate token with different derivation/identity is rejected.
+A matching replay returns the verified root, or retries interrupted realization.
+There is no TTL, automatic pruning or eviction: disconnect cannot expire a
+retained output. Exhaustion rejects new requests without removing existing roots.
+This is a count bound, not a byte quota; the existing free-space admission reserve
+continues to apply. Root-sized disk budgeting and per-key quotas are outside v1.
+Tokens act as release capabilities among authorized users of this shared account;
+there is no per-key tenant isolation.
+
+After the acknowledgement, the client durably records the returned output. It
+imports with `nix-store --realise OUTPUT --add-root LOCAL_ROOT --indirect`, using
+the pinned SSH store as substituter and keeping signature requirements enabled.
+On a multi-user client, its administrator must permit this URI in
+`trusted-substituters` and configure the worker signing public key in
+`trusted-public-keys`; this grants no worker trust and does not disable signature
+checks. A rejected substituter fails the transfer and preserves the worker root.
+This combines import and rooting in one Nix operation, avoiding the earlier
+`nix copy` followed by rooting interval. It checks the exact local symlink,
+Nix validity and registered-root mapping, then syncs the root directories before
+sending `action: release` with the original token and derivation. The worker
+removes only the matching slot's root. Release is idempotent, including after a
+lost reply; an unknown token cannot remove another slot. The client always keeps
+its local root. The server cannot inspect a remote client's filesystem: release
+authorization after verified local rooting is enforced by the client protocol.
+
+Every normal online build first replays pending transfers under a client state
+lock. Offline builds leave pending transfers untouched and make no recovery SSH
+connections. Dry runs perform no recovery or writes. A missing realization reply reuses the
+original token. Once an output has been recorded, recovery imports/roots it and
+retries release without recreating a worker reservation. Transfer state is removed
+only after a validated release acknowledgement. Recovery uses the journal's
+original pinned endpoint, so changing the current station configuration cannot
+silently redirect an outstanding release. Compiler errors and transport failures
+are surfaced; an unresolved pending transfer blocks a later online build before
+new compilation. An offline local build can proceed without replaying it. Failed
+realizations keep their reservation/token for recovery or operator reconciliation; they do not trigger a local compiler fallback. A recovered output
+is retained locally; recovery does not invent a successful release manifest for
+a build interrupted before manifest creation.
+
+If capacity is exhausted, restore connectivity and rerun a normal build from each
+client state directory with pending transfers. Preserve those journals and local
+roots. A permanently lost client requires operator reconciliation of its token,
+request, output and a verified replacement root before manual removal; never
+bulk-delete slots to make space. Empty slot directories and temporary metadata files left before a reservation
+are recoverable when no root or completed request exists. Unexpected or corrupt nonempty slot state fails closed
+and needs operator inspection. Disabling the worker does not garbage-collect its
+persistent roots.
+
+Host validation commands (no station contact):
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/platform -p '*retention.py' -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/platform -p test_worker.py -v
+```
+
+The retention suite includes real process deadlines/input limits, strict wire
+validation, capacity/replay/conflict handling, interrupted transfer recovery,
+local-root verification before release, and GC on disposable Nix stores with an
+unrooted control. It never runs GC on the system store. It does not establish
+production untrusted SSH import, signed-output downloads, daemon resource
+containment, or full image execution. Keep the existing live acceptance gates.
+The older remote-build fixtures in `test_build_cli.py` model the superseded
+unretained route and omit a pinned worker ID; they need coordinated updates to
+model this protocol, rather than weakening admission to accept their old path.
+
+## Fixed maintenance daemon check
+
+The separate `um560-validation` profile provides a root-only fixed recipe for
+checking the real daemon and cgroup without enabling the worker. See
+[maintenance validation](build-daemon-validation.md) for its scope and pending
+hardware acceptance. This does not replace the full remote-worker checks.
+
+## Worker and graph selection
+
+The build CLI now selects the worker and execution-platform graph together before
+freezing/evaluating the source snapshot. For fill-station builds, an eligible
+station prefers its advertised x86_64-linux graph; the local fallback tries the
+existing ARM Linux route first, then native x86 when supported. Ground-station
+systems always require x86_64-linux. An explicit --build-platform constrains every
+candidate; --builder station never quietly falls back to local execution.
+
+Auto defaults to local-first unless policy.preferStation is explicitly true.
+--offline excludes station workers. Dry-run reports ordered routingCandidates and
+their graph attributes without probing, building or changing state. This is a
+planned preference, not a health assertion. Normal manifests record the actual
+platform, requested platform, selected worker ID/reason and elapsed seconds before
+publication. Compilation/evaluation failures after selection are not retried on
+another machine. Real hardware resource validation and enrollment remain required;
+these client changes do not enable or validate the running station worker.
+
+## CI candidate cutover
+
+The proposed `nix.yml` now has only a manual workflow_dispatch OSPI build for a
+selected Hybrid/Liquid profile using native x86 Linux tools. It no longer runs
+an SD image build on every branch push or uploads to FlakeHub Cache. Existing
+repository-contract checks remain automatic. This is a source change, not a
+claim that GitHub ran the replacement or that it has been pushed. Locked flake
+inputs already use GitHub; no lock revisions were changed. The manual action is
+a fallback, not the normal LAN worker/cache publication workflow.
+
+Interrupted remote transfers are recovered only after an eligible station worker
+is selected. New local builds—including auto fallback during station outage—keep
+old transfer journals and roots and report recovery as deferred. A later eligible
+station build retries those transfers under the existing worker-transfer lock.
+Cache outbox synchronization remains independent; its failed publication never
+invalidates a successfully retained new local release.
+
+Use `scripts/platform transfer-resume --dry-run` to inspect transfer journals, or
+`transfer-resume` to explicitly recover original requests/imports without creating
+a new release. `status` now includes `workerTransfers`. Recovery of a realization
+whose original reply was never received can resume that original work; it does
+not silently substitute a new platform or create a new release. Cache publication
+is still the separate `cache-sync` action, and hardware deployment stays explicit.

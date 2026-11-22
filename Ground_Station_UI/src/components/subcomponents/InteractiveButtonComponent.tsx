@@ -15,11 +15,11 @@ export default function InteractiveButtonComponent() {
   // Non-launch commands lock themselves locally after firing (one per button instance).
   // Only the launch button uses the shared, persisted hasLaunched from propulsion context.
   const { handleButtonClickRef, hasLaunched } = usePropulsion();
-  const { wsRef } = useAppContext();
+  const { wsRef, wsReady } = useAppContext();
   const { buttonName, showState, currentState, label, stateLabel, actuationLock } = useButton();
   const [openLabel, closeLabel] = label;
-  const openState: ActuationTypeIdentifier[] = ['OPEN', 'EXTEND']; // Define which actions correspond to "open" state
-  const closedState: ActuationTypeIdentifier[] = ['CLOSE', 'RETRACT']; // Define which actions correspond to "close" state
+  const openState: ActuationTypeIdentifier[] = ['OPEN', 'RELEASE']; // Define which actions correspond to "open" state
+  const closedState: ActuationTypeIdentifier[] = ['CLOSE', 'OFF']; // Define which actions correspond to "close" state
 
   const sendLaunchCommand = () => {
     wsRef.current?.send(JSON.stringify({ command: 'launch' }));
@@ -55,7 +55,7 @@ export default function InteractiveButtonComponent() {
           <p className="font-inter text-2xl mb-2">{buttonName}</p>
           <button
             onClick={() => setLaunchStep(1)}
-            disabled={isLocked}
+            disabled={isLocked || !wsReady}
             className={`${isLocked ? 'bg-[#9CA3AF] cursor-not-allowed' : (isLaunch ? 'bg-[#D63A1F] hover:opacity-90' : 'bg-[#5A87FF] hover:opacity-90')
               } border-[6px] border-black rounded-2xl w-full py-4 font-inter font-bold text-3xl text-white`}
           >
@@ -75,6 +75,7 @@ export default function InteractiveButtonComponent() {
             message="FINAL CONFIRMATION: Are You Sure?"
             onConfirm={() => {
 
+              if (!wsReady || wsRef.current?.readyState !== WebSocket.OPEN) { setLaunchStep(0); return; }
               switch (buttonName) {
                 case "Reset FRAM":
                   sendResetFramCommand();
@@ -113,7 +114,7 @@ export default function InteractiveButtonComponent() {
   };
 
   const handleConfirm = () => {
-    if (pendingAction !== null) { //Pending Action has some action stored
+    if (wsReady && pendingAction !== null) { //Pending Action has some action stored
       handleButtonClickRef.current(buttonName, pendingAction);
     }
     setShowConfirmation(false);
@@ -138,7 +139,7 @@ export default function InteractiveButtonComponent() {
                   if (buttonName === "Solenoid Valve 1" || buttonName === "Solenoid Valve 2" || buttonName === "Ball Valve" || buttonName === "MAV") {
                     toggleAction('OPEN');
                   } else if (buttonName === "Quick Disconnect") {
-                    toggleAction('RETRACT');
+                    toggleAction('RELEASE');
                   }
                 }}
                 className={`${currentState && actuationLock === 'LOCKED' ? 'bg-[#ADC7AC]/50 cursor-not-allowed opacity-50' : 'bg-[#ADC7AC]'
@@ -151,7 +152,7 @@ export default function InteractiveButtonComponent() {
                   if (buttonName === "Solenoid Valve 1" || buttonName === "Solenoid Valve 2" || buttonName === "Ball Valve" || buttonName === "MAV") {
                     toggleAction('CLOSE');
                   } else if (buttonName === "Quick Disconnect") {
-                    toggleAction('EXTEND');
+                    toggleAction('OFF');
                   }
                 }}
                 className={`${!currentState && actuationLock === 'LOCKED' ? 'bg-[#E27D7D]/50 cursor-not-allowed opacity-50' : 'bg-[#E27D7D]'

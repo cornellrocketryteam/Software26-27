@@ -19,6 +19,10 @@ The SK-AM64B is currently off; all other addressed devices below are reported up
 | Ground-side PoE switch | `192.168.1.100` | `CornellRocketry` | Omada ES205GP; port 5 to router LAN 1 |
 | Fill-side PoE switch 1 | `192.168.1.107` | `CornellRocketry` | Omada ES205GP; cameras, client AP, switch-2 uplink |
 | Fill-side PoE switch 2 | `192.168.1.108` | `CornellRocketry` | Omada ES205GP; SK-AM64B and switch-1 uplink |
+
+The SK-AM64B image now selects Ethernet DHCP rather than Wi-Fi. `.106` remains
+the intended address until its actual wired lease/MAC and router reservation are
+checked. See [board Ethernet setup](../../fill-station/docs/ETHERNET_SETUP.md).
 | Shelly smart plug 1 | Not supplied | Not supplied | Shelly Plug US Gen4; address/load mapping to follow |
 | Shelly smart plug 2 | Not supplied | Not supplied | Shelly Plug US Gen4; address/load mapping to follow |
 
@@ -133,14 +137,19 @@ streaming must work with that WAN disconnected. WAN access may be used while
 preparing packages or updates, but must not become a field-startup dependency.
 
 The mini PC is configured for IPv4 DHCP and was observed at `192.168.1.206/24`.
-Its Ethernet MAC is `58:47:CA:7E:6E:15`. DHCP reservations/local DNS and each other
-device's address-assignment method have not been verified. Keep the documented
+Its Ethernet MAC is `58:47:CA:7E:6E:15`. The SK-AM64B wired interface is `eth0`,
+MAC `28:b5:e8:e3:80:8f`. The operator configured its router reservation; a serial
+DHCP probe obtained `192.168.1.106` from `192.168.1.1`. That probe used a no-op
+lease script, so it did not apply the address or prove routed traffic. Other
+DHCP reservations/local DNS have not been verified. Keep the documented
 addresses stable: the services profile's Grafana root URL currently uses `.206`.
 No router, DHCP, VLAN or AP settings were changed while recording this reference.
 
 The reported SK-AM64B-to-broker path is switch 2 → switch 1 → client bridge →
-main bridge → ground switch → router → mini PC. End-to-end board traffic and its
-current Ethernet interface cannot be verified while the board is off.
+main bridge → ground switch → router → mini PC. The physical `eth0` link and DHCP reservation are confirmed from operator output.
+The operator subsequently confirmed the updated Liquid OSPI image acquires .106,
+reaches .206, permits wired SSH, and sends live telemetry visible in FillOps.
+Ethernet, SSH and advancing telemetry returned after a further board reboot.
 
 ## Cameras and the current dashboard
 
@@ -189,15 +198,37 @@ also remain separate integrations; IP knowledge alone does not verify their APIs
 
 The operator confirmed NixOS SSD boot, console/SSH access, Ethernet `.206`, the
 operator UI, active telemetry provisioners/containers and successful Grafana
-storage health. The services update is currently test-activated; making that
-generation the persistent boot default has not yet been reported.
+storage health. After setting the services generation as the persistent boot
+default and rebooting, the operator confirmed all six telemetry units active and
+the FillOps dashboard loading. This confirms automatic startup across reboot;
+physical board ingestion was subsequently confirmed by advancing
+`ms_since_boot_fill` in FillOps, including recovery after a board reboot.
 
 Open the current FillOps dashboard directly at
 **http://192.168.1.206:8080/grafana/d/adrc2lg/fillops**. The default-home fix is
 verified in local code for a future update, not yet applied to the running PC.
-Camera relay/playback, physical SK-AM64B ingestion, kiosk, network-device controls,
+Camera relay/playback, physical PRU waveform timing, kiosk, network-device controls,
 signed cache/build worker and Secure Boot remain unaccepted or unconfigured.
 
 See the [services update guide](ground-station-update.md),
 [telemetry runbook](telemetry-stack.md), and
 [installation/recovery guide](ground-station-install.md).
+
+
+## Infrastructure adapter research (not device acceptance)
+
+The ES205GP's published specifications list local web-based management and
+PoE recovery capabilities; this does not establish a stable local write API or
+SNMP control on the installed revision. Implement the PoE adapter only after
+recording the actual hardware/firmware and verifying its local requests.
+[Official ES205GP specifications](https://www.tp-link.com/us/business-networking/omada-switch-agile/es205gp/).
+
+The EAP215-Bridge product specifications advertise SNMP, including v1/v2c/v3 on
+listed revisions. Actual enabled access, credentials, available MIBs and RF
+fields still need inspection; LAN ping must not be labeled as RSSI or RF quality.
+[Official EAP215-Bridge specifications](https://www.tp-link.com/uk/business-networking/omada-wifi-wireless-bridge/eap215-bridge-kit/).
+
+No switch/AP/Shelly write adapter is activated by the display/camera update.
+The main/client bridge power paths and PoE capability/load mapping require the
+control-path precautions recorded above. The SK-AM64B Ethernet cable has not
+been established as a source of board power.

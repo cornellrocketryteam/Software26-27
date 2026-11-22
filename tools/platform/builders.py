@@ -72,19 +72,46 @@ def station_health(config, platform):
 
 
 def select(config, requested, platform, offline):
+    """Compatibility wrapper for callers with an explicit platform constraint."""
+    worker, _, reason = select_pair(config, requested, platform, offline)
+    return worker, reason
+
+
+def candidate_pairs(config, requested, platform, offline, host='fill-station'):
+    """Plan compatible worker/graph pairs without probing or mutating state."""
     if offline and requested == 'station':
         raise PlatformError('--offline cannot use --builder station')
-    if requested != 'auto':
-        reason = local_health(config, platform) if requested == 'local' else station_health(config, platform)
-        return requested, reason
-    order = ['station', 'local'] if config.get('policy', {}).get('preferStation') is True and not offline else ['local', 'station']
-    errors = []
-    for worker in order:
+    if requested == 'auto':
+        workers = ['station', 'local'] if config.get('policy', {}).get('preferStation') is True and not offline else ['local', 'station']
+    else:
+        workers = [requested]
+    pairs = []
+    for worker in workers:
         if worker == 'station' and offline:
             continue
+        if platform is not None:
+            platforms = [platform]
+        elif host == 'ground-station':
+            platforms = ['x86_64-linux']
+        elif worker == 'station':
+            advertised = config.get('station', {}).get('platforms', [])
+            platforms = [p for p in ('x86_64-linux', 'aarch64-linux') if isinstance(advertised, list) and p in advertised]
+            # Still produce a clear disabled/unvalidated diagnostic when absent.
+            platforms = platforms or ['x86_64-linux']
+        else:
+            # Preserve the Mac ARM VM route; native x86 station-local builds are
+            # also eligible when that ARM route is not supported by the daemon.
+            platforms = ['aarch64-linux', 'x86_64-linux']
+        pairs.extend((worker, p) for p in platforms)
+    return pairs
+
+
+def select_pair(config, requested, platform, offline, host='fill-station'):
+    errors = []
+    for worker, candidate in candidate_pairs(config, requested, platform, offline, host):
         try:
-            reason = local_health(config, platform) if worker == 'local' else station_health(config, platform)
-            return worker, '; '.join(errors + [reason])
+            reason = local_health(config, candidate) if worker == 'local' else station_health(config, candidate)
+            return worker, candidate, '; '.join(errors + [reason])
         except PlatformError as exc:
-            errors.append(f'{worker} preflight: {exc}')
+            errors.append(f'{worker}/{candidate} preflight: {exc}')
     raise PlatformError('; '.join(errors))

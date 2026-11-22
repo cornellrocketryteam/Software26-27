@@ -18,7 +18,9 @@ let
     && lib.hasSuffix "/grafana/" rootUrl
   );
   active = cfg.enable && validPins && runtimePath cfg.secretsFile && runtimePath cfg.stateDirectory;
-  helper = pkgs.crt.ground-telemetry or (pkgs.callPackage ../../packages/crt/ground-telemetry/package.nix { });
+  helper = pkgs.callPackage ../../packages/crt/ground-telemetry/package.nix {
+    cameraViewer = config.groundStation.cameras.enable;
+  };
   executable = "${helper}/bin/ground-telemetry";
   assets = "${helper}/share/ground-telemetry";
   archives = lib.genAttrs names (name: let pin = cfg.imagePins.${name}; in pkgs.dockerTools.pullImage {
@@ -198,8 +200,9 @@ in
               GF_ANALYTICS_REPORTING_ENABLED = "false";
               GF_ANALYTICS_CHECK_FOR_UPDATES = "false";
               GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES = "false";
-              # The legacy camera text panel must not execute arbitrary HTML.
-              GF_PANELS_DISABLE_SANITIZE_HTML = "false";
+              # The provisioned camera iframe requires HTML in this Grafana instance.
+              # Anonymous users remain Viewers; dashboards are file-provisioned.
+              GF_PANELS_DISABLE_SANITIZE_HTML = if config.groundStation.cameras.enable then "true" else "false";
             };
             volumes = [
               "${cfg.stateDirectory}/grafana:/var/lib/grafana"

@@ -34,10 +34,26 @@ esac
 if command -v sha256sum >/dev/null; then sum() { sha256sum "$@"; }; else sum() { shasum -a 256 "$@"; }; fi
 (cd "$dir" && sum -c SHA256SUMS --quiet) || { echo "local files don't match SHA256SUMS" >&2; exit 1; }
 
-ssh "$target" 'command -v flashcp >/dev/null' || {
-  echo "flashcp isn't on the board; boot an image built with the busybox flashcp override first" >&2
-  exit 1
+# Apply the same noninteractive identity/host policy to every deployment step.
+# A host alias may select a dedicated IdentityFile in ~/.ssh/config.
+remote() {
+  ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=yes "$target" "$@"
 }
+
+# Exit 42 is returned only by an authenticated remote shell missing flashcp.
+# SSH transport/authentication failures normally use 255 and must not masquerade
+# as a missing board utility. Preserve SSH's own diagnostic on stderr.
+preflight_status=0
+remote 'if command -v flashcp >/dev/null 2>&1; then exit 0; else exit 42; fi' || preflight_status=$?
+case $preflight_status in
+  0) ;;
+  42)
+    echo "flashcp isn't on the board; boot an image built with the busybox flashcp override first" >&2
+    exit 1 ;;
+  *)
+    echo "SSH preflight failed (exit $preflight_status); no flash attempted. Check the preceding SSH error and deployment identity/host key." >&2
+    exit 1 ;;
+esac
 
 if [[ $mode == all ]]; then
   echo "Writing the bootloaders too. If power is lost during this, the board won't boot"
@@ -54,9 +70,10 @@ for f in "${files[@]}"; do
   esac
   expected=$(awk -v f="$f" '$2 == f { print $1 }' "$dir/SHA256SUMS")
 
-  mtd=$(ssh "$target" "grep '\"$part\"' /proc/mtd | cut -d: -f1")
-  [[ $mtd == mtd[0-9]* ]] || { echo "partition $part not found in /proc/mtd" >&2; exit 1; }
-  partsize=$(ssh "$target" "cat /sys/class/mtd/$mtd/size")
+  mtd=$(remote "grep '\"$part\"' /proc/mtd | cut -d: -f1")
+  [[ $mtd =~ ^mtd[0-9]+$ ]] || { echo "partition $part not found in /proc/mtd" >&2; exit 1; }
+  partsize=$(remote "cat /sys/class/mtd/$mtd/size")
+  [[ $partsize =~ ^[1-9][0-9]*$ ]] || { echo "invalid partition capacity returned for $part" >&2; exit 1; }
   size=$(wc -c < "$dir/$f" | tr -d ' ')
   if (( size > partsize )); then
     echo "$f ($size bytes) is larger than $part ($partsize bytes)" >&2
@@ -64,11 +81,11 @@ for f in "${files[@]}"; do
   fi
 
   echo "== $f -> $part (/dev/$mtd): $size of $partsize bytes"
-  ssh "$target" "cat > /tmp/flash-$f" < "$dir/$f"
-  got=$(ssh "$target" "sha256sum /tmp/flash-$f | cut -d' ' -f1")
+  remote "cat > /tmp/flash-$f" < "$dir/$f"
+  got=$(remote "sha256sum /tmp/flash-$f | cut -d' ' -f1")
   [[ $got == "$expected" ]] || { echo "checksum mismatch after copying $f to the board" >&2; exit 1; }
   # flashcp erases, writes, then reads back and compares
-  ssh "$target" "flashcp -v /tmp/flash-$f /dev/$mtd && rm /tmp/flash-$f"
+  remote "flashcp -v /tmp/flash-$f /dev/$mtd && rm /tmp/flash-$f"
 done
 
 echo

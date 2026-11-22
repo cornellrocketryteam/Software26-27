@@ -1,4 +1,4 @@
-{ lib, stdenvNoCC, python3, makeWrapper }:
+{ lib, stdenvNoCC, python3, makeWrapper, cameraViewer ? false }:
 stdenvNoCC.mkDerivation {
   pname = "ground-telemetry";
   version = "1";
@@ -24,7 +24,7 @@ stdenvNoCC.mkDerivation {
     cp ${../../../../tests/platform/test_telemetry_runtime.py} "$testRoot/tests/platform/test_telemetry_runtime.py"
     python -m unittest discover -s "$testRoot/tests/platform" -p test_telemetry_runtime.py
     python provisioning/runtime.py --help >/dev/null
-    python provisioning/runtime.py assets --source . --output assets
+    python provisioning/runtime.py assets --source . --output assets ${lib.optionalString cameraViewer "--cameras"}
     test -s assets/grafana/provisioning/datasources/telemetry.yaml
     test -s assets/proto/telemetry.proto
     runHook postCheck

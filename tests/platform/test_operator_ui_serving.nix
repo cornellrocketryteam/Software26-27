@@ -23,6 +23,7 @@ let
           tilesDirectory = directory;
           fillStationWebSocketUrl = "ws://fill.test/socket";
         };
+        groundStation.kiosk.enable = true;
         services.nginx.logError = "stderr";
         services.nginx.commonHttpConfig = "access_log off;";
       }
@@ -108,6 +109,13 @@ pkgs.runCommand "ground-operator-ui-serving-tests" {
               "map": {"tileUrl": "/tiles/{z}/{x}/{y}.png", "tilesConfigured": directory_configured},
           }
           assert request(base, "/readyz")[0] == 503
+          status, _, body = request(base, "/station/")
+          assert status == 200 and b"FillOps telemetry" in body
+          assert b'src="/grafana/"' in body and b'src="/"' in body and b'Commanding' in body
+          status, headers, body = request(base, "/station/tabs.js")
+          assert status == 200 and b"selectTab" in body
+          assert "javascript" in headers.get("Content-Type", "")
+          assert request(base, "/station/missing.html")[0] == 404
           status, _, body = request(base, "/tiles/0/0/0.png")
           if directory_configured:
               assert status == 200 and body == b"local-tile-fixture"

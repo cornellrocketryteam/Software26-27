@@ -22,6 +22,16 @@ in
         ../nixos-configurations/ground-station/um560.nix
         ../nixos-configurations/ground-station/services.nix
       ];
+      ground-station-um560-validation = station [
+        ../nixos-configurations/ground-station/um560.nix
+        ../nixos-configurations/ground-station/services.nix
+        ../nixos-configurations/ground-station/validation.nix
+      ];
+      ground-station-um560-cache = station [
+        ../nixos-configurations/ground-station/um560.nix
+        ../nixos-configurations/ground-station/services.nix
+        ../nixos-configurations/ground-station/signed-cache.nix
+      ];
       ground-station-installer = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs.groundStationSystem = self.nixosConfigurations.ground-station-um560.config.system.build.toplevel;

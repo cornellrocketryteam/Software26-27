@@ -1,3 +1,5 @@
+> Historical report: automated fill and its coupled timed-vent implementation are removed. The original propulsion layout and on-rocket controls are restored; QD now uses SV5 RELEASE/OFF. This report is not a current operating guide. See [TEST_STAND.md](TEST_STAND.md).
+
 # Ground Station UI — Bug Report
 
 Bugs found and fixed during code review session (2026-04-28).

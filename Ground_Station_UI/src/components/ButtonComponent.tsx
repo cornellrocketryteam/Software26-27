@@ -38,7 +38,7 @@ const labelMap: { [key: string]: [string, string] } = {
     "Solenoid Valve 2": ["OPEN",      "CLOSE"],
     "Ball Valve":       ["OPEN",      "CLOSE"],
     "MAV":              ["OPEN",      "CLOSE"],
-    "Quick Disconnect": ["RETRACT",      "EXTEND"],
+    "Quick Disconnect": ["RELEASE",      "OFF"],
     
   };
   
@@ -47,7 +47,7 @@ const labelMap: { [key: string]: [string, string] } = {
     "Solenoid Valve 2": ["OPENED",    "CLOSED"],
     "Ball Valve":       ["OPENED",    "CLOSED"],
     "MAV":              ["OPENED",    "CLOSED"],
-    "Quick Disconnect": ["RETRACTED", "EXTENDED"],
+    "Quick Disconnect": ["ENERGIZED", "OUTPUT OFF"],
   };
   
   

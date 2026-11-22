@@ -7,6 +7,36 @@ let
   worker = pkgs.callPackage ../../packages/crt/platform-worker/package.nix {
     nix = config.nix.package;
   };
+  validationFixture = builtins.derivation {
+    name = "ground-daemon-probe-v1";
+    system = pkgs.stdenv.buildPlatform.system;
+    builder = "${pkgs.bash}/bin/bash";
+    args = [ "-eu" "-c" ''
+      test "$(${pkgs.coreutils}/bin/id -u)" -gt 0
+      ${pkgs.coreutils}/bin/mkdir "$out"
+      ${pkgs.coreutils}/bin/cat /proc/self/cgroup > "$out/cgroup"
+      printf 'non-root\n' > "$out/user"
+    '' ];
+    preferLocalBuild = true;
+    allowSubstitutes = false;
+  };
+  validationSettings = pkgs.writeText "ground-daemon-validation.json" (builtins.toJSON {
+    enabled = cfg.validation.enable;
+    fieldMode = config.groundStation.fieldMode;
+    fieldMarker = "/run/ground-station/field-mode";
+    cgroupRoot = "/sys/fs/cgroup";
+    storePath = "/nix/store";
+    minimumFreeBytes = cfg.minimumFreeBytes;
+    nix = "${config.nix.package}/bin/nix";
+    systemctl = "${pkgs.systemd}/bin/systemctl";
+    fixtureDrv = builtins.unsafeDiscardOutputDependency validationFixture.drvPath;
+    # Keep the probe's executables available offline, without building its result.
+    fixtureInputs = [ "${pkgs.bash}" "${pkgs.coreutils}" ];
+  });
+  validation = pkgs.callPackage ../../packages/crt/platform-validation/package.nix {
+    nix = config.nix.package;
+    settingsFile = validationSettings;
+  };
   validWorkerId = cfg.remote.workerId != null
     && builtins.match "[A-Za-z0-9][A-Za-z0-9._-]{0,127}" cfg.remote.workerId != null;
   barePublicKey = key: builtins.match
@@ -50,6 +80,13 @@ let
             NIX_REMOTE=${daemonStore} NIX_USER_CONF_FILES=/dev/null \
             ${worker}/bin/crt-platform-worker-v1 ${arguments} health
           ;;
+        'crt-platform-builder-retain-v1')
+          exec ${pkgs.coreutils}/bin/env -i \
+            HOME=/var/empty USER=${account} LOGNAME=${account} \
+            PATH=${lib.makeBinPath [ config.nix.package ]} \
+            NIX_REMOTE=${daemonStore} NIX_USER_CONF_FILES=/dev/null \
+            ${worker}/bin/crt-platform-worker-v1 ${arguments} retain
+          ;;
         'nix-daemon --stdio')
           # The helper holds the remote lock for this entire daemon-backed
           # stdio child. The system daemon authenticates ground-builder as an
@@ -76,6 +113,7 @@ in
       default = false;
       description = "Owner has validated the worker and daemon cgroup containment on this machine.";
     };
+    validation.enable = lib.mkEnableOption "root-only fixed-recipe validation of the real Nix daemon (maintenance only)";
     aarch64.enable = lib.mkEnableOption "aarch64-linux QEMU/binfmt worker capability";
     aarch64.validated = lib.mkOption {
       type = lib.types.bool;
@@ -109,6 +147,9 @@ in
 
   config = {
     assertions = [
+      { assertion = cfg.validation.enable -> (!config.groundStation.fieldMode && !cfg.enable && !cfg.remote.enable && !cfg.validated);
+        message = "daemon validation requires a maintenance profile with normal and remote builds disabled and unvalidated."; }
+
       { assertion = cfg.enable -> cfg.validated; message = "ground-station builder validation is required before enabling station builds."; }
       { assertion = cfg.aarch64.enable -> (cfg.enable && cfg.aarch64.validated); message = "ground-station aarch64 validation and an enabled validated builder are required before advertising ARM execution."; }
       { assertion = cfg.remote.enable -> (cfg.enable && cfg.validated); message = "ground-station remote builder requires an enabled validated builder."; }
@@ -120,6 +161,7 @@ in
       # serving is independent. Pre-existing outputs may need signing first.
       { assertion = cfg.remote.enable -> config.groundStation.cache.signingKeyFile != null; message = "ground-station remote builder requires a daemon runtime signing key for signature-checked output downloads; HTTP caching may remain disabled."; }
     ];
+    environment.systemPackages = lib.optional cfg.validation.enable validation;
     boot.binfmt = {
       emulatedSystems = lib.optional (allowed && cfg.aarch64.enable && cfg.aarch64.validated) "aarch64-linux";
       preferStaticEmulators = true;
@@ -167,6 +209,7 @@ in
     systemd.tmpfiles.rules = lib.mkIf cfg.remote.enable [
       "d /run/ground-station-builder 0750 root ${account} - -"
       "f /run/ground-station-builder/session.lock 0660 root ${account} - -"
+      "d /var/lib/ground-builder-retention 0700 ${account} ${account} - -"
     ];
     services.openssh.extraConfig = lib.mkIf cfg.remote.enable ''
       Match User ${account}
@@ -182,6 +225,9 @@ in
     '';
     system.build = {
       groundWorkerHelper = worker;
+      groundWorkerValidation = validation;
+      groundWorkerValidationSettings = validationSettings;
+      groundWorkerValidationFixture = validationFixture;
       groundWorkerAdmission = admission;
       groundWorkerSsh = sshWrapper;
     };

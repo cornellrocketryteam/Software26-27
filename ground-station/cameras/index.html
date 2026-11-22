@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ground station cameras</title>
+  <style>
+    body { margin: 1.5rem; background: #101820; color: #edf2f7; font: 1rem system-ui, sans-serif; }
+    a { color: #8ed5ff; } main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 1rem; }
+    section { background: #1e2c39; padding: 1rem; border-radius: .5rem; }
+    video { width: 100%; background: black; aspect-ratio: 16 / 9; }
+    button { padding: .5rem 1rem; cursor: pointer; } .status { min-height: 3rem; }
+  </style>
+  <script src="/cameras/viewer.js" defer></script>
+</head>
+<body>
+  <h1>Ground station cameras</h1>
+  <nav><a href="/station/">Station dashboard</a> · <a href="/grafana/">Telemetry</a></nav>
+  <main id="cameras"></main>
+  <noscript>Enable JavaScript for camera playback and automatic retries.</noscript>
+</body>
+</html>

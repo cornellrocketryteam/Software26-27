@@ -14,16 +14,18 @@ let
       "cross-build changed the board target";
     assert lib.assertMsg (c.fillStation.mode == mode && c.state.fsType == "ext4")
       "cross-build changed vehicle or persistent-state policy";
-    assert lib.assertMsg (c.system.build.sdImage.system == buildSystem
+    assert lib.assertMsg (c.system.build.ospiImage.system == buildSystem
       && c.system.build.fitImage.system == buildSystem
-      && c.system.build.pinmuxOverlay.system == buildSystem)
+      && c.system.build.pinmuxOverlay.system == buildSystem
+      && c.nixpkgs.pkgs.crt.fill-station.system == buildSystem
+      && c.nixpkgs.pkgs.crt.fill-station-pru.system == buildSystem)
       "image components require a different worker";
-    { inherit buildSystem mode; image = c.system.build.sdImage.drvPath; };
+    { inherit buildSystem mode; image = c.system.build.ospiImage.drvPath; };
   results = lib.genAttrs [ "aarch64-linux" "x86_64-linux" ]
     (system: lib.mapAttrs (check system) machines);
 in
 assert lib.assertMsg (builtins.all
-  (name: flake.mixosConfigurations.${name}.config.system.build.sdImage.drvPath
-    == flake.mixosBuildConfigurations.aarch64-linux.${name}.config.system.build.sdImage.drvPath)
+  (name: flake.mixosConfigurations.${name}.config.system.build.ospiImage.drvPath
+    == flake.mixosBuildConfigurations.aarch64-linux.${name}.config.system.build.ospiImage.drvPath)
   (builtins.attrNames machines)) "default ARM64 build interface changed";
 results

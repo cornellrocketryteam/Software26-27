@@ -8,7 +8,6 @@ interface HeaderProps {
     currFlightMode?: string;    // optional, only passed from PropulsionPage
     buttonInteractionState?: string;  // optional, only passed from PropulsionPage
     canInteractRef?: React.RefObject<string>;  // optional, only passed from PropulsionPage
-    fillUIActive?: boolean;     // optional, only passed from PropulsionPage
     setButtonInteractionState?: (allowInteraction: interactionType) => void // optional, only passed from PropulsionPage
 }
 
@@ -19,11 +18,10 @@ export default function Header({
         currFlightMode,
         buttonInteractionState,
         canInteractRef,
-        fillUIActive,
         setButtonInteractionState
     }: HeaderProps) {
     const navigate = useNavigate();
-    const { hasLaunched } = useAppContext(); // Importing propulsion context to access shared state and functions 
+    const { hasLaunched, wsReady } = useAppContext(); // Shared launch and connection state
 
     const isPropulsionPage = pageTitle === "Propulsion Page";
     const isRecoveryPage = pageTitle === "Recovery & Payload Page";
@@ -46,7 +44,7 @@ export default function Header({
                         Curr Rocket State: {currFlightMode}
                     </div>
                     {isPropulsionPage && (<button 
-                        disabled = {fillUIActive || hasLaunched} // Disable interaction toggle when fill UI is active
+                        disabled = {!wsReady || hasLaunched} // Disable interaction toggle when fill UI is active
                         onClick={() => {
                             if(canInteractRef?.current === "DISABLED"){
                                 setButtonInteractionState?.("ENABLED");

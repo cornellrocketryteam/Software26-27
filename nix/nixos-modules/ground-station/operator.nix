@@ -11,7 +11,7 @@
     };
     operator = {
       isNormalUser = true;
-      description = "Unprivileged operator; kiosk integration pending";
+      description = "Unprivileged ground-station display operator";
       hashedPassword = "!";
     };
   };

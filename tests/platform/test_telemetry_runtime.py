@@ -145,7 +145,7 @@ class RuntimeContracts(unittest.TestCase):
     def test_local_assets_provision_stable_datasource_and_preserve_null_semantics(self):
         output = self.root / "assets"
         self.assertTrue(hasattr(runtime, "build_assets"), "local provisioning assets must be generated")
-        runtime.build_assets(ROOT / "ground-station", output)
+        runtime.build_assets(ROOT / "ground-station", output, cameras=True)
         datasource = json.loads((output / "grafana/provisioning/datasources/telemetry.yaml").read_text())["datasources"][0]
         self.assertEqual(datasource["uid"], "bfk1elo58d3pca")
         self.assertEqual(datasource["url"], "127.0.0.1:5432")
@@ -163,7 +163,11 @@ class RuntimeContracts(unittest.TestCase):
         for panel_id in [3, 4, 5, 6]:
             self.assertEqual(panels[panel_id]["options"]["reduceOptions"]["calcs"], ["last"])
             self.assertEqual(panels[panel_id]["fieldConfig"]["defaults"]["noValue"], "Unavailable")
+        self.assertIn(3, panels, "restore the original load panel")
+        self.assertIn(35, panels, "restore the original RTD panel")
         self.assertNotIn("192.168.", panels[1]["options"]["content"])
+        self.assertEqual(panels[1]["options"]["mode"], "html")
+        self.assertIn('src="/cameras/"', panels[1]["options"]["content"])
         for panel_id in [23, 27]:
             query = panels[panel_id]["targets"][0]["rawSql"]
             self.assertNotIn('"timestamp"', query)
@@ -175,6 +179,14 @@ class RuntimeContracts(unittest.TestCase):
             for file in output.rglob("*"):
                 if file.is_file():
                     self.assertNotIn(value, file.read_text())
+
+    def test_camera_disabled_assets_keep_placeholder(self):
+        output = self.root / "no-camera-assets"
+        runtime.build_assets(ROOT / "ground-station", output)
+        dashboard = json.loads((output / "grafana/dashboards/dashboard.json").read_text())
+        panel = next(p for p in dashboard["panels"] if p["id"] == 1)
+        self.assertEqual(panel["options"]["mode"], "markdown")
+        self.assertNotIn("<iframe", panel["options"]["content"])
 
     def test_health_wait_uses_loopback_and_requires_healthy_database(self):
         self.assertTrue(hasattr(runtime, "wait"), "bounded local health probe must exist")

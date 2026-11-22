@@ -1,9 +1,11 @@
 # Ground station, build cache, and fill-station deployment
 
-Status: approved architecture; implementation progress updated, 2026-11-11.
-Requirements below were confirmed with the user. The NixOS foundation and
-build/cache CLI exist; the operational stack and station deployment remain pending.
-This document describes the intended architecture, not a deployed system.
+Status: approved architecture; current acceptance is tracked in the master checklist.
+As of November 17 the operator has confirmed NixOS SSD boot and telemetry on the
+UM560, and wired OSPI/SSH/telemetry/reboot on the fill station. The revised display
+target is Grafana with embedded cameras on one monitor and the commanding UI on
+another. See the [display increment](../superpowers/plans/2026-11-17-grafana-commanding-displays.md).
+Historical implementation snapshots below do not supersede that current evidence.
 Use [the implementation checklist](../superpowers/plans/2026-11-09-ground-platform.md)
 to track delivery and [the current deployment procedure](../operations/fill-station-deployment.md)
 for commands that exist today.
@@ -35,8 +37,9 @@ for commands that exist today.
   named broker resource reconciliation and local Grafana provisioning now exist.
   An isolated x86 NixOS VM passed offline boot, container-failure recovery and
   persisted-data checks through a cold restart, ending with 21 correct fixture
-  rows. Production image/edition/license inventory, backup restore and physical
-  UM560 cold-boot acceptance remain required before replacing Compose.
+  rows. Production image/edition/license validation and physical UM560 cold-boot
+  acceptance remain required. Legacy-data preservation was waived on November 12;
+  the new installation initializes fresh state.
   Success-only recovery activation removes rapid failure retry loops. The
   recurring Grafana probe observes the stack without starting its prerequisites;
   controlled scheduling and real-image VM regression tests passed.
@@ -50,20 +53,22 @@ pending. The disabled-by-default [worker endpoint](../operations/build-worker.md
 now provides runtime health and guarded admission. Physical worker/containment and cache/signing
 acceptance, remote output retention, prepared offline rebuilds,
 deployment orchestration and CI cutover remain unfinished. Existing
-FlakeHub-related CI remains until the replacement passes its acceptance tests.
+The candidate CI workflow is manual OSPI-only and no longer uses the FlakeHub cache action. It has not been pushed or exercised on GitHub; normal station worker/cache acceptance remains pending.
 
 ## Confirmed requirements and evidence
 
 - Ground station: user-reported MINISFORUM UM560 XT, Ryzen 5 5600H,
   16 GB RAM, 512 GB SSD; planned x86-64 NixOS, on the same LAN as the fill station.
-  It has user-reported Linux and is being prepared for local inventory on a
-  network separate from this Mac, without internet. The user confirmed
-  `192.168.1.206`; the planned SSH username is `root`, but SSH setup is unknown.
-  Obtain user-run console outputs; OS and hardware configuration remain unverified.
+  User-run console checks now identify Ubuntu 24.04.4, x86_64 Ryzen 5600H,
+  UEFI/ext4 disk layout and Ethernet `eno1` at `192.168.1.206/24` with MAC
+  `58:47:CA:7E:6E:15`. The OS reports 13 GiB usable RAM. OpenSSH server is not
+  installed; no remote login is verified. The PC is on an offline network separate
+  from this Mac. See the [inventory and migration gaps](../operations/ground-station-inventory.md).
 - Both endpoints use Ethernet for normal networking. Migrate the fill station
   from its current Wi-Fi startup configuration to Ethernet; the mini PC gets
-  network access over Ethernet, with no Wi-Fi association required. Exact wired
-  interface names, MACs, switch ports and addresses are inventory work.
+  network access over Ethernet, with no Wi-Fi association required. The PC's
+  interface/MAC are recorded above; board interface, switch-port topology and
+  DHCP reservation configuration remain inventory/setup work.
 - Ground station starts Grafana, telemetry infrastructure, the operator UI,
   and the physical-command listener at boot without manual terminal commands.
 - Both machines boot and run without internet or another machine being online.
@@ -110,6 +115,13 @@ flowchart LR
   GS -->|explicit verified update over SSH| FS
   Recovery[Known-good bootable SD] -->|manual recovery boot| FS
 ```
+
+## Station build direction
+
+Use the [existing native x86-to-ARM cross-build graph](../operations/fill-station-cross-build.md)
+on the UM560, preserving the tested ARM64 Mac builder as fallback. Whole-system
+ARM emulation is optional. Complete builds, board validation, signed-cache/worker
+acceptance and routing benchmarks are the [next queued increment](../superpowers/plans/2026-11-18-build-deployment.md).
 
 ## Ground-station startup and packaging
 
@@ -399,7 +411,7 @@ replace the every-branch image workflow with no automatic full-image build. A
 manual release build can run through the same local interface on the station;
 there is no need for an always-on privileged GitHub runner on the operator PC.
 Disable `.github/workflows/nix.yml` only after the replacement and an offline
-recovery release pass. Remove its FlakeHub action and document legacy GitHub
+recovery release pass. The candidate workflow removes its FlakeHub action; document legacy GitHub
 artifact retirement. Existing hosted artifacts are not the new release archive.
 
 New commits do not automatically replace the active field release. Store
@@ -464,9 +476,23 @@ SSH updates to Linux do not require bootloader network support.
   documents timeouts, signature trust, builder configuration, and source fallback.
 
 Before implementation: review Harmonia vs the simpler nix-serve alternative;
-confirm which existing station data/services must migrate; inventory the PC's
-NIC/disk/display/USB identities; choose hostname/IP reservations and administrator
+use the accepted fresh-install path (old Ubuntu/container data may be discarded);
+finish physical display/USB checks; choose hostname/IP reservations and administrator
 keys. Confirm command-listener arming/reconnect behavior with its owner. The
 concrete service/container pins and resource limits are established during that
 inventory, not fabricated here. These gates do not prevent drafting the module
 and wrapper interfaces, but block an operational deployment.
+
+## UM560 fresh-install foundation
+
+The separate `nixosConfigurations.ground-station-um560` profile declares UEFI,
+AMD firmware and new ext4/FAT filesystem labels `CRT-GS-ROOT`/`CRT-GS-EFI`.
+Ethernet MAC `58:47:CA:7E:6E:15` maps to `lan0` with IPv4 DHCP; reserve the
+intended address on the router rather than inventing a static gateway. It enables
+the packaged UI, leaving production telemetry, cache, worker and commands off.
+The generic target retains its hardware gate. A closure build does not partition
+a disk or prove physical boot. A separate offline installer embeds the foundation
+closure and supplies local recovery/console password setup; see the
+[installation runbook](../operations/ground-station-install.md). Physical
+acceptance, kiosk and operational service configuration remain pending. Legacy-data backup
+and restore are waived; future operational state/key backups remain planned.

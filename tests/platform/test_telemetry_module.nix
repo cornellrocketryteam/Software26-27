@@ -40,6 +40,7 @@ let
   public = override {
     groundStation.operatorUi.enable = true;
   };
+  cameras = override { groundStation.cameras = { enable = true; credentialsFile = "/run/keys/cameras.json"; }; };
   c = enabled.virtualisation.oci-containers.containers;
   services = enabled.systemd.services;
   failed = config: lib.filter (a: !a.assertion) config.assertions;
@@ -242,6 +243,8 @@ let
       && c.ground-grafana.environment.GF_PLUGINS_PREINSTALL_DISABLED == "true"
       && c.ground-grafana.environment.GF_PLUGINS_PREINSTALL == ""
       && c.ground-grafana.environment.GF_PANELS_DISABLE_SANITIZE_HTML == "false";
+    cameraHtmlOnlyWhenEnabled = cameras.virtualisation.oci-containers.containers.ground-grafana.environment.GF_PANELS_DISABLE_SANITIZE_HTML == "true"
+      && cameras.virtualisation.oci-containers.containers.ground-grafana.environment.GF_AUTH_ANONYMOUS_ORG_ROLE == "Viewer";
     grafanaReviewedRoot = lan.virtualisation.oci-containers.containers.ground-grafana.environment.GF_SERVER_ROOT_URL
       == "http://station.test:8080/grafana/";
     localProvisioningMounts = lib.any (v: lib.hasSuffix "/share/ground-telemetry/grafana/provisioning:/etc/grafana/provisioning:ro" v) c.ground-grafana.volumes

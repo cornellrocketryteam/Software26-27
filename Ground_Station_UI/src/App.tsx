@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import PropulsionPage from './PropulsionPage';
 import RecoveryPage from './RecoveryPage';
+import NetworkDevicesPage from './NetworkDevicesPage';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { availabilityFromMessage } from './hardwareAvailability';
@@ -141,13 +142,16 @@ function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
         <span>Fill station: {!uri ? 'not configured' : wsReady ? 'connected' : 'disconnected'}</span>
         {!config.map.tilesConfigured && <span>Offline maps: not configured</span>}
         {(configError || connectionError) && <span role="alert">{configError || connectionError}</span>}
-        {config.grafanaUrl && <a href={config.grafanaUrl} target="_blank" rel="noopener noreferrer" className="underline">Grafana</a>}
+        {config.grafanaUrl && <a href="/station/" target="_top" className="underline">Station views</a>}
       </aside>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/test-stand" element={<PropulsionPage />} />
+          <Route path="/stations" element={<LandingPage />} />
           <Route path="/propulsion" element={<PropulsionPage />} />
           <Route path="/recovery" element={<RecoveryPage />} />
+          <Route path="/network" element={<NetworkDevicesPage />} />
         </Routes>
       </BrowserRouter>
     </AppContext.Provider>

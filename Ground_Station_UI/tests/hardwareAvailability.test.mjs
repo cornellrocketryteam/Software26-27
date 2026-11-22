@@ -28,11 +28,9 @@ test('legacy ADC data clears availability from a previous modern connection', as
  assert.deepEqual(availabilityFromMessage({type:'hardware_availability',availability_version:1,configured_devices_mask:3}),{availability_version:1,configured_devices_mask:3});
  assert.equal(availabilityFromMessage({type:'fsw_telemetry'}),undefined);
 });
-test('cancelling a timed vent closes it now or remembers to close on reconnect', async()=>{
- const { reconcileVentClose } = await import('../src/hardwareAvailability.ts');
- assert.deepEqual(reconcileVentClose(false,true,false,true),{pending:false,close:true});
- const offline=reconcileVentClose(false,true,false,false);
- assert.deepEqual(offline,{pending:true,close:false});
- assert.deepEqual(reconcileVentClose(offline.pending,false,true,true),{pending:false,close:true});
- assert.deepEqual(reconcileVentClose(false,false,true,true),{pending:false,close:false});
+
+test('retired stepper commands are never enabled, including legacy availability',()=>{
+ for(const availability of [null,{availability_version:0,configured_devices_mask:4095},{availability_version:1,configured_devices_mask:4095}])
+  for(const command of ['qd_move','qd_extend','qd_retract','qd_enable','qd_disable','get_qd_state'])
+   assert.equal(commandAvailable(availability,{command}),false);
 });

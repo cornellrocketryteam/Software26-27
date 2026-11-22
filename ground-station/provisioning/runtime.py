@@ -175,7 +175,7 @@ def database(docker, assets, attempts=30):
         raise ProvisionError("Telemetry schema/migration failed; ingestion remains unprovisioned.")
 
 
-def build_assets(source, output):
+def build_assets(source, output, cameras=False):
     """Build public, immutable assets; credentials are resolved only at runtime."""
     source, output = Path(source), Path(output)
     for relative in ["create-telemetry-table.sql", "emqx_action.sql", "emqx_rule.sql",
@@ -205,8 +205,8 @@ def build_assets(source, output):
     dashboard["id"] = None
     for panel in dashboard["panels"]:
         if panel["id"] == 1:
-            panel["options"]["mode"] = "markdown"
-            panel["options"]["content"] = "Camera feeds are not configured for this deployment."
+            panel["options"]["mode"] = "html" if cameras else "markdown"
+            panel["options"]["content"] = ('<iframe title="Fill cameras" src="/cameras/" allow="autoplay; fullscreen" style="width:100%;height:100%;border:0"></iframe>' if cameras else "Camera feeds are not configured for this deployment.")
         # The exported dashboard used a nonexistent timestamp column. The
         # flight hardware uptime is milliseconds; reset/duplicate times yield NULL.
         for target in panel.get("targets", []):
@@ -454,6 +454,7 @@ def main(argv=None):
     assets = commands.add_parser("assets")
     assets.add_argument("--source", required=True, type=Path)
     assets.add_argument("--output", required=True, type=Path)
+    assets.add_argument("--cameras", action="store_true")
     health = commands.add_parser("wait")
     health.add_argument("--url", required=True)
     integration = commands.add_parser("broker")
@@ -470,7 +471,7 @@ def main(argv=None):
         elif args.command == "database":
             database(args.docker, args.assets)
         elif args.command == "assets":
-            build_assets(args.source, args.output)
+            build_assets(args.source, args.output, cameras=args.cameras)
         elif args.command == "wait":
             wait(args.url)
         elif args.command == "broker":

@@ -1,12 +1,25 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.groundStation.cache;
   runtimeKey = cfg.signingKeyFile != null
     && lib.hasPrefix "/" cfg.signingKeyFile
     && !(lib.hasPrefix "/nix/store" cfg.signingKeyFile);
+  provisioner = pkgs.callPackage ../../packages/crt/platform-signing/package.nix {
+    nix = config.nix.package;
+  };
+  dependency = pkgs.runCommand "ground-cache-read-dependency-v1" { } ''
+    mkdir -p "$out"
+    printf 'signed-cache dependency v1\n' > "$out/payload"
+  '';
+  fixture = pkgs.runCommand "ground-cache-read-artifact-v1" { } ''
+    mkdir -p "$out"
+    printf 'signed-cache artifact v1\n' > "$out/payload"
+    ln -s ${dependency}/payload "$out/dependency"
+  '';
 in
 {
   options.groundStation.cache = {
+    provisioning.enable = lib.mkEnableOption "fixed root-only station signing identity provisioning and read fixture";
     enable = lib.mkOption {
       type = lib.types.bool;
       default = cfg.signingKeyFile != null;
@@ -22,6 +35,8 @@ in
 
   config = {
     assertions = [
+      { assertion = cfg.provisioning.enable -> cfg.signingKeyFile == "/var/lib/ground-station/cache-signing/cache.sec";
+        message = "station cache provisioning requires its fixed runtime signing-key path."; }
       { assertion = cfg.enable -> cfg.signingKeyFile != null; message = "ground-station cache signing key is required; unsigned serving is prohibited."; }
       { assertion = cfg.signingKeyFile != null -> runtimeKey; message = "ground-station cache signing key must be an absolute runtime path outside /nix/store."; }
       {
@@ -32,6 +47,11 @@ in
         message = "ground-station Harmonia must use the configured runtime cache signing key; no unsigned fallback.";
       }
     ];
+    environment.systemPackages = lib.optional cfg.provisioning.enable provisioner;
+    environment.etc."ground-cache-read-fixture" = lib.mkIf cfg.provisioning.enable {
+      text = "${fixture}\n";
+    };
+    system.build.groundCacheProvisioner = provisioner;
     # Harmonia signs HTTP narinfos, not the underlying store-path signatures
     # transferred over ssh-ng. Have the root Nix daemon sign newly built paths
     # even when HTTP serving is disabled. Provision the secret before building;

@@ -11,7 +11,7 @@ type StationCard = {
 const STATIONS: StationCard[] = [
     {
         title: "Propulsion",
-        description: "Valve actuation, fill & vent control",
+        description: "Manual valve and rocket controls",
         route: "/propulsion",
         accent: "#5A87FF",
     },
@@ -21,6 +21,7 @@ const STATIONS: StationCard[] = [
         route: "/recovery",
         accent: "#FF6B5A",
     },
+    {title: "Network devices", description: "Switch, bridge and smart-plug status", route: "/network", accent: "#5A87FF"},
 ];
 
 export function LandingPage() {

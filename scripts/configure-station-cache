@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$root"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/cornell-rocketry/ground-station/client-cache.json"
+action=${1:-show}
+case "$action" in
+  show) exec python3 -m tools.platform.client_cache show --config "$config" ;;
+  install|remove|verify)
+    python_bin=$(command -v python3)
+    if [[ "$action" == verify ]]; then
+      exec sudo "$python_bin" -m tools.platform.client_cache verify --config "$config"
+    fi
+    exec sudo "$python_bin" -m tools.platform.client_cache "$action" --config "$config" --restart-daemon ;;
+  *) printf 'Usage: %s [show|install|remove|verify]\n' "$0" >&2; exit 2 ;;
+esac

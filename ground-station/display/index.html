@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cornell Rocketry — Ground station</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#111820;color:#eef3f5;font:15px system-ui,sans-serif;height:100dvh;display:grid;grid-template-rows:auto 1fr}header{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:12px 20px;border-bottom:2px solid #c83232;background:#19242f}h1{font-size:17px;margin:0;letter-spacing:.04em}nav{display:flex;gap:8px}button{font:inherit;color:#e9f0f5;background:#263748;border:1px solid #526373;border-radius:4px;padding:8px 18px;cursor:pointer}button[aria-selected=true]{background:#a82727;border-color:#da6565}button:focus-visible{outline:2px solid white;outline-offset:3px}main{position:relative;min-height:0}section{position:absolute;inset:0}section[hidden]{display:none}iframe{border:0;width:100%;height:100%;background:#111820}
+</style>
+<script src="/station/tabs.js" defer></script>
+</head>
+<body>
+<header><h1>CORNELL ROCKETRY / GROUND STATION</h1><nav role="tablist" aria-label="Station views">
+<button id="grafana-tab" role="tab" aria-selected="true" aria-controls="grafana-pane" data-view="grafana">Grafana / cameras</button>
+<button id="commanding-tab" role="tab" aria-selected="false" aria-controls="commanding-pane" tabindex="-1" data-view="commanding">Commanding</button>
+</nav></header>
+<main>
+<section id="grafana-pane" role="tabpanel" aria-labelledby="grafana-tab"><iframe name="telemetry" title="FillOps telemetry and cameras" src="/grafana/"></iframe></section>
+<section id="commanding-pane" role="tabpanel" aria-labelledby="commanding-tab" hidden><iframe name="commanding" title="Commanding controls" src="/"></iframe></section>
+</main>
+</body></html>

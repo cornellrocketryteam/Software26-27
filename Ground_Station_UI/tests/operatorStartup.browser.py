@@ -40,7 +40,7 @@ def open_page(browser, config=SAFE, status=200, socket_error=False):
     page.set_default_timeout(5000)
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
-    page.goto(BASE)
+    page.goto(BASE + "/stations")
     page.get_by_role('heading', name='Select a Station').wait_for()
     return context, page, external, errors
 
@@ -56,7 +56,7 @@ def confirm_fixture_coords(page):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
+    browser = p.chromium.launch(headless=True, channel="chrome")
     try:
         context, page, external, errors = open_page(browser)
         page.get_by_text('Fill station: not configured', exact=True).wait_for()

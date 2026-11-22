@@ -1,25 +1,43 @@
-name: CI
+name: Manual fill-station OSPI build
+
 on:
-  push:
-    branches:
-      - '**'
+  workflow_dispatch:
+    inputs:
+      vehicle:
+        description: Vehicle hardware profile
+        type: choice
+        required: true
+        default: hybrid
+        options:
+          - hybrid
+          - liquid
+
+permissions:
+  contents: read
+
 jobs:
-  # Build the MixOS configuration for FillStation and push it to FlakeHub Cache
-  build-publish:
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      id-token: "write"
-      contents: "read"
+  build-ospi:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@v2
-      - run: nix build --print-build-logs .#mixosConfigurations.fill-station.config.system.build.sdImage
-      # Publish the SD image as a GitHub artifact so it can be downloaded
-      # without FlakeHub auth: gh run download -n fill-station-sd-image
-      - run: cp -L result/fill-station.img fill-station.img
+      - name: Build selected OSPI bundle with native x86 tools
+        env:
+          VEHICLE: ${{ inputs.vehicle }}
+        run: |
+          case "$VEHICLE" in
+            hybrid) machine=fill-station ;;
+            liquid) machine=fill-station-liquid ;;
+            *) echo 'Unsupported vehicle profile' >&2; exit 1 ;;
+          esac
+          nix build --print-build-logs --no-write-lock-file --no-update-lock-file \
+            --out-link result-ospi ".#mixosBuildConfigurations.\"x86_64-linux\".$machine.config.system.build.ospiImage"
+          (cd result-ospi && sha256sum -c SHA256SUMS)
+          mkdir release
+          cp -L result-ospi/{tiboot3.bin,tispl.bin,u-boot.img,fitImage.itb,partitions,SHA256SUMS} release/
       - uses: actions/upload-artifact@v4
         with:
-          name: fill-station-sd-image
-          path: fill-station.img
+          name: fill-station-${{ inputs.vehicle }}-ospi
+          path: release/
+          if-no-files-found: error
           retention-days: 14

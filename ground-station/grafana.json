@@ -52,7 +52,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div style=\"display: flex; flex-direction: row; gap: 10px; width: 100%; height: 100%; align-items: center; justify-content: center; overflow: hidden;\">\n    \n    <iframe style=\"flex: 1 1 0; min-width: 0; aspect-ratio: 4 / 3; border: none;\" \n       src=\"http://192.168.8.193:1984/stream.html?src=fillcam0\" \n       allowfullscreen allow=\"autoplay; fullscreen\">\n    </iframe>\n\n    <iframe style=\"flex: 1 1 0; min-width: 0; aspect-ratio: 4 / 3; border: none;\" \n       src=\"http://192.168.8.193:1984/stream.html?src=fillcam1\" \n       allowfullscreen allow=\"autoplay; fullscreen\">\n    </iframe>\n\n    <iframe style=\"flex: 1 1 0; min-width: 0; aspect-ratio: 4 / 3; border: none;\" \n       src=\"http://192.168.8.193:1984/stream.html?src=fillcam2\" \n       allowfullscreen allow=\"autoplay; fullscreen\">\n    </iframe>\n\n</div>",
+        "content": "<iframe title=\"Fill cameras\" src=\"/cameras/\" allow=\"autoplay; fullscreen\" style=\"width:100%;height:100%;border:0\"></iframe>",
         "mode": "html"
       },
       "pluginVersion": "12.3.1",
