@@ -6,7 +6,6 @@ pub mod ads7128;
 pub mod ball_valve;
 pub mod mav;
 pub mod umbilical;
-pub mod qd_stepper;
 pub mod quick_disconnect;
 pub mod ereg;
 pub mod pwm;

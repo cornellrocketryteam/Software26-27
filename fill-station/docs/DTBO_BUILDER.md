@@ -36,7 +36,7 @@ changes the file, saving is rejected; reload/discard and reapply the intended ed
 
 ## Devices, roles, and disabling
 
-Supported types are igniter, solenoid valve, ADS1015, ADS7128, MAV servo, ball valve, and QD stepper. ADS7128 supports I²C addresses `0x10`–`0x17` as an initialized-only extra device; `adc1`/`adc2` telemetry bindings remain ADS1015-only.
+Supported types are igniter, solenoid valve, ADS1015, ADS7128, MAV servo, ball valve, and solenoid quick disconnect. ADS7128 supports I²C addresses `0x10`–`0x17` as an initialized-only extra device; `adc1`/`adc2` telemetry bindings remain ADS1015-only.
 Existing devices have application roles (`ig1`, `sv1`, `adc1`, etc.). Their instance IDs
 may change without changing the role. Roles determine which existing commands and
 telemetry fields use a device. New instances are **initialized only**: they have no new
@@ -77,7 +77,7 @@ Shared connector positions identify one SoC pad and cannot be allocated twice.
 - Main I²C3 uses the existing ball-valve pads, adapter `/dev/i2c-3`; those must be released before using that bus.
 - MCU I²C0 uses MCU21/24 (SDA/SCL), adapter `/dev/i2c-4`.
 - MCU I²C1 uses MCU16/22 (SDA/SCL), adapter `/dev/i2c-5`.
-- PRU6/8 are the shared board I²C0 pins. Liquid uses them as always-on I²C0 (`/dev/i2c-0`) with QD disabled; Hybrid keeps stepper enable on PRU6 and I²C0 disabled. They are not an extra free I²C controller.
+- PRU6/8 are the shared board I²C0 pins. Liquid uses them as always-on I²C0 (`/dev/i2c-0`); Hybrid leaves I²C0 disabled and no longer allocates a motor enable signal on PRU6. They are not an extra free I²C controller.
 - Native I²C cannot be assigned arbitrarily to PRU GPO pins. The editor offers actual mux routes only.
 - The 54-pin PRU connector exposes 38 direct GPO routes: PRU0 bits0–15 on pins13–28,
   bit16 on7, bit17 on30, bits18–19 on31–32; PRU1 bits0–17 on35–52. Power, ground,
@@ -120,7 +120,7 @@ references, not build inputs. SysConfig projects/import tools are retired.
 ## Availability and extending the catalog
 
 Availability version1 uses device bits0–11: `ig1`, `ig2`, `adc1`, `adc2`, `sv1`, `sv2`,
-`sv3`, `sv4`, `sv5`, `mav`, `ball_valve`, `qd_stepper`. Reading bits0–2 are PT1, PT2,
+`sv3`, `sv4`, `sv5`, `mav`, `ball_valve`. Former motor bit11 is reserved and unused; Hybrid solenoid QD uses `sv5` bit8. Reading bits0–2 are PT1, PT2,
 and load cell. Version0/missing metadata means legacy behavior. Added unbound instances
 do not consume role bits or generate telemetry fields. CSV uses blanks for unavailable
 readings. See `ground-station/README.md` for the database/broker migration order.

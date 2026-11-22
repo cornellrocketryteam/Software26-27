@@ -110,13 +110,13 @@ pub async fn start_mqtt_publisher(
             (umb.connected, umb.telemetry)
         };
 
-        // 3a. Gather last-commanded actuator state (ball valve, QD)
+        // 3a. Gather last-commanded ball valve state.
         let ball_valve_open = actuator_state
             .ball_valve_open
             .load(std::sync::atomic::Ordering::Relaxed);
-        let qd_state = actuator_state
-            .qd_state
-            .load(std::sync::atomic::Ordering::Relaxed);
+        // Deprecated motor-position field 62 stays zero/unknown. Never encode
+        // the new solenoid QD's release command as a stepper position.
+        let qd_state: i32 = 0;
 
         // 3. Gather hardware state (SV1, igniters)
         let (sv_1_open, ignition, configured_devices_mask) = {

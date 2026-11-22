@@ -148,7 +148,7 @@ fn main() -> Result<()> {
         // Create shared ADC readings state
         let adc_readings = Arc::new(Mutex::new(AdcReadings::default()));
 
-        // Create shared actuator state (last-commanded ball valve + QD)
+        // Ball-valve command memory; solenoid QD state uses the SV5 driver.
         let actuator_state = Arc::new(ActuatorState::default());
 
         // Create shared umbilical readings state and command channel
@@ -933,70 +933,9 @@ async fn execute_command(
                 CommandResponse::Success
             }
         }
-        Command::QdMove { steps, direction } => {
-            let hw_bg = hardware.clone();
-            smol::spawn(async move {
-                let hw = hw_bg.lock().await;
-                if let Err(e) = hw
-                    .qd_stepper()
-                    .expect("preflight checked device")
-                    .move_steps(steps, direction)
-                    .await
-                {
-                    error!("QD move failed: {}", e);
-                }
-            })
-            .detach();
-            CommandResponse::Success
-        }
-        Command::QdRetract => {
-            use crate::components::qd_stepper::{QD_RETRACT_DIRECTION, QD_RETRACT_STEPS};
-            let hw_bg = hardware.clone();
-            smol::spawn(async move {
-                let hw = hw_bg.lock().await;
-                if let Err(e) = hw
-                    .qd_stepper()
-                    .expect("preflight checked device")
-                    .move_steps(QD_RETRACT_STEPS, QD_RETRACT_DIRECTION)
-                    .await
-                {
-                    error!("QD retract failed: {}", e);
-                }
-            })
-            .detach();
-            actuator_state
-                .qd_state
-                .store(-1, std::sync::atomic::Ordering::Relaxed);
-            CommandResponse::Success
-        }
-        Command::QdExtend => {
-            use crate::components::qd_stepper::{QD_EXTEND_DIRECTION, QD_EXTEND_STEPS};
-            let hw_bg = hardware.clone();
-            smol::spawn(async move {
-                let hw = hw_bg.lock().await;
-                if let Err(e) = hw
-                    .qd_stepper()
-                    .expect("preflight checked device")
-                    .move_steps(QD_EXTEND_STEPS, QD_EXTEND_DIRECTION)
-                    .await
-                {
-                    error!("QD extend failed: {}", e);
-                }
-            })
-            .detach();
-            actuator_state
-                .qd_state
-                .store(1, std::sync::atomic::Ordering::Relaxed);
-            CommandResponse::Success
-        }
         Command::GetBallValveState => CommandResponse::BallValveState {
             open: actuator_state
                 .ball_valve_open
-                .load(std::sync::atomic::Ordering::Relaxed),
-        },
-        Command::GetQdState => CommandResponse::QdState {
-            state: actuator_state
-                .qd_state
                 .load(std::sync::atomic::Ordering::Relaxed),
         },
         Command::Heartbeat => {

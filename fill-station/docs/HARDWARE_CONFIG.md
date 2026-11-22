@@ -180,10 +180,10 @@ The existing application roles are:
 |---|---|
 | `ig1`, `ig2` | Igniters |
 | `adc1`, `adc2` | ADS1015 ADCs |
-| `sv1` through `sv5` | Solenoid valves |
+| `sv1` through `sv5` | Solenoid valves; Hybrid `sv5` also accepts the distinct `quick_disconnect` kind |
 | `mav` | MAV servo |
 | `ball_valve` | Ball valve |
-| `qd_stepper` | QD stepper |
+| Reserved bit 11 | Former motor role; not selectable or allocated |
 
 The GUI displays existing roles but does not provide a role reassignment control.
 
@@ -191,7 +191,7 @@ The GUI displays existing roles but does not provide a role reassignment control
 
 Liquid has a required bus named `main_i2c0`. PRU pin 6 is its clock (SCL) and PRU pin 8 is its data line (SDA). The same physical lines appear at expansion pins 28 and 27. The bus remains enabled even when no external devices use it. It cannot be removed or changed to another controller in the editor.
 
-Liquid's QD stepper is disabled. Its old enable connection uses PRU pin 6, so trying to enable QD with that wiring produces a pin conflict. Its unused step/direction pins become idle inputs. **Disconnect or isolate the old QD enable wire from pin 6 before powering this configuration.** A software setting cannot disconnect a physical wire. Hybrid keeps the original enabled QD and disabled main I²C0 configuration.
+The motor QD kind is removed. Hybrid uses `id: qd`, kind `quick_disconnect`, role `sv5` on GPIO1_48 control and GPIO1_46 sense. Its only polarity is normally closed / active-high release; output-off does not establish physical reconnection. Former motor step/direction/enable pads become idle inputs. Liquid's existing solenoid QDs and shared I²C0 bus are unchanged. Isolate any historical motor enable wire from PRU pin 6 before using that pin as I²C0 clock. See [QD_SOLENOID.md](QD_SOLENOID.md).
 
 The PROC100A(002) board shares I²C0 with onboard devices. The compiler reserves `0x30` for the PMIC, `0x51` for the board EEPROM, and `0x50` for expansion EEPROM use. It preserves the base board's EEPROM node. External devices must use compatible 3.3 V I²C electrical levels, suitable pull-ups and unused addresses. Dedicated SCL/SDA pads use no internal pull; do not assume a GUI bias setting replaces external pull-ups.
 
@@ -211,7 +211,7 @@ Click **+ Add** under Devices, choose a supported type, and enter an instance ID
 | ADS7128 ADC | Shared I²C bus and address `0x10`–`0x17` (default `0x10`). |
 | MAV servo | A supported PWM output. |
 | Ball valve | `on_off` and `signal` outputs. |
-| QD stepper | `step`, `direction`, and `enable` outputs. |
+| Solenoid quick disconnect | `control` output and `sense` input; fixed normally-closed/active-high release. |
 
 ### What happens to an added instance
 
@@ -586,7 +586,7 @@ No. This tool selects native hardware I²C routes. It does not implement a softw
 
 Two ADCs on one shared I²C bus intentionally share SCL and SDA. They need different addresses on that bus. Separate GPIO uses cannot share a physical pad, and one PWM output cannot be allocated twice.
 
-### Can I change frequency, sensor scaling, stepper motion, or servo calibration here?
+### Can I change frequency, sensor scaling, or servo calibration here?
 
 No. The current GUI changes wiring and the listed device settings. Those operating details stay in Rust; the generated I²C clock is currently fixed at 400 kHz.
 

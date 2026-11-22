@@ -11,8 +11,9 @@ HERE = Path(__file__).resolve().parent
 BOARD = json.loads((HERE / 'board-pins.json').read_text())
 CATALOG = json.loads((HERE / 'catalog.json').read_text())
 PINS = {f'{p["domain"]}:0x{p["offset"]:04x}': p for p in BOARD['pins']}
-ROLES = ['ig1', 'ig2', 'adc1', 'adc2', 'sv1', 'sv2', 'sv3', 'sv4', 'sv5', 'mav', 'ball_valve', 'qd_stepper']
-ROLE_TYPES = dict(zip(ROLES, ['igniter'] * 2 + ['ads1015'] * 2 + ['solenoid_valve'] * 5 + ['mav_servo', 'ball_valve', 'qd_stepper']))
+# Bits 0..10 are stable; former stepper bit 11 is reserved and never assigned.
+ROLES = ['ig1', 'ig2', 'adc1', 'adc2', 'sv1', 'sv2', 'sv3', 'sv4', 'sv5', 'mav', 'ball_valve']
+ROLE_TYPES = dict(zip(ROLES, ['igniter'] * 2 + ['ads1015'] * 2 + ['solenoid_valve'] * 5 + ['mav_servo', 'ball_valve']))
 BUSES = {'main_i2c0': 0, 'main_i2c2': 2, 'main_i2c3': 3, 'mcu_i2c0': 4, 'mcu_i2c1': 5}
 _spec = importlib.util.spec_from_file_location('hardware_pinmux', HERE / 'pinmux.py')
 pinmux = importlib.util.module_from_spec(_spec)
@@ -122,7 +123,7 @@ def compile_profile(profile):
         enabled = device['enabled']
         role = device['role']
         if role is not None:
-            if not isinstance(role,str) or ROLE_TYPES.get(role) != dtype: raise ValueError(f'{name}: invalid role {role!r} for {dtype}')
+            if not isinstance(role,str) or (ROLE_TYPES.get(role) != dtype and not (role == 'sv5' and dtype == 'quick_disconnect')): raise ValueError(f'{name}: invalid role {role!r} for {dtype}')
             if role in roles: raise ValueError(f'duplicate application role {role}')
             roles.add(role)
         spec = CATALOG[dtype]

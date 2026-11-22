@@ -20,9 +20,9 @@ are also inventoried. PRG0_PRU1_GPO18/19 are Ethernet MDIO signals and remain
 protected, as do PRG1 Ethernet pads.
 
 The dedicated I2C pins 6/8 are main I2C0 SCL/SDA, shared with the board and
-40-pin connector. Liquid uses these as an always-enabled shared I2C0 bus; QD is disabled.
-Hybrid retains QD stepper ENA on pin 6 and keeps I2C0 disabled.
-Disconnect the former QD enable wire from pin 6 before using Liquid I2C0. Native I2C cannot be arbitrarily
+40-pin connector. Liquid uses these as an always-enabled shared I2C0 bus; its existing solenoid QDs are unchanged.
+Hybrid keeps I2C0 disabled by the existing profile policy, not because a motor owns pin 6. Its solenoid QD uses GPIO1_48/46 through role SV5. The former motor step/direction/enable pads retain their default input idle settings; dedicated open-drain pads have no internal pull.
+If a historical motor harness is still fitted, disconnect its old enable wire from pin 6 before using Liquid I2C0. Native I2C cannot be arbitrarily
 assigned to the other PRU GPO pads. Use TI's actual alternate-function choices.
 
 ## Expansion and MCU headers

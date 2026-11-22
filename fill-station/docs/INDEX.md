@@ -42,7 +42,7 @@ Complete documentation for the Cornell Rocketry Team fill station server.
   - Telemetry formats
   - Command translations
 
-- **[QD_STEPPER.md](QD_STEPPER.md)** - QD Stepper Motor (Quick Disconnect)
+- **[QD_SOLENOID.md](QD_SOLENOID.md)** - Solenoid Quick Disconnect (Hybrid SV5)
   - ISD02 driver configuration
   - GPIO control architecture
   - Calibration procedure
@@ -107,7 +107,7 @@ fill-station/
 │   ├── ADC_STREAMING.md         # ADC feature documentation
 │   ├── ADC_MONITOR_GUIDE.md     # Hardware setup guide
 │   ├── QUICKSTART_ADC.md        # Quick testing guide
-│   ├── QD_STEPPER.md            # QD stepper motor docs
+│   ├── QD_SOLENOID.md           # Solenoid QD docs
 │   ├── TROUBLESHOOTING.md       # Problem solving
 │   └── UMBILICAL.md             # Umbilical connection details
 ├── src/
@@ -118,7 +118,7 @@ fill-station/
 │       ├── igniter.rs
 │       ├── solenoid_valve.rs
 │       ├── ball_valve.rs
-│       ├── qd_stepper.rs
+│       ├── quick_disconnect.rs
 │       ├── ads1015.rs
 │       └── umbilical.rs
 └── client/
@@ -149,10 +149,10 @@ fill-station/
   - Two-pin GPIO control (Signal + ON_OFF)
   - Timed sequencing for open/close operations
 
-- **QD Stepper** (`src/components/qd_stepper.rs`)
-  - GPIO bit-banging for STEP signal + GPIO for DIR/ENA
-  - ISD02 integrated stepper driver (NEMA 17)
-  - Background task execution (non-blocking moves)
+- **Solenoid QD** (`src/components/quick_disconnect.rs`)
+  - Reuses Kaleb’s solenoid valve driver alias
+  - Hybrid role SV5, active-high release and separate continuity
+  - Command memory does not prove physical engagement
 
 ### Example Implementations
 
@@ -235,8 +235,7 @@ main() spawns tasks:
 | `actuate_valve` | Open/close solenoid valve (set `open: true/false`) | [WEBSOCKET_API.md](WEBSOCKET_API.md#actuate_valve) |
 | `get_valve_state` | Query valve state | [WEBSOCKET_API.md](WEBSOCKET_API.md#get_valve_state) |
 | `bv_open` / `bv_close` | Open or Close Ball Valve | [WEBSOCKET_API.md](WEBSOCKET_API.md#bv_open) |
-| `qd_move` | Move QD stepper N steps | [QD_STEPPER.md](QD_STEPPER.md) |
-| `qd_retract` / `qd_extend` | Retract (CW) or Extend (CCW) QD (preset) | [QD_STEPPER.md](QD_STEPPER.md) |
+| `actuate_valve` / `get_valve_state` with SV5 | Hybrid solenoid QD release/output-off and command/continuity query | [QD_SOLENOID.md](QD_SOLENOID.md) |
 | `start_fsw_stream` | Stream FSW telemetry | [UMBILICAL.md](UMBILICAL.md) |
 | `fsw_launch` | Send Launch command to FSW | [UMBILICAL.md](UMBILICAL.md) |
 
@@ -338,5 +337,5 @@ When adding documentation:
 
 ---
 
-**Last Updated**: March 8, 2026 (Added QD Stepper motor component and documentation)  
+**Last Updated**: November 20, 2026 (Solenoid QD replaces motor controls)
 **Maintained By**: Cornell Rocketry Team Software Team

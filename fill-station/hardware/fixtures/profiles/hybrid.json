@@ -157,8 +157,8 @@
       }
     },
     {
-      "id": "sv5",
-      "type": "solenoid_valve",
+      "id": "qd",
+      "type": "quick_disconnect",
       "role": "sv5",
       "enabled": true,
       "connections": {
@@ -210,33 +210,6 @@
           "pin": "main:0x0258",
           "function": "GPIO1_62",
           "bias": "pull-down",
-          "schmitt": true
-        }
-      },
-      "settings": {}
-    },
-    {
-      "id": "qd_stepper",
-      "type": "qd_stepper",
-      "role": "qd_stepper",
-      "enabled": true,
-      "connections": {
-        "step": {
-          "pin": "main:0x0248",
-          "function": "GPIO1_58",
-          "bias": "pull-down",
-          "schmitt": true
-        },
-        "direction": {
-          "pin": "main:0x020c",
-          "function": "GPIO1_43",
-          "bias": "pull-down",
-          "schmitt": true
-        },
-        "enable": {
-          "pin": "main:0x0260",
-          "function": "GPIO1_64",
-          "bias": "none",
           "schmitt": true
         }
       },

@@ -171,15 +171,12 @@ scp target/aarch64-unknown-linux-musl/release/adc_monitor root@<board-ip>:/tmp/
 /tmp/adc_monitor
 ```
 
-## Issue 4: Wi-Fi Not Connecting
+## Issue 4: Network Not Connecting
 
-If the system fails to connect to Wi-Fi:
-1. Check if the interface exists: `iw dev`
-2. Check kernel logs: `dmesg | grep wlcore`
-3. Verify firmware loading (see [WIFI_SETUP.md](WIFI_SETUP.md))
-4. Attempt manual connection:
-   ```bash
-   wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
-   can be debugged with:
-   wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf
-   ```
+Current images use Ethernet DHCP, with no automatic Wi-Fi connection. Begin at
+the serial console with `ip link`, then `ip -4 addr show dev eth0`. Verify the
+cable to fill-side switch 2 port 1 and check the router's DHCP leases. `.106`
+is the intended reserved address, not a static address baked into the image.
+
+Follow [Ethernet setup and testing](ETHERNET_SETUP.md). Older images may still
+use Wi-Fi until the FIT or full SD image is updated.

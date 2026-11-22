@@ -180,20 +180,9 @@ QD_Enabled,QD_Direction,Availability_Version,Configured_Devices_Mask,Valid_Readi
             }
         }
 
-        {
-            let hw = _hardware.lock().await;
-            let (enabled, direction) = match hw.qd_stepper() {
-                Some(d) => (Some(d.is_enabled().await), Some(d.get_direction().await)),
-                None => (None, None),
-            };
-            line.push_str(&format!(
-                ",{},{},1,{},{}",
-                csv_value(enabled),
-                csv_value(direction),
-                configured_devices_mask,
-                valid_readings_mask
-            ));
-        }
+        // Preserve legacy CSV column positions; the removed motor's fields
+        // have no meaning for a solenoid QD. Its command/continuity use SV5 above.
+        line.push_str(&format!(",N/A,N/A,1,{},{}", configured_devices_mask, valid_readings_mask));
 
         line.push('\n');
 

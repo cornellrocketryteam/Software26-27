@@ -69,21 +69,21 @@
         "default": 3030303
       },
       "min_pulse_us": {
-        "label": "Minimum pulse (\u00b5s)",
+        "label": "Minimum pulse (µs)",
         "type": "integer",
         "min": 100,
         "max": 49900,
         "default": 800
       },
       "max_pulse_us": {
-        "label": "Maximum pulse (\u00b5s)",
+        "label": "Maximum pulse (µs)",
         "type": "integer",
         "min": 100,
         "max": 49900,
         "default": 2200
       },
       "safe_pulse_us": {
-        "label": "Safe pulse (\u00b5s)",
+        "label": "Safe pulse (µs)",
         "type": "integer",
         "min": 100,
         "max": 49900,
@@ -107,26 +107,30 @@
     },
     "settings": {}
   },
-  "qd_stepper": {
-    "label": "QD stepper",
+  "quick_disconnect": {
+    "label": "Solenoid quick disconnect (energize to release)",
     "ports": {
-      "step": {
+      "control": {
         "kind": "gpio",
         "direction": "output",
         "bias": "pull-down"
       },
-      "direction": {
+      "sense": {
         "kind": "gpio",
-        "direction": "output",
-        "bias": "pull-down"
-      },
-      "enable": {
-        "kind": "gpio",
-        "direction": "output",
+        "direction": "input",
         "bias": "none"
       }
     },
-    "settings": {}
+    "settings": {
+      "valve_type": {
+        "label": "Valve behavior",
+        "type": "enum",
+        "choices": [
+          "normally_closed"
+        ],
+        "default": "normally_closed"
+      }
+    }
   },
   "ereg": {
     "label": "E-REG servo",
@@ -146,21 +150,21 @@
         "default": 3030000
       },
       "min_pulse_us": {
-        "label": "Minimum pulse (\u00b5s)",
+        "label": "Minimum pulse (µs)",
         "type": "integer",
         "min": 100,
         "max": 49900,
         "default": 800
       },
       "max_pulse_us": {
-        "label": "Maximum pulse (\u00b5s)",
+        "label": "Maximum pulse (µs)",
         "type": "integer",
         "min": 100,
         "max": 49900,
         "default": 2200
       },
       "safe_pulse_us": {
-        "label": "Safe pulse (\u00b5s)",
+        "label": "Safe pulse (µs)",
         "type": "integer",
         "min": 100,
         "max": 49900,

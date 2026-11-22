@@ -7,7 +7,7 @@
     "PRU reset/interrupt/detect and MCU reset/safety/TEST_LED2: board control",
     "Power, ground, clocks, boot, DDR, OSPI, SD and other unlisted pads"
   ],
-  "idle_exceptions": "Dedicated open-drain I2C pads have no internal pull. Hybrid retains QD enable on I2C0_SCL with main_i2c0 disabled. Liquid reserves SCL/SDA for its always-enabled shared I2C0 bus; unused QD step/direction become idle inputs.",
+  "idle_exceptions": "Dedicated open-drain I2C pads have no internal pull. Hybrid keeps main_i2c0 disabled by profile policy; the removed motor no longer owns SCL/PRU6. Former motor step/direction/enable pads use their default input idle settings. Liquid reserves SCL/SDA for its always-enabled shared I2C0 bus.",
   "pins": [
     {
       "domain": "main",

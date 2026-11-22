@@ -29,6 +29,19 @@ FlakeHub from an installed daemon's substituters.
 
 ## Build commands
 
+Routine Liquid OSPI update (no SD/DATA rebuild):
+
+```sh
+nix build .#mixosConfigurations.fill-station-liquid.config.system.build.ospiImage -o result-ospi-liquid
+```
+
+Or use `./scripts/platform build fill-station --vehicle liquid --builder local`;
+the CLI defaults to OSPI. The board's existing OSPI boot-switch setting and DATA
+card remain in place. Flash only the FIT for ordinary runtime updates using the
+[deployment runbook](../../docs/operations/fill-station-deployment.md).
+
+### Recovery or initial provisioning only
+
 Liquid full SD:
 
 ```sh

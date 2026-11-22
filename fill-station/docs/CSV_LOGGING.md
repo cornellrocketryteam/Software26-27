@@ -43,6 +43,6 @@ The CSV file contains the following columns, exactly matching the order below. I
 - `FSW_GyroX`, `FSW_GyroY`, `FSW_GyroZ`: Internal gyroscope.
 - `FSW_PT3`, `FSW_PT4`, `FSW_RTD`: Remote pressures and RTD temperatures on the vehicle.
 
-**QD Stepper:**
-- `QD_Enabled`: Boolean indicating if the stepper driver ENA pin is high (driver enabled).
-- `QD_Direction`: Boolean indicating the current DIR pin state (`true` = open direction).
+**Solenoid QD / legacy motor columns:**
+- Hybrid QD command memory and continuity use existing `SV5_Open` / `SV5_Cont` columns. Open means energized/release requested, not measured physical disconnection.
+- `QD_Enabled` and `QD_Direction` are deprecated motor columns, retained as `N/A` for CSV column-position compatibility. They are not queried from hardware and must not be interpreted as solenoid state.

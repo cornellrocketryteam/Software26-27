@@ -117,7 +117,7 @@ def generate(text, profile='hybrid'):
             if kind in ('i2c', 'pwm'):
                 bus_signals[controller].append(member)
             if kind == 'i2c' and (controller == 'main_i2c1' or controller == 'main_i2c0' and profile != 'liquid'):
-                raise ValueError('main_i2c1 is protected; main_i2c0 is available only in Liquid (Hybrid retains QD enable wiring)')
+                raise ValueError('main_i2c1 is protected; current profile policy exposes main_i2c0 only in Liquid (Hybrid default remains disabled)')
             entry = dict(domain=domain, offset=offset, value=value, signal=signal, group=label,
                          headers=pin['headers'], ball=pin['ball'])
             if label in ('idlemain_pins_default', 'idlemcu_pins_default'):

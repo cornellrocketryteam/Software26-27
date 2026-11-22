@@ -1,24 +1,20 @@
 use crate::components::umbilical::FswTelemetry;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, AtomicI16};
+use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
 /// Last commanded state of fill-station actuators that we can't read back from
 /// hardware. Updated by the command handler, read by the MQTT publisher (and
 /// anything else that wants the most recent intent).
-///
-/// `qd_state`: -1 = retracted, 0 = unknown/initial, 1 = extended.
 #[derive(Debug)]
 pub struct ActuatorState {
     pub ball_valve_open: AtomicBool,
-    pub qd_state: AtomicI16,
 }
 
 impl Default for ActuatorState {
     fn default() -> Self {
         Self {
             ball_valve_open: AtomicBool::new(false),
-            qd_state: AtomicI16::new(0),
         }
     }
 }
@@ -76,19 +72,8 @@ pub enum Command {
         /// Name of the valve ("SV1".."SV5")
         valve: String,
     },
-    /// Move QD stepper a specific number of steps in a given direction
-    QdMove {
-        steps: u32,
-        direction: bool,
-    },
-    /// Retract QD using preset steps (CW)
-    QdRetract,
-    /// Extend QD using preset steps (CCW)
-    QdExtend,
     /// Query last-commanded ball valve state
     GetBallValveState,
-    /// Query last-commanded QD position state
-    GetQdState,
 
     /// Client heartbeat to indicate connection is alive
     Heartbeat,
@@ -206,10 +191,7 @@ pub enum CommandResponse {
     BallValveState {
         open: bool,
     },
-    /// Last-commanded QD state (-1 retracted, 0 unknown, 1 extended)
-    QdState {
-        state: i16,
-    },
+
 }
 
 /// Single ADC channel reading with all relevant data
@@ -281,6 +263,20 @@ impl Default for UmbilicalReadings {
 
 #[cfg(test)]
 mod availability_tests {
+    #[test]
+    fn qd_uses_sv5_protocol_and_motor_commands_are_rejected() {
+        for open in [false, true] {
+            let value=serde_json::json!({"command":"actuate_valve","valve":"SV5","open":open});
+            let cmd: super::Command=serde_json::from_value(value).unwrap();
+            assert_eq!(cmd.required_roles(),vec!["sv5"]);
+        }
+        let cmd: super::Command=serde_json::from_str(r#"{"command":"get_valve_state","valve":"SV5"}"#).unwrap();
+        assert_eq!(cmd.required_roles(),vec!["sv5"]);
+        for command in ["qd_move","qd_retract","qd_extend","get_qd_state"] {
+            assert!(serde_json::from_value::<super::Command>(serde_json::json!({"command":command,"steps":1,"direction":true})).is_err());
+        }
+    }
+
     use super::*;
     #[test]
     fn independent_adc_validity_maps_to_readings() {
@@ -320,9 +316,6 @@ impl Command {
             | Self::BVSignal { .. }
             | Self::BVOnOff { .. }
             | Self::GetBallValveState => vec!["ball_valve"],
-            Self::QdMove { .. } | Self::QdRetract | Self::QdExtend | Self::GetQdState => {
-                vec!["qd_stepper"]
-            }
             _ => vec![],
         }
     }

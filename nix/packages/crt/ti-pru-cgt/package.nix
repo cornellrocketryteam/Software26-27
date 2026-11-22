@@ -2,6 +2,10 @@
 let
   i386Libc = (import path { system = "i686-linux"; }).glibc;
   x86Libc = (import path { system = "x86_64-linux"; }).glibc;
+  nativeX86 = stdenvNoCC.hostPlatform.system == "x86_64-linux";
+  compilerRunner = if nativeX86 then "${qemu}/bin/qemu-x86_64" else "${proot}/bin/proot";
+  compilerFlags = if nativeX86 then "-L ${x86Libc} $out/libexec/$name"
+    else "-q '${qemu}/bin/qemu-x86_64 -L ${x86Libc}' -b ${x86Libc}/lib:/lib64 $out/libexec/$name";
   emulator = "${qemu}/bin/qemu-i386";
 in stdenvNoCC.mkDerivation {
   pname = "ti-pru-cgt";
@@ -17,9 +21,14 @@ in stdenvNoCC.mkDerivation {
     cp $src installer
     chmod +x installer
     export PROOT_NO_SECCOMP=1
+    ${if nativeX86 then ''
+      ${emulator} -L ${i386Libc} -E GLIBC_TUNABLES=glibc.rtld.execstack=2 \
+        ./installer --mode unattended --prefix "$TMPDIR/ti"
+    '' else ''
     proot -q "${emulator} -L ${i386Libc} -E GLIBC_TUNABLES=glibc.rtld.execstack=2" \
       -b ${i386Libc}/lib:/lib \
       ./installer --mode unattended --prefix "$TMPDIR/ti"
+    ''}
     mkdir -p $out
     cp -r "$TMPDIR/ti/ti-cgt-pru_2.3.3/"* $out/
     mkdir $out/libexec
@@ -27,8 +36,8 @@ in stdenvNoCC.mkDerivation {
       if [ -f "$program" ] && [ -x "$program" ]; then
         name=$(basename "$program")
         mv "$program" "$out/libexec/$name"
-        makeWrapper ${proot}/bin/proot "$out/bin/$name" \
-          --add-flags "-q '${qemu}/bin/qemu-x86_64 -L ${x86Libc}' -b ${x86Libc}/lib:/lib64 $out/libexec/$name" \
+        makeWrapper ${compilerRunner} "$out/bin/$name" \
+          --add-flags "${compilerFlags}" \
           --set PROOT_NO_SECCOMP 1 \
           --set C_DIR "$out/include;$out/lib" \
           --set PRU_C_DIR "$out/include;$out/lib" \

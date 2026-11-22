@@ -25,7 +25,7 @@ The old `client_env` environment is no longer used. The dashboard still needs
 a local network connection to the board, but not an internet connection.
 
 Open the local URL printed by Streamlit. Set **Server URL** to
-`ws://192.168.8.171:9000`, replacing the IP if the board's address changes.
+`ws://192.168.1.106:9000`, replacing the IP if the board's address changes.
 The dashboard defaults to `ws://localhost:9000`, which connects to a server
 on your Mac rather than the board. Stop the dashboard with Ctrl-C.
 

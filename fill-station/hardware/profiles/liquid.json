@@ -248,6 +248,21 @@
       "settings": {
         "valve_type": "normally_closed"
       }
+    },
+    {
+      "id": "ereg",
+      "type": "ereg",
+      "role": null,
+      "enabled": true,
+      "connections": {
+        "pwm": {
+          "pin": "main:0x008c",
+          "function": "EHRPWM4_B",
+          "bias": "none",
+          "schmitt": true
+        }
+      },
+      "settings": {}
     }
   ],
   "buses": [

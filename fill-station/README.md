@@ -40,7 +40,7 @@ fill-station/
 │       ├── solenoid_valve.rs # GPIO solenoid valves (SV1–SV5)
 │       ├── mav.rs           # PWM servo MAV (mirrors FSW MAV)
 │       ├── ball_valve.rs    # Two-pin GPIO ball valve
-│       ├── qd_stepper.rs   # GPIO stepper motor (QD)
+│       ├── quick_disconnect.rs # Solenoid QD (SV5 role)
 │       ├── ads1015.rs       # I2C ADC driver (pressure sensors)
 │       ├── umbilical.rs     # FSW telemetry serial bridge
 │       └── mod.rs           # Component exports
@@ -49,7 +49,7 @@ fill-station/
 │   ├── ADC_STREAMING.md     # ADC background monitoring docs
 │   ├── ADC_MONITOR_GUIDE.md # ADC hardware setup
 │   ├── QUICKSTART_ADC.md    # Quick ADC testing guide
-│   ├── QD_STEPPER.md        # QD stepper motor documentation
+│   ├── QD_SOLENOID.md       # Solenoid QD documentation
 │   ├── TROUBLESHOOTING.md   # Common issues & solutions
 │   └── UMBILICAL.md         # FSW Umbilical connection details
 └── client/
@@ -72,7 +72,7 @@ fill-station/
 - **ADC Monitoring**: Dual ADS1015 12-bit ADCs (8 channels total)
 - **Pressure Sensors**: Calibrated scaling for ADC channels
 - **Umbilical**: CDC-ACM Serial connection for FSW command/telemetry linking
-- **QD Stepper**: NEMA 17 stepper motor via ISD02 driver (GPIO bit-bang step + GPIO dir/enable)
+- **Solenoid QD**: Kaleb’s solenoid driver alias; Hybrid SV5 connector, active-high release, continuity input.
 - Platform-aware: Compiles on macOS for dev, runs on Linux
 
 ### ✅ Background Tasks
@@ -109,14 +109,13 @@ fill-station/
 {"command": "stop_adc_stream"}
 ```
 
-### QD Stepper Control
+### Solenoid QD (Hybrid SV5 connector)
 ```json
-{"command": "qd_move", "steps": 100, "direction": true}
-{"command": "qd_retract"}
-{"command": "qd_extend"}
+{"command": "actuate_valve", "valve": "SV5", "open": true}
+{"command": "actuate_valve", "valve": "SV5", "open": false}
+{"command": "get_valve_state", "valve": "SV5"}
 ```
-
-See [`docs/ADC_STREAMING.md`](docs/ADC_STREAMING.md) for detailed protocol specification.
+`true` energizes/releases the QD; `false` removes drive. Neither the reported command state nor continuity proves physical reconnection. See [QD_SOLENOID.md](docs/QD_SOLENOID.md).
 
 ## Hardware Configuration
 
@@ -139,10 +138,7 @@ See [`docs/ADC_STREAMING.md`](docs/ADC_STREAMING.md) for detailed protocol speci
 - **Ball Valve**:
   - **Signal**: Chip 1, Line 62
   - **ON_OFF**: Chip 1, Line 63
-- **QD Stepper**:
-  - **STEP**: GPIO Chip 2, Line 58
-  - **DIR**: Chip 1, Line 43
-  - **ENA**: Chip 1, Line 64
+- **Solenoid QD (Hybrid)**: SV5 control GPIO1_48 / sense GPIO1_46. Normally closed, active-high release. Old motor STEP/DIR/ENA pads are no longer allocated.
 
 See [`src/hardware.rs`](src/hardware.rs) for pin mappings.
 
@@ -176,7 +172,7 @@ The system implements a **deadman switch** safety feature:
   - The fill-station MAV is closed.
   - FSW Open SV command sent via umbilical.
   - The client is disconnected.
-- After **20 seconds** with no clients connected, the QD retracts.
+- Emergency shutdown de-energizes the solenoid QD with the other solenoids. There is no separate motor-retract timer, and output-off does not confirm mechanical reconnection.
 - Clients should send a `{"command": "heartbeat"}` message periodically (e.g., every 5-10 seconds) if they are not sending other commands.
 
 
@@ -308,7 +304,7 @@ See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for:
 - **[ADC_STREAMING.md](docs/ADC_STREAMING.md)** - ADC background monitoring & streaming
 - **[ADC_MONITOR_GUIDE.md](docs/ADC_MONITOR_GUIDE.md)** - ADC hardware setup
 - **[QUICKSTART_ADC.md](docs/QUICKSTART_ADC.md)** - Quick ADC testing
-- **[QD_STEPPER.md](docs/QD_STEPPER.md)** - QD stepper motor (ISD02 driver, calibration)
+- **[QD_SOLENOID.md](docs/QD_SOLENOID.md)** - Solenoid QD wiring, release semantics and protocol
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues & fixes
 - **[UMBILICAL.md](docs/UMBILICAL.md)** - Ground-system to FSW USB serial communication
 - **[DTBO_BUILDER.md](docs/DTBO_BUILDER.md)** - Device tree overlay automation

@@ -6,7 +6,7 @@
   ...
 }:
 let
-  inherit (config.fillStation) debug;
+  inherit (config.fillStation) debug ethernetInterface;
 
   # The one fill-station build used by both init and /bin
   fill-station = pkgs.crt.fill-station.override {
@@ -19,8 +19,8 @@ in
     ./fit
     ./options.nix
     ./ospi-image
-    ./pru-pwm
     ./sd-image
+    ./pru-pwm
   ];
 
   # Keep the tested ARM64 builder default; explicit variants can cross-build
@@ -39,7 +39,6 @@ in
   };
 
   boot.kernelPackages = pkgs.linuxPackagesFor pkgs.crt.fill-station-linux;
-  boot.firmware = [ pkgs.crt.wl18xx-firmware ];
 
   state = {
     enable = true;
@@ -79,24 +78,19 @@ in
       process = lib.getExe fill-station;
     };
 
-    wpa_supplicant = {
-      action = "respawn";
-      process = "${lib.getExe' pkgs.crt.wpa-supplicant-minimal "wpa_supplicant"} -i wlan0 -c /etc/wpa_supplicant.conf";
-    };
-
     dhcp = {
       action = "respawn";
-      process = "${lib.getExe' pkgs.busybox "udhcpc"} -f -i wlan0";
+      # Retry interface discovery without blocking init or rapidly respawning.
+      # Foreground udhcpc keeps renewing leases and retries without a cable.
+      process = "sh -c 'until ip link set ${ethernetInterface} up; do sleep 2; done; exec ${lib.getExe' pkgs.busybox "udhcpc"} -f -i ${ethernetInterface}'";
     };
   };
 
   packages = [
     fill-station
-    pkgs.iw
   ]
   ++ lib.optionals debug [
     pkgs.libgpiod
-    pkgs.crt.wpa-supplicant-minimal
     pkgs.tcpdump
   ];
 
@@ -104,13 +98,6 @@ in
     source = ./authorized_keys;
     mode = "0600";
   };
-
-  etc."wpa_supplicant.conf".source = pkgs.writeText "wpa_supplicant.conf" ''
-    network={
-      ssid="CornellRocketry-Fill"
-      psk="Rocketry2526"
-    }
-  '';
 
   users.root = {
     uid = 0;

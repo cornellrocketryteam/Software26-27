@@ -15,7 +15,6 @@ state = {
     },
     "mav": {"open": False, "pulse_width_us": 883},
     "bv": {"signal": "low", "on_off": "low"},
-    "qd": {"steps": 0, "state": "closed"},
     "igniters": {
         1: {"continuity": True},
         2: {"continuity": True},
@@ -166,28 +165,6 @@ async def handler(websocket):
                     "open": state["bv"]["signal"] == "high" and state["bv"]["on_off"] == "low" # rough mock logic
                 }
                 
-            elif command == "get_qd_state":
-                st = -1 if state["qd"]["state"] == "retracted" else (1 if state["qd"]["state"] == "extended" else 0)
-                response = {
-                    "type": "qd_state",
-                    "state": st
-                }
-            
-            # QD Commands
-            elif command == "qd_move":
-                direction = data.get("direction", True)
-                steps = data.get("steps", 0)
-                if direction:
-                    state["qd"]["steps"] += steps
-                else:
-                    state["qd"]["steps"] -= steps
-            elif command == "qd_retract":
-                state["qd"]["state"] = "retracted"
-                state["qd"]["steps"] = 1000
-            elif command == "qd_extend":
-                state["qd"]["state"] = "extended"
-                state["qd"]["steps"] = 0
-
             # FSW Commands
             elif command in ["launch", "fsw_launch", "fsw_open_mav", "fsw_close_mav", "fsw_open_sv", "fsw_close_sv", "fsw_safe", "fsw_reset_fram", "fsw_dump_fram", "fsw_wipe_fram_reboot", "fsw_reboot", "fsw_dump_flash", "fsw_wipe_flash", "fsw_flash_info", "fsw_payload_n1", "fsw_payload_n2", "fsw_payload_n3", "fsw_payload_n4", "fsw_key_arm", "fsw_key_disarm"]:
                 # Simply succeed, we could update fake fsw state if we wanted
@@ -223,6 +200,8 @@ async def handler(websocket):
             
             elif command == "heartbeat":
                 pass
+            else:
+                response = {"type": "error", "message": "Unsupported command"}
 
             await websocket.send(json.dumps(response))
 
@@ -300,7 +279,6 @@ async def stream_fsw(websocket):
 async def safety_monitor():
     global client_connected, last_message_time
     safety_triggered = False
-    qd_retract_triggered = False
     
     while True:
         await asyncio.sleep(0.5)
@@ -323,15 +301,8 @@ async def safety_monitor():
             state["fsw"]["sv_open"] = True
             safety_triggered = True
             
-        if time_since > 20.0 and not qd_retract_triggered:
-            print("SAFETY TIMEOUT (20s) - Retracting QD")
-            state["qd"]["state"] = "retracted"
-            state["qd"]["steps"] = 1000
-            qd_retract_triggered = True
-            
         if time_since <= 15.0:
             safety_triggered = False
-            qd_retract_triggered = False
 
 async def main():
     asyncio.create_task(safety_monitor())

@@ -6,7 +6,7 @@ use crate::components::{
     igniter::Igniter,
     mav::Mav,
     pwm::PulseConfig,
-    qd_stepper::QdStepper,
+    quick_disconnect::{QuickDisconnect, LinePull as QdLinePull},
     solenoid_valve::{LinePull, SolenoidValve},
 };
 use anyhow::{Context, Result, bail};
@@ -16,7 +16,8 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 include!(concat!(env!("OUT_DIR"), "/hardware_config.rs"));
 
-pub const DEVICE_ROLES: [&str; 12] = [
+// Availability bit 11 was the stepper and is now reserved. Bits 0..10 never move.
+pub const DEVICE_ROLES: [&str; 11] = [
     "ig1",
     "ig2",
     "adc1",
@@ -28,7 +29,6 @@ pub const DEVICE_ROLES: [&str; 12] = [
     "sv5",
     "mav",
     "ball_valve",
-    "qd_stepper",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -91,7 +91,7 @@ pub struct Hardware {
     pub mavs: BTreeMap<String, Mav>,
     pub eregs: BTreeMap<String, Ereg>,
     pub ball_valves: BTreeMap<String, BallValve>,
-    pub steppers: BTreeMap<String, QdStepper>,
+    pub quick_disconnects: BTreeMap<String, QuickDisconnect>,
 }
 impl Hardware {
     pub async fn new() -> Result<Self> {
@@ -102,6 +102,18 @@ impl Hardware {
             configured_devices_mask: config.configured_devices_mask,
             ..Self::default()
         };
+        // Enforce fixed release polarity before requesting any GPIO, even for a
+        // directly supplied runtime config that bypassed the profile compiler.
+        for d in &config.devices {
+            if d.kind == "quick_disconnect" {
+                if d.role.as_deref().is_some_and(|r| r != "sv5") {
+                    bail!("{}: quick disconnect may bind only sv5 or no role", d.id);
+                }
+                if d.settings.get("valve_type").is_some_and(|v| v.as_str() != Some("normally_closed")) {
+                    bail!("{}: quick disconnect must be normally_closed (active-high release)", d.id);
+                }
+            }
+        }
         #[cfg(any(target_os = "linux", target_os = "android"))]
         let mut chips = BTreeMap::new();
         #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -195,12 +207,11 @@ impl Hardware {
                     hw.ball_valves
                         .insert(d.id.clone(), BallValve::new(a, b, c, e, &d.id).await?);
                 }
-                "qd_stepper" => {
-                    let (a, b) = connection("step")?;
-                    let (c, e) = connection("direction")?;
-                    let (f, g) = connection("enable")?;
-                    hw.steppers
-                        .insert(d.id.clone(), QdStepper::new(a, b, c, e, f, g, &d.id).await?);
+                "quick_disconnect" => {
+                    let (a, b) = connection("control")?;
+                    let (c, e) = connection("sense")?;
+                    hw.quick_disconnects.insert(d.id.clone(),
+                        QuickDisconnect::new(a, b, c, e, QdLinePull::NormallyClosed).await?);
                 }
                 other => bail!("unsupported device type {}", other),
             }
@@ -228,7 +239,8 @@ impl Hardware {
         self.igniters.get(self.roles.get(role)?)
     }
     pub fn solenoid(&self, role: &str) -> Option<&SolenoidValve> {
-        self.solenoids.get(self.roles.get(role)?)
+        let id = self.roles.get(role)?;
+        self.solenoids.get(id).or_else(|| self.quick_disconnects.get(id))
     }
     pub fn adc_mut(&mut self, role: &str) -> Option<&mut Ads1015> {
         self.adcs.get_mut(self.roles.get(role)?)
@@ -239,8 +251,8 @@ impl Hardware {
     pub fn ball_valve(&self) -> Option<&BallValve> {
         self.ball_valves.get(self.roles.get("ball_valve")?)
     }
-    pub fn qd_stepper(&self) -> Option<&QdStepper> {
-        self.steppers.get(self.roles.get("qd_stepper")?)
+    pub fn quick_disconnect(&self, role: &str) -> Option<&QuickDisconnect> {
+        self.quick_disconnects.get(self.roles.get(role)?)
     }
     pub async fn shutdown(&self) {
         for (id, d) in &self.igniters {
@@ -248,7 +260,7 @@ impl Hardware {
                 tracing::error!("Shutdown {}: {}", id, e);
             }
         }
-        for (id, d) in &self.solenoids {
+        for (id, d) in self.solenoids.iter().chain(self.quick_disconnects.iter()) {
             if let Err(e) = d.set_open(false).await {
                 tracing::error!("Shutdown {}: {}", id, e);
             }
@@ -268,15 +280,39 @@ impl Hardware {
                 tracing::error!("Shutdown {}: {}", id, e);
             }
         }
-        for (id, d) in &self.steppers {
-            if let Err(e) = d.disable().await {
-                tracing::error!("Shutdown {}: {}", id, e);
-            }
-        }
+
     }
 }
 #[cfg(test)]
 mod configuration_tests {
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    #[test]
+    fn qd_is_distinct_but_reachable_by_sv5_and_shutdown_deenergizes() {
+        smol::block_on(async {
+            let config=HardwareConfig::parse(r#"{"version":1,"profile":"hybrid","configured_devices_mask":256,"devices":[{"id":"qd","type":"quick_disconnect","role":"sv5","connections":{"control":{"chip":"gpiochip2","line":48},"sense":{"chip":"gpiochip2","line":46}},"settings":{"valve_type":"normally_closed"}}]}"#).unwrap();
+            let hw=Hardware::from_config(config).await.unwrap();
+            assert!(!hw.solenoids.contains_key("qd"));
+            assert!(hw.quick_disconnects.contains_key("qd"));
+            let qd=hw.quick_disconnect("sv5").unwrap();
+            assert!(!qd.is_open().await.unwrap());
+            hw.solenoid("sv5").unwrap().set_open(true).await.unwrap();
+            assert!(qd.is_open().await.unwrap());
+            hw.shutdown().await;
+            assert!(!qd.is_open().await.unwrap());
+        });
+    }
+
+    #[test]
+    fn runtime_rejects_qd_polarity_and_wrong_role_before_gpio_access() {
+        for (role,pull) in [("sv5","normally_open"),("sv1","normally_closed")] {
+            let value=serde_json::json!({"version":1,"profile":"hybrid","configured_devices_mask":256,
+                "devices":[{"id":"qd","type":"quick_disconnect","role":role,"connections":{},"settings":{"valve_type":pull}}]});
+            let config=HardwareConfig::parse(&value.to_string()).unwrap();
+            let error=smol::block_on(Hardware::from_config(config)).err().expect("invalid QD config accepted");
+            assert!(error.to_string().contains("quick disconnect"),"{error}");
+        }
+    }
+
     use super::*;
     #[test]
     fn pru_pwm_descriptor_parses_without_epwm_fields() {
@@ -352,9 +388,11 @@ mod configuration_tests {
             #[cfg(feature = "hybrid")]
             {
                 assert!(hw.missing_roles(&DEVICE_ROLES).is_empty());
-                assert_eq!(hw.configured_devices_mask, 4095);
+                assert_eq!(hw.configured_devices_mask, 2047);
                 assert_eq!(hw.adcs.len(), 2);
-                assert_eq!(hw.solenoids.len(), 5);
+                assert_eq!(hw.solenoids.len(), 4);
+                assert_eq!(hw.quick_disconnects.len(), 1);
+                assert!(hw.quick_disconnect("sv5").is_some());
             }
             // Liquid binds only igniters and SV1-SV5; SV6, the QDs, the ball
             // valve and the E-REG initialize without application roles.
@@ -362,7 +400,7 @@ mod configuration_tests {
             {
                 assert_eq!(
                     hw.missing_roles(&DEVICE_ROLES),
-                    vec!["adc1", "adc2", "mav", "ball_valve", "qd_stepper"]
+                    vec!["adc1", "adc2", "mav", "ball_valve"]
                 );
                 assert_eq!(hw.configured_devices_mask, 499);
                 assert_eq!(hw.adcs.len(), 0);

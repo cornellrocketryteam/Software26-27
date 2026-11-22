@@ -18,7 +18,7 @@ The server enforces a **15-second timeout** on idle connections to ensure safety
   3. **Close the fill-station MAV**.
   4. **Send FSW Open SV command via umbilical**.
   5. **Disconnect the client**.
-- After 20 seconds with no clients connected, the **QD will retract**.
+- Hybrid QD is the SV5 solenoid: shutdown switches its output off. There is no motor-retract timer; output-off does not prove physical engagement.
 
 To prevent this, clients must send any valid JSON command at least once every 15 seconds. If no other command is needed, use the `heartbeat` command.
 
@@ -354,73 +354,19 @@ Query the last-commanded open/close state of the ball valve.
 
 ---
 
-## QD Stepper Commands
+## Solenoid QD (Hybrid)
 
-### `qd_move`
-Move the QD stepper motor a specific number of steps. Runs as a **non-blocking background task** (returns immediately).
+QD uses the existing SV5 protocol; no separate QD command family is supported.
 
-**Format:**
 ```json
-{"command": "qd_move", "steps": 100, "direction": true}
-```
-* `steps`: Number of full steps to execute.
-* `direction`: `true` for CW (retract), `false` for CCW (extend).
-
-**Response:**
-```json
-{"type": "success"}
+{"command": "actuate_valve", "valve": "SV5", "open": true}
+{"command": "actuate_valve", "valve": "SV5", "open": false}
+{"command": "get_valve_state", "valve": "SV5"}
 ```
 
----
+`open:true` energizes and releases/disconnects; `open:false` removes drive. The response remains `valve_state` with `valve:"SV5"`, `open` command memory and `continuity`. Neither field measures physical engagement. Availability uses stable role `sv5`, bit 8.
 
-### `qd_retract`
-Execute the QD retract preset (CW, preconfigured number of steps). Non-blocking.
-
-**Format:**
-```json
-{"command": "qd_retract"}
-```
-
-**Response:**
-```json
-{"type": "success"}
-```
-
----
-
-### `qd_extend`
-Execute the QD extend preset (CCW, preconfigured number of steps). Non-blocking.
-
-**Format:**
-```json
-{"command": "qd_extend"}
-```
-
-**Response:**
-```json
-{"type": "success"}
-```
-
----
-
-### `get_qd_state`
-Query the last-commanded QD position state.
-
-**Format:**
-```json
-{"command": "get_qd_state"}
-```
-
-**Response:**
-```json
-{
-  "type": "qd_state",
-  "state": 1
-}
-```
-* `state`: `-1` (retracted), `0` (unknown), `1` (extended).
-
-See [QD_STEPPER.md](QD_STEPPER.md) for hardware details, calibration, and configuration.
+The old motor movement/state-query commands are removed and return an error. The separate MQTT protobuf integer `qd_state` remains deprecated zero/unknown and must not represent this solenoid. See [QD_SOLENOID.md](QD_SOLENOID.md).
 
 ---
 

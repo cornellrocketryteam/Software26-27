@@ -48,9 +48,8 @@ class FillStationClient:
         # Fill-station MAV state
         self.mav = {"open": False, "pulse_width_us": 0}
 
-        # Ball valve + QD last-commanded state
+        # Ball valve last-commanded state
         self.bv_open = None   # None = unknown, True/False otherwise
-        self.qd_state = 0     # -1 retracted, 0 unknown, 1 extended
 
         # Igniters
         self.igniters = {1: False, 2: False}
@@ -112,7 +111,6 @@ class FillStationClient:
                     time.sleep(0.05)
                     self.send_command({"command": "get_ball_valve_state"})
                     time.sleep(0.05)
-                    self.send_command({"command": "get_qd_state"})
                 except Exception:
                     pass
             time.sleep(3)
@@ -129,7 +127,6 @@ class FillStationClient:
             self.send_command({"command": "get_igniter_continuity", "id": 1})
             self.send_command({"command": "get_igniter_continuity", "id": 2})
             self.send_command({"command": "get_ball_valve_state"})
-            self.send_command({"command": "get_qd_state"})
 
         def on_message(ws, message):
             try:
@@ -162,8 +159,6 @@ class FillStationClient:
                 elif msg_type == "ball_valve_state":
                     self.bv_open = data.get("open", None)
 
-                elif msg_type == "qd_state":
-                    self.qd_state = data.get("state", 0)
 
             except Exception as e:
                 print(f"Error parsing message: {e}")
@@ -286,7 +281,7 @@ if client.launch_status:
 
 # ==========================================
 # MAIN LAYOUT: 3 columns
-# Left: FS-SV1..5, Fill MAV, Ball Valve, QD Stepper
+# Left: FS-SV1..5 (Hybrid QD uses SV5), Fill MAV, Ball Valve
 # Middle: Igniters, SV2-Rocket, Launch
 # Right: Sensors
 # ==========================================
@@ -296,6 +291,7 @@ col_left, col_mid, col_right = st.columns([1, 1, 1.5])
 with col_left:
     # --- FS-SV1..5 ---
     st.subheader("Fill Station SVs")
+    st.caption("Hybrid QD uses FS-SV5: OPEN energizes/releases; CLOSE switches output off. State is command memory, not physical engagement.")
     for valve in FS_VALVES:
         v = client.valves[valve]
         v_color = "green" if v["open"] else "red"
@@ -364,26 +360,6 @@ with col_left:
         client.send_command({"command": "bv_on_off", "state": "high"})
 
     st.divider()
-
-    # --- QD Stepper ---
-    st.subheader("QD Stepper")
-    qd_label_map = {-1: ("RETRACTED", "green"), 1: ("EXTENDED", "red"), 0: ("UNKNOWN", "gray")}
-    qd_label, qd_color = qd_label_map.get(client.qd_state, ("UNKNOWN", "gray"))
-    st.markdown(f"Position (last cmd): :{qd_color}[**{qd_label}**]")
-    qd_c1, qd_c2 = st.columns(2)
-    if qd_c1.button("QD RETRACT", type="primary", use_container_width=True):
-        client.send_command({"command": "qd_retract"})
-    if qd_c2.button("QD EXTEND", use_container_width=True):
-        client.send_command({"command": "qd_extend"})
-
-    st.caption("Manual Steps")
-    qd_steps = st.number_input("Steps", min_value=1, value=200, step=1, key="qd_steps")
-    qd_mc1, qd_mc2 = st.columns(2)
-    if qd_mc1.button("Step CW (Retract)", use_container_width=True):
-        client.send_command({"command": "qd_move", "steps": qd_steps, "direction": True})
-    if qd_mc2.button("Step CCW (Extend)", use_container_width=True):
-        client.send_command({"command": "qd_move", "steps": qd_steps, "direction": False})
-
 
 # --- MIDDLE COLUMN: Igniters + SV2-Rocket + Launch ---
 with col_mid:

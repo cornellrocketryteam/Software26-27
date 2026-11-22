@@ -1,6 +1,11 @@
 { lib, ... }:
 {
   options.fillStation = {
+    ethernetInterface = lib.mkOption {
+      type = lib.types.strMatching "eth[0-9]+";
+      default = "eth0";
+      description = "Wired Linux interface used for DHCP; verify the CPSW port in the board serial console.";
+    };
     buildSystem = lib.mkOption {
       type = lib.types.enum [ "aarch64-linux" "x86_64-linux" ];
       default = "aarch64-linux";
