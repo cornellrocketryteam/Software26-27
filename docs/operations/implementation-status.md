@@ -106,3 +106,16 @@ Kaleb's existing public key is already present in the shared fill-station file
 loaded by `ground-admin`; no duplicate was added. Actual private-key login on the
 PC/board, role enrollment, remote Nix builds and cache receipts remain pending.
 See [the enrollment runbook](worker-cache-enrollment.md).
+
+
+## Follow-up: operating-profile definition foundation
+
+Added the versioned shared JSON definitions and strict loader/validator for Hybrid,
+hybrid-test and explicitly unmapped Liquid. This records desired owners, ADC
+inputs, feedback limits, raw/voltage-only LC2 and separate semantic/wiring digests.
+It does not modify saved wiring, add a build target, change runtime commands,
+stamp MQTT, migrate SQL or change UI/Grafana. Eleven profile tests and 43 existing
+hardware/QD tests passed (54 total). No native build/deployment was performed.
+The next work is source-time telemetry and compatible ingestion, followed by actual
+profile runtime/build integration. See [feature status](feature-status.md) and
+[profile guide](../../fill-station/docs/OPERATING_PROFILES.md).

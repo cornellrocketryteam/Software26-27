@@ -1,0 +1,423 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "hybrid": {
+      "id": "hybrid",
+      "label": "Hybrid with FSW",
+      "hardwareProfile": "hybrid",
+      "mappingStatus": "specified",
+      "fswEnabled": true,
+      "controls": [
+        {
+          "id": "sv1",
+          "label": "SV1",
+          "kind": "solenoid_valve",
+          "owner": "local",
+          "deviceId": "sv1",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "ball_valve",
+          "label": "BV",
+          "kind": "ball_valve",
+          "owner": "local",
+          "deviceId": "ball_valve",
+          "feedback": [
+            "commanded_output"
+          ]
+        },
+        {
+          "id": "qd",
+          "label": "QD",
+          "kind": "quick_disconnect",
+          "owner": "local",
+          "deviceId": "qd",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ],
+          "energizedAction": "disconnect",
+          "deenergizedReconnects": false
+        },
+        {
+          "id": "ig1",
+          "label": "IG1",
+          "kind": "igniter",
+          "owner": "local",
+          "deviceId": "ig1",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "ig2",
+          "label": "IG2",
+          "kind": "igniter",
+          "owner": "local",
+          "deviceId": "ig2",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "sv2",
+          "label": "SV2",
+          "kind": "solenoid_valve",
+          "owner": "fsw",
+          "deviceId": null,
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "mav",
+          "label": "MAV",
+          "kind": "mav_servo",
+          "owner": "fsw",
+          "deviceId": null,
+          "feedback": [
+            "commanded_output"
+          ]
+        }
+      ],
+      "sensors": [
+        {
+          "id": "pt1",
+          "label": "PT1",
+          "kind": "pressure",
+          "owner": "local",
+          "deviceId": "adc1",
+          "channel": 0,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-pt1500",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "pt2",
+          "label": "PT2",
+          "kind": "pressure",
+          "owner": "local",
+          "deviceId": "adc1",
+          "channel": 1,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-pt1500",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "lc1",
+          "label": "LC1",
+          "kind": "load_cell",
+          "owner": "local",
+          "deviceId": "adc2",
+          "channel": 1,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-load-cell-1",
+          "engineeringUnit": null,
+          "range": null
+        },
+        {
+          "id": "pt3",
+          "label": "PT3",
+          "kind": "pressure",
+          "owner": "fsw",
+          "deviceId": null,
+          "channel": null,
+          "readings": [
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "fsw-reported",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "pt4",
+          "label": "PT4",
+          "kind": "pressure",
+          "owner": "fsw",
+          "deviceId": null,
+          "channel": null,
+          "readings": [
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "fsw-reported",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        }
+      ],
+      "disabledLocalDeviceIds": [
+        "sv2",
+        "sv3",
+        "sv4",
+        "mav"
+      ],
+      "unmappedDeviceIds": []
+    },
+    "hybrid-test": {
+      "id": "hybrid-test",
+      "label": "Hybrid standalone test stand",
+      "hardwareProfile": "hybrid",
+      "mappingStatus": "specified",
+      "fswEnabled": false,
+      "controls": [
+        {
+          "id": "sv1",
+          "label": "SV1",
+          "kind": "solenoid_valve",
+          "owner": "local",
+          "deviceId": "sv1",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "ball_valve",
+          "label": "BV",
+          "kind": "ball_valve",
+          "owner": "local",
+          "deviceId": "ball_valve",
+          "feedback": [
+            "commanded_output"
+          ]
+        },
+        {
+          "id": "qd",
+          "label": "QD",
+          "kind": "quick_disconnect",
+          "owner": "local",
+          "deviceId": "qd",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ],
+          "energizedAction": "disconnect",
+          "deenergizedReconnects": false
+        },
+        {
+          "id": "ig1",
+          "label": "IG1",
+          "kind": "igniter",
+          "owner": "local",
+          "deviceId": "ig1",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "ig2",
+          "label": "IG2",
+          "kind": "igniter",
+          "owner": "local",
+          "deviceId": "ig2",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "sv2",
+          "label": "SV2",
+          "kind": "solenoid_valve",
+          "owner": "local",
+          "deviceId": "sv2",
+          "feedback": [
+            "commanded_output",
+            "continuity"
+          ]
+        },
+        {
+          "id": "mav",
+          "label": "MAV",
+          "kind": "mav_servo",
+          "owner": "local",
+          "deviceId": "mav",
+          "feedback": [
+            "commanded_output"
+          ]
+        }
+      ],
+      "sensors": [
+        {
+          "id": "pt1",
+          "label": "PT1",
+          "kind": "pressure",
+          "owner": "local",
+          "deviceId": "adc1",
+          "channel": 0,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-pt1500",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "pt2",
+          "label": "PT2",
+          "kind": "pressure",
+          "owner": "local",
+          "deviceId": "adc1",
+          "channel": 1,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-pt1500",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "pt3",
+          "label": "PT3",
+          "kind": "pressure",
+          "owner": "local",
+          "deviceId": "adc1",
+          "channel": 2,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-pt1500",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "pt4",
+          "label": "PT4",
+          "kind": "pressure",
+          "owner": "local",
+          "deviceId": "adc1",
+          "channel": 3,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-pt1500",
+          "engineeringUnit": "psi",
+          "range": [
+            0,
+            1500
+          ]
+        },
+        {
+          "id": "lc1",
+          "label": "LC1",
+          "kind": "load_cell",
+          "owner": "local",
+          "deviceId": "adc2",
+          "channel": 1,
+          "readings": [
+            "raw",
+            "voltage",
+            "engineering"
+          ],
+          "calibrationStatus": "existing",
+          "calibrationRef": "existing-load-cell-1",
+          "engineeringUnit": null,
+          "range": null
+        },
+        {
+          "id": "lc2",
+          "label": "LC2",
+          "kind": "load_cell",
+          "owner": "local",
+          "deviceId": "adc2",
+          "channel": 2,
+          "readings": [
+            "raw",
+            "voltage"
+          ],
+          "calibrationStatus": "uncalibrated",
+          "calibrationRef": null,
+          "engineeringUnit": null,
+          "range": null
+        }
+      ],
+      "disabledLocalDeviceIds": [
+        "sv3",
+        "sv4"
+      ],
+      "unmappedDeviceIds": []
+    },
+    "liquid": {
+      "id": "liquid",
+      "label": "Liquid \u2014 mapping pending",
+      "hardwareProfile": "liquid",
+      "mappingStatus": "pending",
+      "fswEnabled": null,
+      "controls": [],
+      "sensors": [],
+      "disabledLocalDeviceIds": [],
+      "unmappedDeviceIds": [
+        "ig1",
+        "ig2",
+        "sv1",
+        "sv2",
+        "sv3",
+        "sv4",
+        "sv5",
+        "sv6",
+        "ball_valve",
+        "quick_disconnect1",
+        "quick_disconnect2",
+        "ereg"
+      ]
+    }
+  }
+}
