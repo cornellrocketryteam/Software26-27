@@ -82,6 +82,7 @@ matching logical worker ID. These are examples, not discovered machine values:
     "store": "ssh-ng://ground-builder@groundstation.example.org",
     "sshTarget": "ground-builder@groundstation.example.org",
     "knownHosts": "/absolute/path/to/verified_known_hosts",
+    "identityFile": "/absolute/path/to/worker_private_key",
     "workerId": "reviewed-station-worker-v1",
     "minFreeBytes": 100000000000
   }
@@ -301,3 +302,16 @@ a new release. `status` now includes `workerTransfers`. Recovery of a realizatio
 whose original reply was never received can resume that original work; it does
 not silently substitute a new platform or create a new release. Cache publication
 is still the separate `cache-sync` action, and hardware deployment stays explicit.
+
+
+## Explicit connection identity
+
+The optional `identityFile` is selected for both direct SSH and Nix store
+transport. It must be an absolute, current-user-owned, nonempty regular file
+with no group/other access; no symlink or SSH expansion characters are accepted.
+Configured invalid files fail before transport. Explicit identity disables agent
+use and forwarding; omitting the field preserves older agent/default-key setups.
+Key contents are never placed in the JSON, store or journals. The local path can
+appear in retained endpoint metadata; preserve it until pending transfers finish.
+See [worker/publication enrollment](worker-cache-enrollment.md) for key separation,
+site settings and the remaining actual-machine checks.

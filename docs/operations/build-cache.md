@@ -81,6 +81,7 @@ the inspected station identity and an existing verified known-hosts file:
     "store": "ssh-ng://ground-cache@groundstation.example.org",
     "sshTarget": "ground-cache@groundstation.example.org",
     "knownHosts": "/absolute/path/to/verified_known_hosts",
+    "identityFile": "/absolute/path/to/publication_private_key",
     "receiptArchiveId": "reviewed-station-archive-v1"
   }
 }
@@ -181,3 +182,16 @@ injection; they do not contact the station. A separate local check successfully
 verified and rooted the previously built Liquid FIT using the real Nix daemon,
 preserved exact manifest bytes and returned the same receipt on retry. That check
 did not run a global GC, install NixOS, test WAN isolation or simulate power loss.
+
+
+## Explicit connection identity
+
+The optional `identityFile` is selected for both direct SSH and Nix store
+transport. It must be an absolute, current-user-owned, nonempty regular file
+with no group/other access; no symlink or SSH expansion characters are accepted.
+Configured invalid files fail before transport. Explicit identity disables agent
+use and forwarding; omitting the field preserves older agent/default-key setups.
+Key contents are never placed in the JSON, store or journals. The local path can
+appear in retained endpoint metadata; preserve it until pending transfers finish.
+See [worker/publication enrollment](worker-cache-enrollment.md) for key separation,
+site settings and the remaining actual-machine checks.

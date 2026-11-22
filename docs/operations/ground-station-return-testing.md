@@ -160,3 +160,15 @@ tests cover repeat setup, preservation, no-agent settings, changed-pin rejection
 invalid keys and symlink refusal. Actual station key generation, public-key image
 enrollment, independent SSH after reboot and board deployment are still pending.
 Follow [the exact enrollment procedure](ground-station-accepted-system.md).
+
+
+## Per-role worker/publication identity follow-up
+
+Use [the enrollment runbook](worker-cache-enrollment.md) to prepare separate
+worker/publication keys and a public-only site module. Client identity paths now
+reach direct SSH and Nix store transport without an agent; invalid configured
+paths fail before transport. A 125-test focused regression run and fixture site
+module evaluation passed. Actual enrollment, authentication and remote build/
+publication acceptance still require the mini PC. Kaleb already appears in the
+shared normal-login authorized-keys file used by both systems; verify his login
+later rather than adding another copy or granting extra roles implicitly.

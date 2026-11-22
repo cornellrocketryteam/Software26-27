@@ -83,3 +83,26 @@ physical electronics only, not the computers or network.
 Planning documents, research notes, local test reports, build artifacts and private
 credentials are excluded from this publication. Operational runbooks accompany
 source; no commit/push activates or reflashes either device.
+
+
+## Follow-up: explicit worker/publication SSH identities
+
+Optional `station.identityFile` and `cache.identityFile` now select separate local
+private keys for direct SSH and Nix transport, with agent use/forwarding disabled.
+Missing/unsafe configured keys fail before transport; omitted settings preserve
+agent/default-key compatibility. No remote account, validation flag, signing
+trust, global SSH setting or actual private key was changed.
+
+Validation: 125 focused endpoint/routing/worker/publication/retention/packaging/
+deployment-SSH tests passed. The endpoint tests include actual local OpenSSH
+configuration inspection and the installed Nix client invoking a capture-only
+SSH stub, including paths containing spaces. No network socket is opened by that
+stub, and a deliberately failed protocol handshake is expected. The documented
+site module was evaluated with public fixture keys: assertions passed, worker
+untrusted/importer trusted roles were retained, native-only execution was kept,
+and the daemon retained its 300% CPU / 6 GiB memory limits. Nothing was activated.
+
+Kaleb's existing public key is already present in the shared fill-station file
+loaded by `ground-admin`; no duplicate was added. Actual private-key login on the
+PC/board, role enrollment, remote Nix builds and cache receipts remain pending.
+See [the enrollment runbook](worker-cache-enrollment.md).

@@ -55,6 +55,7 @@ existing, independently verified known_hosts file, optional configuration is:
     "store": "ssh-ng://ground-builder@groundstation.example.org",
     "sshTarget": "ground-builder@groundstation.example.org",
     "knownHosts": "/absolute/path/to/verified_known_hosts",
+    "identityFile": "/absolute/path/to/worker_private_key",
     "workerId": "reviewed-station-worker-v1",
     "minFreeBytes": 100000000000
   },
@@ -62,6 +63,7 @@ existing, independently verified known_hosts file, optional configuration is:
     "store": "ssh-ng://ingest@groundstation.example.org",
     "sshTarget": "ingest@groundstation.example.org",
     "knownHosts": "/absolute/path/to/verified_known_hosts",
+    "identityFile": "/absolute/path/to/publication_private_key",
     "receiptArchiveId": "reviewed-station-archive-v1"
   }
 }
@@ -75,7 +77,22 @@ substituters or signature trust. Configure the signed HTTP cache/trust separatel
 `cache.store` here is the authenticated ingestion endpoint, not the HTTP URL.
 SSH uses batch mode, strict host verification, no user SSH config, explicit host
 and username, bounded connection/keepalive settings and an outer process timeout.
-Existing SSH-agent authentication is used; no private key is copied or recorded.
+Each endpoint may specify `identityFile`: an existing absolute, nonempty regular
+private-key file owned by the current user with no group/other permissions (for
+example mode 0600). Symlinks, control characters and SSH expansion characters
+are rejected. This selects that key with `IdentitiesOnly=yes`, `IdentityAgent=none`
+and `ForwardAgent=no` for health, retention, transfer and publication/receipt
+connections. An encrypted key needing an interactive passphrase will not work in
+this batch/no-agent mode. Keep the key available locally; the tool never reads,
+exports or copies its contents. The path is nonsecret configuration and may be
+retained in worker-transfer journals.
+
+Omitting `identityFile` preserves existing agent/default-key authentication.
+This setting is independent for `station` and `cache`; it does not grant trust,
+change remote authorized keys, enable a worker or configure board deployment.
+Existing transfer journals retain their original endpoint/key path. Keep that
+identity available until transfers finish; changing current config does not
+silently retarget pending work. See [one-time enrollment](../../docs/operations/worker-cache-enrollment.md).
 Evaluation/preflight has its own 300-second default (maximum 3600), separate from
 the 10-second health-probe default (maximum 60), so normal Nix evaluation is not
 cut off by a network probe deadline.

@@ -1,5 +1,6 @@
 """Strict station health and explicitly requested read-only probing."""
 import json
+import shlex
 
 from test_build_cli import BuildFixture
 
@@ -51,3 +52,32 @@ class WorkerClientTests(BuildFixture):
         self.assertIn('pinned workerId', result.stderr)
         self.assertFalse(any('build' in call for call in self.calls('nix')))
         self.assertEqual(self.manifests(), [])
+
+
+    def test_explicit_worker_key_is_used_for_health_retention_and_copy_back(self):
+        config = self.station_config(worker_id='fixture-worker')
+        key = self.base / 'worker key'
+        key.write_text('private fixture'); key.chmod(0o600)
+        config['station']['identityFile'] = str(key)
+        self.config.write_text(json.dumps(config))
+        self.assert_ok(self.build('--artifact', 'fit', '--builder', 'station'))
+        calls = self.calls('ssh')
+        self.assertTrue(calls)
+        for call in calls:
+            self.assertEqual(call[call.index('-i')+1], str(key))
+            self.assertIn('IdentityAgent=none', call)
+        options = [shlex.split(json.loads(line)) for line in (self.base/'import-ssh-options').read_text().splitlines()]
+        self.assertTrue(options)
+        for opts in options:
+            self.assertEqual(opts[opts.index('-i')+1], str(key))
+            self.assertIn('IdentitiesOnly=yes', opts)
+
+    def test_missing_explicit_worker_key_fails_before_network_or_build(self):
+        config = self.station_config(worker_id='fixture-worker')
+        config['station']['identityFile'] = str(self.base/'missing-key')
+        self.config.write_text(json.dumps(config))
+        result = self.build('--artifact', 'fit', '--builder', 'station')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('identityFile', result.stderr)
+        self.assertEqual(self.calls('ssh'), [])
+        self.assertFalse(any('build' in call for call in self.calls('nix')))

@@ -75,6 +75,18 @@ def endpoint(section):
                '-o', f'UserKnownHostsFile={known}', '-o', 'GlobalKnownHostsFile=/dev/null',
                '-o', 'ConnectTimeout=5', '-o', 'ConnectionAttempts=1', '-o', 'ServerAliveInterval=5',
                '-o', 'ServerAliveCountMax=1']
+    if 'identityFile' in section:
+        identity_file = section['identityFile']
+        if not isinstance(identity_file, str) or not identity_file or any(ord(c) < 32 or ord(c) == 127 or c in '%$' for c in identity_file):
+            raise PlatformError('identityFile must name an absolute private key without control/SSH expansion characters')
+        path = Path(identity_file)
+        if not path.is_absolute() or path.is_symlink() or not path.is_file():
+            raise PlatformError('identityFile must name an existing absolute regular private-key file, not a symlink')
+        info = path.stat()
+        if info.st_uid != os.getuid() or info.st_mode & 0o077 or not info.st_size:
+            raise PlatformError('identityFile must be nonempty, owned by current user, and inaccessible to group/others')
+        options += ['-i', identity_file, '-o', 'IdentitiesOnly=yes',
+                    '-o', 'IdentityAgent=none', '-o', 'ForwardAgent=no']
     if port:
         options += ['-p', str(port)]
     return uri.rstrip('/'), target, options

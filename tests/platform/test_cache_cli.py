@@ -1,4 +1,5 @@
 import json
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -196,3 +197,28 @@ class CacheCLI(BuildFixture):
         self.assert_ok(self.build('--artifact', 'fit', '--builder', 'local', COPY_SLEEP='1'))
         self.assertIn('timed out', self.pending()[0]['reason'])
         self.assertTrue(all(Path(p).exists() for p in self.pending()[0]['gcRoots']))
+
+
+    def test_publication_uses_archive_key_for_copy_and_receipt_not_worker_key(self):
+        from tools.platform import cache
+        from tools.platform.runtime import run
+        self.assert_ok(self.build('--artifact', 'fit', '--builder', 'local'))
+        self.receipts_config()
+        config = json.loads(self.config.read_text())
+        archive_key = self.base/'archive key'
+        worker_key = self.base/'worker key'
+        for key in (archive_key, worker_key):
+            key.write_text('private fixture'); key.chmod(0o600)
+        config['station']['identityFile'] = str(worker_key)
+        config['cache']['identityFile'] = str(archive_key)
+        with patch.dict('os.environ', self.env), patch.object(cache, 'run', wraps=run) as invoked:
+            cache.sync(self.state, config)
+        self.assertEqual(self.pending(), [])
+        copy = next(call for call in invoked.call_args_list if call.args[0][0:2] == ['nix', 'copy'])
+        options = shlex.split(copy.kwargs['env']['NIX_SSHOPTS'])
+        self.assertEqual(options[options.index('-i')+1], str(archive_key))
+        receipt = next(call for call in invoked.call_args_list if call.args[0][0] == 'ssh')
+        self.assertEqual(receipt.args[0][receipt.args[0].index('-i')+1], str(archive_key))
+        self.assertNotIn(str(worker_key), options)
+        self.assertNotIn(str(worker_key), receipt.args[0])
+        self.assertIn('IdentityAgent=none', options)
