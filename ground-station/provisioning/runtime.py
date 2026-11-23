@@ -177,6 +177,50 @@ def database(docker, assets, attempts=30):
         raise ProvisionError("Telemetry schema/migration failed; ingestion remains unprovisioned.")
 
 
+def configure_fill_session(dashboard):
+    """Preserve panel layout; require an explicit source session for fill data."""
+    variable = "${fill_session:sqlstring}"
+    catalog = """SELECT __text, __value FROM (
+        SELECT 0 AS rank, 'Select a fill session' AS __text, 'none' AS __value
+        UNION ALL SELECT 1, 'Legacy only (arrival order)', 'legacy'
+        UNION ALL SELECT 2, session_id || ' (seq ' || last_sequence::text || ')',
+          publisher_session_hi::text || ':' || publisher_session_lo::text
+        FROM public.telemetry_sessions WHERE unit_id = 0
+    ) sessions ORDER BY rank, __text"""
+    dashboard.setdefault("templating", {})["list"] = [{
+        "name": "fill_session", "label": "Fill session", "type": "query",
+        "datasource": {"type": "grafana-postgresql-datasource", "uid": "bfk1elo58d3pca"},
+        "query": catalog, "definition": catalog, "refresh": 1, "sort": 0,
+        "multi": False, "includeAll": False, "hide": 0, "skipUrlSync": False,
+        "current": {"text": "Select a fill session", "value": "none"},
+        "options": [],
+    }]
+    # SQL-string interpolation quotes the complete value. The bounded numeric
+    # format check happens before casts, including for arbitrary URL values.
+    valid = variable + " ~ '^[0-9]{1,20}:[0-9]{1,20}$'"
+    hi = "CASE WHEN " + valid + " THEN split_part(" + variable + ", ':', 1)::numeric END"
+    lo = "CASE WHEN " + valid + " THEN split_part(" + variable + ", ':', 2)::numeric END"
+    relation = """(SELECT d.* FROM public.telemetry_data d WHERE d.unit_id = 0 AND (
+        (""" + variable + """ = 'legacy' AND d.source_metadata_version = 0)
+        OR (d.source_identity_valid AND d.publisher_session_hi = (""" + hi + """)
+            AND d.publisher_session_lo = (""" + lo + """)))) AS telemetry_data"""
+    for panel in dashboard["panels"]:
+        if panel["id"] not in [2, 3, 4, 5, 6, 35]:
+            continue
+        panel["description"] = (
+            "Selected fill session only. Latest values use source sequence; legacy uses arrival order. "
+            "Charts use broker arrival time. No automatic session switch; select the new session after restart. "
+            "An old selected session may remain visible; displayed values do not establish freshness."
+        )
+        for target in panel.get("targets", []):
+            query = target.get("rawSql", "")
+            if query.count("FROM telemetry_data") != 1:
+                raise ProvisionError("Fill dashboard query requires session-filter review.")
+            query = query.replace("FROM telemetry_data", "FROM " + relation)
+            query = query.replace("ORDER BY time DESC", "ORDER BY CASE WHEN source_identity_valid THEN publisher_sequence END DESC NULLS LAST, time DESC")
+            target["rawSql"] = query
+
+
 def build_assets(source, output, cameras=False):
     """Build public, immutable assets; credentials are resolved only at runtime."""
     source, output = Path(source), Path(output)
@@ -205,6 +249,7 @@ def build_assets(source, output, cameras=False):
     }
     dashboard = json.loads((source / "grafana.json").read_text())
     dashboard["id"] = None
+    configure_fill_session(dashboard)
     for panel in dashboard["panels"]:
         if panel["id"] == 1:
             panel["options"]["mode"] = "html" if cameras else "markdown"

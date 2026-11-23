@@ -24,7 +24,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | Omada switches / wireless bridges | IPs/wiring recorded; no real management adapter yet | Firmware/API inspection, metrics, then reviewed camera-port power controls |
 | Shelly plugs | Local RPC backend implemented/tested; two entries intentionally disabled | Addresses, identities/load mapping and real on/off/read-back acceptance |
 | Three operating-profile definitions | New shared definitions/validator implemented and host-tested | Runtime/build/telemetry/UI consumption; current hardware profiles unchanged |
-| MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication and explicit session query interface implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, active-session selection and Grafana query integration |
+| MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication and explicit session query interface implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, operator selection/browser acceptance and source-time chart integration |
 | hybrid-test image with LC2 | Intended local/FSW/channel mapping defined; no image target yet | Standalone firmware, raw/voltage LC2, OSPI build and hardware acceptance |
 | Hybrid/Liquid/test UI and Grafana variants | Planned; accepted layout is retained | Shared-contract bindings, profile identity/mismatch handling and views |
 | Starlink health | Local integration path researched | Terminal identification, adapter, actual route/metrics and outage tests |
@@ -37,3 +37,6 @@ explains the new foundation and its explicit limits. Planning/research remain lo
 
 LAN time is now implemented and module-tested; native/image/physical acceptance
 is pending. See [LAN time](lan-time.md). No latest candidate has been deployed.
+
+Generated Grafana now has explicit session selection and sequence-based latest
+fill values; deployment/browser acceptance is pending. See [session guide](grafana-sessions.md).

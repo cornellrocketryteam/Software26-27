@@ -214,3 +214,10 @@ including delayed lower sequences, interleaved sessions, backward source/arrival
 clocks, exact maximum uint64 identity, invalid requests, repeated migration and
 reader/ingest/unrelated-role permissions. Actual Timescale plans/performance,
 service rollout, explicit operator selection and consumer wiring remain pending.
+
+
+The generated Grafana consumer now uses explicit session selection for its six
+fill panels. See [operator behavior and acceptance](grafana-sessions.md). The
+source export remains unchanged; historical notes above about consumers pending
+refer to the earlier block. Real browser acceptance and source-time charts remain
+pending; Commanding is not changed.

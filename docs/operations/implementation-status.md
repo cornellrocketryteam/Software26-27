@@ -189,3 +189,15 @@ Timescale/real provisioning and explicit session choice against interleaved
 reboot sessions. Existing UI/Grafana consumers still need integration; this does
 not activate automatic session selection. See the
 [query interface](telemetry-source-ingestion.md#explicit-session-query-interface-migration-003).
+
+
+## Grafana session selection — November 23
+
+Generated dashboard now adds an explicit Fill session dropdown and filters six
+fill queries; latest modern values use sequence, legacy uses arrival. Original
+layout/cameras/flight queries and Commanding are retained. Initial selection is
+a prompt with no fill data, never an automatic boot guess. Charts still use
+arrival time. Host generated-SQL and partition tests pass; real Grafana browser,
+Timescale query performance and deployment remain pending. Follow
+[Grafana session acceptance](grafana-sessions.md); selected historical values are
+not a freshness indication.
