@@ -41,6 +41,8 @@ is pending. See [LAN time](lan-time.md). No latest candidate has been deployed.
 Generated Grafana now has explicit session selection and sequence-based latest
 fill values; deployment/browser acceptance is pending. See [session guide](grafana-sessions.md).
 
-LC2 v2 MQTT/storage support is implemented and host-tested; native/image activation, live broker/ADC, profile UI and CSV remain pending. See [LC2](lc2-telemetry.md).
+LC2 v2 MQTT/storage support is implemented and host-tested; native/image activation, live broker/ADC, profile UI and physical CSV acceptance remain pending. See [LC2](lc2-telemetry.md).
 
 Paired Hybrid/Hybrid-test image selectors and CLI routing now exist and are graph/host tested; full images, consumer variants and physical acceptance remain pending. Liquid remains on its current wiring.
+
+Profile-aware CSV schema2 now records named sensors/validity, LC2 raw/voltage, owner-correct actuator state and independent CSV time identity. Host formatter/file checks pass; board mount/retention/performance and physical recordings remain pending.

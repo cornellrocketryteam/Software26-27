@@ -276,3 +276,16 @@ Liquid and generic debug stay legacy. CLI accepts hybrid-test and hashes Hybrid
 base wiring in its manifest; effective identity remains in full source/output.
 Host checks pass; native FIT/OSPI build, profile UI/CSV and full hardware deployment
 remain pending. See [paired selectors](../../fill-station/docs/OPERATING_PROFILES.md#paired-image-selectors).
+
+
+## Profile-aware CSV — November 23
+
+CSV keeps the legacy header prefix and appends schema2 profile-aware PT1–PT4,
+LC1/LC2, validity, owner-correct states and BV command memory, plus independent
+CSV session/time metadata and sample ages. Test mode excludes FSW snapshots and
+never scales LC2, including the legacy channel column. Atomic new files avoid
+overwrite; invalid pre-epoch time does not prevent recording. Host formatter and
+real temporary-file tests pass in Hybrid-test/Liquid suites. Later verify the
+actual board log mount/free space, sustained rate, channel/validity values,
+FSW disconnects and reboot retention. Periodic sync does not prove persistence.
+UI/Grafana variants remain next. See [CSV logging](../../fill-station/docs/CSV_LOGGING.md).

@@ -198,7 +198,7 @@ fn main() -> Result<()> {
         let log_hw = hardware.clone();
         let log_adc = adc_readings.clone();
         let log_umb = umbilical_readings.clone();
-        smol::spawn(csv_logger::start_logging(log_hw, log_adc, log_umb)).detach();
+        smol::spawn(csv_logger::start_logging(log_hw, log_adc, log_umb, actuator_state.clone())).detach();
 
         // Spawn MQTT Publisher Task
         let mqtt_hw = hardware.clone();

@@ -3,7 +3,7 @@
 The candidate now carries ADC2 CH2 as raw counts and voltage, with explicit
 validity. It does not apply LC1 calibration, calculate force or infer engineering
 units. This is implemented and host-tested; paired image targets are now available.
-Profile-specific UI/Grafana and CSV support remain separate work.
+Profile-aware CSV is implemented; UI/Grafana views remain separate work.
 
 ## Wire and storage contract
 
@@ -58,7 +58,7 @@ After the complete Hybrid-test candidate is ready, verify all of these together:
 4. Replay duplicates only in an isolated telemetry fixture: exact v2 retries
    suppress, changed LC2 conflicts reject, and a migrated v1 receipt still matches.
 5. Confirm reader-role access, session-selected queries, real Timescale operation,
-   reboot/offline recovery and later profile-specific UI/CSV representations.
+   reboot/offline recovery and profile-specific CSV recordings and later UI representations.
 
 Host checks use disposable PostgreSQL 17 ordinary/time-partitioned tables, the
 actual generated SQL action, real nanopb C round trips, and Hybrid/Liquid Rust

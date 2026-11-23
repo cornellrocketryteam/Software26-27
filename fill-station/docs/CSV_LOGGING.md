@@ -1,48 +1,102 @@
-# CSV Logging Implementation
+# CSV logging
 
-## Overview
-The fill station automatically logs all system states to a CSV file on startup. This includes state information from actuators (SVs), the ADCs, and any connected Flight Software (FSW) received over the Umbilical. The logger runs continuously in the background at **100 Hz**.
+The fill-station logger records snapshots at a target rate of 100 Hz. A CSV row is
+not necessarily a newly acquired ADC sample: acquisition rates differ, and slow
+I/O or hardware reads can reduce the logging rate. Sensor ages identify repeated
+or stale cached samples independently from validity.
 
-## File Management
-- **Location:** Logs are saved to `/var/log/fill-station` on Linux (the TI board), or `logs/` on macOS/Windows.
-- **Naming Convention:** `fill_station_log_<UNIX_TIMESTAMP>.csv`
-- **File Continuation:** To prevent data loss from accidental overwrites, consecutive runs started within the same second will append a suffix (e.g., `_1`, `_2`) so that every new run gets its own brand-new CSV file.
-- **Persistence:** The file flushes (syncs to disk) every 10 seconds (1,000 samples) to ensure data is preserved even in the event of an abrupt power cycle.
+## Files and storage
 
-## Logged Data Columns
+Files are created under `/var/log/fill-station` on Linux and `logs/` on other
+hosts. Names are `fill_station_log_<epoch-seconds>.csv`, with `_1`, `_2`, etc. on
+collisions. Atomic create-new prevents overwriting an existing log. A clock before
+1970 uses filename timestamp 0 and does not prevent logging; do not use the
+filename as proof of valid UTC. Existing files are never migrated or appended to.
 
-The CSV file contains the following columns, exactly matching the order below. If a component (like the ADCs or FSW over Umbilical) fails to return fresh data, their respective columns will be populated with `"N/A"`.
+The logger attempts a file sync every 1,000 rows, roughly ten seconds at its target
+rate. This reduces buffered-data exposure but does not guarantee survival of a
+power cut. Storage must actually be persistent, writable and have space. In the
+current MixOS setup `/etc` state persistence does not establish that `/var/log` is
+persistent; verify the deployed mount before relying on reboot retention. Log
+rotation/retention and a persistent board-log mount are not implemented by this
+change. Log growth must fit the field run and available storage. Failed directory,
+file, header or row writes stop this logger with a diagnostic; a sync failure is
+reported and logging continues. The logger does not command actuators.
 
-### Header Structure
+## Compatibility and schema 2
 
-**Timing and General Actuators:**
-- `Loop`: Monotonically increasing loop counter starting at 1.
-- `Timestamp_ms`: Unix timestamp of the data point.
-- `Igniter1_Active`, `Igniter2_Active`: Boolean indicating if the igniter is currently fired.
+The complete legacy header stays at the beginning in the same order. New fields
+are appended, with `CSV_Schema_Version=2`. Read columns by header name and allow
+additional columns; consumers requiring an exact old column count need updating.
+Old files remain readable with their old headers and have no fabricated new data.
 
-**Solenoid Valves:** (Columns repeat for SV1 through SV5)
-- `SV<N>_Open`: Boolean indicating if the valve is open.
-- `SV<N>_Cont`: Boolean continuity state.
+Legacy columns still include loop/ADC timestamp, igniter state, SV1–SV5 output and
+continuity, local MAV state/pulse width, all ADC raw/scaled channels, FSW fields,
+deprecated QD motor fields, and availability masks. `QD_Enabled`/`QD_Direction`
+remain `N/A`; solenoid QD release intent/continuity use SV5. Energizing requests
+disconnect, while switching off does not reconnect or prove physical position.
+Missing local hardware/readings are empty, invalid scaled values are empty, and
+unavailable FSW fields are `N/A`. False and measured zero remain real values.
 
-**Fill-Station MAV:**
-- `MAV_Open`: Boolean last-commanded open state.
-- `MAV_Pulse_US`: Last-commanded servo pulse width (µs).
+`Timestamp_ms` is the legacy ADC snapshot timestamp, not row assembly time. Raw
+ADC fields describe physical channels; an enabled ADC can read spare channels
+that are not assigned operating sensors. Legacy local actuator columns are not
+relabelled as remote FSW states. `FSW_Timestamp` retains the FSW gps_time field,
+not a new UNIX timestamp or a guaranteed FSW uptime.
 
-**Analog to Digital Converters (ADCs):** (Columns repeat for ADC1 and ADC2, Channels 0 through 3)
-- `ADC<NUM>_<CH>_Raw`: 12-bit raw integer reading.
-- `ADC<NUM>_<CH>_Scaled`: Calibrated sensor value — PT1–PT4 (ADC1 Ch0–Ch3), PT5 (ADC2 Ch0), Load Cell (ADC2 Ch1). `N/A` for all other channels.
+## Profile-aware readings
 
-**Umbilical Telemetry (FSW):**
-- `FSW_Connected`: True if the ground station has an active CDC-ACM serial umbilical connection to the flight software.
-- `FSW_Mode`: Flight system state machine mode (Standby, Ascent, etc).
-- `FSW_Pressure`, `FSW_Temp`, `FSW_Altitude`: Base barometric data.
-- `FSW_Lat`, `FSW_Lon`, `FSW_Sats`: GPS positional data.
-- `FSW_Timestamp`: Uptime on the FSW.
-- `FSW_MagX`, `FSW_MagY`, `FSW_MagZ`: Internal magnetometer.
-- `FSW_AccelX`, `FSW_AccelY`, `FSW_AccelZ`: Internal accelerometer.
-- `FSW_GyroX`, `FSW_GyroY`, `FSW_GyroZ`: Internal gyroscope.
-- `FSW_PT3`, `FSW_PT4`, `FSW_RTD`: Remote pressures and RTD temperatures on the vehicle.
+| Columns | Meaning |
+| --- | --- |
+| Operating_Profile | hybrid, hybrid-test or legacy (including current Liquid/debug) |
+| FSW_Enabled | Selected policy, not connection status |
+| PT1_PSI…PT4_PSI and PT1_Valid…PT4_Valid | Assigned pressure and finite/available status |
+| LC1_Scaled, LC1_Valid | Existing LC1 calibration, engineering unit still unconfirmed |
+| LC2_Raw, LC2_Voltage, LC2_Valid | ADC2 CH2 in Hybrid-test only; no force calibration |
+| SV2_Profile_Open, MAV_Profile_Open | Selected owner's driver/command state |
+| BV_Commanded_Open | Last-commanded ball-valve state when configured |
 
-**Solenoid QD / legacy motor columns:**
-- Hybrid QD command memory and continuity use existing `SV5_Open` / `SV5_Cont` columns. Open means energized/release requested, not measured physical disconnection.
-- `QD_Enabled` and `QD_Direction` are deprecated motor columns, retained as `N/A` for CSV column-position compatibility. They are not queried from hardware and must not be interpreted as solenoid state.
+Hybrid-test uses local ADC1 CH0–CH3 for PT1–PT4, ADC2 CH1 for LC1 and CH2 for LC2.
+It uses local SV2/MAV, and never logs stale FSW values even if an old shared
+snapshot says connected. Normal Hybrid obtains PT3/PT4 and SV2/MAV from connected
+FSW. Disconnected remote values are empty and pressure validity false. Local
+pressure validity requires a successful ADC snapshot and finite scaled data;
+LC2 validity requires successful ADC2 and finite voltage. LC2 never uses a scaled
+value even if one is present. Valid zero voltage differs from unavailable LC2.
+The original mask retains PT1/PT2/LC1 bits 0/1/2; test mode adds local PT3/PT4
+bits 3/4. Availability does not establish absolute sensor accuracy or freshness.
+
+## CSV time and identity
+
+The new `CSV_Session_Hi`/`CSV_Session_Lo`, `CSV_Sequence` and `CSV_Monotonic_ms`
+identify and order logger snapshots. The random session belongs to this logger,
+not the MQTT publisher: never join CSV and MQTT by matching sequence/session.
+`Loop` equals this CSV sequence and starts at 1. Import uint64 identities and
+sequence as exact integers or text, not floating point (including spreadsheet
+imports). No attempt is made to combine successive files into one ordered boot.
+
+`CSV_Unix_ms`, `CSV_Unix_Valid`, `CSV_Time_Quality` and `CSV_Time_Generation`
+use the existing source-clock rules. Unknown time uses UNIX 0 with validity false.
+Kernel-synchronized quality does not prove accurate UTC or a fresh upstream; LAN
+reference uncertainty remains. Clock discontinuities increment the time generation
+without resetting sequence. The logger stops rather than reuse identity on entropy,
+sequence or time-generation failure.
+
+ADC1/ADC2 `Sample_Age_ms` and `Sample_Age_Valid`, plus FSW `Receive_Age_ms` and
+`Receive_Age_Valid`, describe last successful local scans/FSW receipt at row
+assembly. Unknown age is empty/false, and fresh zero is 0/true. These are not
+simultaneous channel acquisition times or FSW sensor timestamps.
+
+## Acceptance
+
+Host tests exercise the actual row formatter, column alignment and unchanged
+legacy header prefix, profile routing, unavailable/nonfinite/zero/false values,
+CSV-specific time metadata, and real temporary-file creation without overwrites.
+The logger task itself has not been run on the board in this block.
+
+After deploying the combined candidate, collect a short log without actuation.
+Parse it with a CSV reader, verify row/header counts and mode, compare the named
+channels with ADC and telemetry readings, then disconnect/reconnect FSW/ADC in an
+approved hardware setup. Confirm invalid values and sample ages. Verify the real
+log mount, free space and power/reboot retention separately before trusting field
+recordings. No new hardware test is needed before the remaining UI work lands.
