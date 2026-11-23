@@ -31,6 +31,9 @@ Complete documentation for the Cornell Rocketry Team fill station server.
 
 ## Feature Documentation
 
+- **[TELEMETRY_SOURCE_TIME.md](TELEMETRY_SOURCE_TIME.md)** - MQTT source identity/time metadata and remaining consumer migration
+- **[OPERATING_PROFILES.md](OPERATING_PROFILES.md)** - Shared operating-profile intent, validation and integration boundaries
+
 - **[ADC_STREAMING.md](ADC_STREAMING.md)** - ADC background monitoring and WebSocket streaming
   - Configuration guide
   - Protocol specification

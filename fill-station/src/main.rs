@@ -1381,25 +1381,26 @@ async fn adc_monitoring_task(
     let interval = Duration::from_millis(1000 / ADC_SAMPLE_RATE_HZ);
     loop {
         let start = Instant::now();
-        let (adc1, adc2) = {
+        let (adc1, adc1_captured, adc2, adc2_captured) = {
             let mut hw = hardware.lock().await;
             let one = read_adc(hw.adc_mut("adc1"), &ADC1_SCALING).await;
+            let one_captured = Instant::now();
             let two = read_adc(hw.adc_mut("adc2"), &ADC2_SCALING).await;
-            (one, two)
+            (one, one_captured, two, Instant::now())
         };
         let mut readings = adc_readings.lock().await;
-        readings.timestamp_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+        readings.timestamp_ms =
+            fill_station::telemetry_clock::unix_millis(SystemTime::now()).unwrap_or(0);
         readings.adc1_valid = adc1.is_some();
         readings.adc2_valid = adc2.is_some();
         readings.valid = readings.adc1_valid && readings.adc2_valid;
         if let Some(value) = adc1 {
             readings.adc1 = value;
+            readings.adc1_captured = Some(adc1_captured);
         }
         if let Some(value) = adc2 {
             readings.adc2 = value;
+            readings.adc2_captured = Some(adc2_captured);
         }
         drop(readings);
         Timer::after(interval.saturating_sub(start.elapsed())).await;

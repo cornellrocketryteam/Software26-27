@@ -119,3 +119,27 @@ hardware/QD tests passed (54 total). No native build/deployment was performed.
 The next work is source-time telemetry and compatible ingestion, followed by actual
 profile runtime/build integration. See [feature status](feature-status.md) and
 [profile guide](../../fill-station/docs/OPERATING_PROFILES.md).
+
+
+## November 23: producer source-time metadata
+
+Appended protobuf fields 67–81 and integrated fresh publisher-session identity,
+non-wrapping sequence, qualified UNIX/session-monotonic assembly time, clock
+generation and independent ADC/FSW receive ages in the actual MQTT producer. ADC
+capture instants follow successful scans; missing/old values do not acquire new
+capture timestamps. No time setting, NTP service, SQL ingestion/deduplication,
+WebSocket/CSV metadata or Grafana change is included.
+
+Both Hybrid/debug-json and Liquid/debug-json host Cargo suites passed: 64 test/
+doc-test executions per configuration. Five schema/regenerated nanopb-C/Python
+codec checks passed, including exact unsigned 64-bit values and old/new wire
+compatibility. Existing profile/hardware/telemetry host checks passed; the optional
+PostgreSQL trigger test was skipped because PG_BIN is not configured. Cargo.lock
+was unchanged. Small host tooling/dependencies were fetched to run host checks;
+no Docker or Linux image build was started.
+
+The Linux-only read-only adjtimex path, ARM image build/boot, real MQTT transport,
+time synchronization and consumer/database handling remain pending. The new SQL
+schema decoder source is compatible, but existing action/query logic still ignores
+source metadata and uses arrival time. Out-of-order database handling is not fixed
+by this checkpoint alone. See [source-time guide](../../fill-station/docs/TELEMETRY_SOURCE_TIME.md).

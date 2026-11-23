@@ -209,6 +209,9 @@ pub struct AdcReadings {
     pub valid: bool,
     pub adc1_valid: bool,
     pub adc2_valid: bool,
+    /// Actual last successful local samples; independent of this report's wall time.
+    pub adc1_captured: Option<Instant>,
+    pub adc2_captured: Option<Instant>,
     pub adc1: [ChannelReading; 4],
     pub adc2: [ChannelReading; 4],
 }
@@ -220,6 +223,8 @@ impl Default for AdcReadings {
             valid: false,
             adc1_valid: false,
             adc2_valid: false,
+            adc1_captured: None,
+            adc2_captured: None,
             adc1: [ChannelReading {
                 raw: 0,
                 voltage: 0.0,

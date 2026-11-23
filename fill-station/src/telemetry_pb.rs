@@ -113,6 +113,21 @@ mod tests {
             availability_version: 1,
             configured_devices_mask: 4095,
             valid_readings_mask: 7,
+            source_metadata_version: 1,
+            publisher_session_hi: u64::MAX,
+            publisher_session_lo: 0x123456789abcdef0,
+            publisher_sequence: u64::MAX,
+            source_monotonic_ms: 99,
+            source_unix_ms: 1_800_000_000_123,
+            source_unix_valid: true,
+            source_time_quality: 1,
+            source_time_generation: 2,
+            adc1_sample_age_ms: 0,
+            adc1_sample_age_valid: true,
+            adc2_sample_age_ms: 1500,
+            adc2_sample_age_valid: true,
+            fsw_receive_age_ms: 0,
+            fsw_receive_age_valid: false,
         }
     }
 

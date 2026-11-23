@@ -81,4 +81,24 @@ message TelemetryPayload {
   uint32 availability_version = 64;
   uint32 configured_devices_mask = 65;
   uint32 valid_readings_mask = 66;
+
+    // Additive source-frame metadata v1. Version 0 means legacy producer.
+    // Session is a fresh random 128-bit value per publisher lifetime, split in
+    // two unsigned halves. Render as 32 hex digits; do not coerce through JS Number.
+    uint32 source_metadata_version = 67;
+    uint64 publisher_session_hi = 68;
+    uint64 publisher_session_lo = 69;
+    uint64 publisher_sequence = 70;
+    uint64 source_monotonic_ms = 71;
+    uint64 source_unix_ms = 72;
+    bool source_unix_valid = 73;
+    // 0=unknown/unsynchronized; 1=kernel synchronized, reference/UTC accuracy unknown.
+    uint32 source_time_quality = 74;
+    uint64 adc1_sample_age_ms = 75;
+    bool adc1_sample_age_valid = 76;
+    uint64 adc2_sample_age_ms = 77;
+    bool adc2_sample_age_valid = 78;
+    uint64 fsw_receive_age_ms = 79;
+    bool fsw_receive_age_valid = 80;
+    uint32 source_time_generation = 81;
 }

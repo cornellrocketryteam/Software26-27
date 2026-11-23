@@ -9,6 +9,7 @@ use crate::command::{ActuatorState, AdcReadings, UmbilicalReadings};
 use crate::hardware::Hardware;
 // From the lib crate so the nanopb static library (linked into the lib) comes along
 use fill_station::telemetry_pb::{self, TelemetryPayload};
+use fill_station::telemetry_clock::{PublisherClock, kernel_time_quality, sample_age};
 
 // ============================================================================
 // MQTT CONFIGURATION
@@ -49,6 +50,13 @@ pub async fn start_mqtt_publisher(
         BROKER_HOST, BROKER_PORT, MQTT_TOPIC, PUBLISH_RATE_HZ
     );
 
+    let mut source_clock = match PublisherClock::new() {
+        Ok(clock) => clock,
+        Err(error) => {
+            error!("MQTT disabled: cannot create unique publisher session: {}", error);
+            return;
+        }
+    };
     let mut mqttoptions = MqttOptions::new(CLIENT_ID, BROKER_HOST, BROKER_PORT);
     mqttoptions.set_keep_alive(Duration::from_secs(30));
 
@@ -75,6 +83,7 @@ pub async fn start_mqtt_publisher(
     info!("MQTT event loop started on background thread");
 
     let boot_time = Instant::now();
+    let mut last_time_generation = 0;
     let interval = Duration::from_millis(1000 / PUBLISH_RATE_HZ);
 
     loop {
@@ -82,7 +91,7 @@ pub async fn start_mqtt_publisher(
         let ms_since_boot_fill = boot_time.elapsed().as_millis() as u64;
 
         // 1. Gather ADC data
-        let (pt_1_pressure, pt_2_pressure, load_cell, valid_readings_mask) = {
+        let (pt_1_pressure, pt_2_pressure, load_cell, valid_readings_mask, adc1_captured, adc2_captured) = {
             let adc = adc_readings.lock().await;
             (
                 if adc.adc1_valid {
@@ -101,13 +110,15 @@ pub async fn start_mqtt_publisher(
                     0.0
                 },
                 adc.valid_readings_mask(),
+                adc.adc1_captured,
+                adc.adc2_captured,
             )
         };
 
         // 2. Gather FSW telemetry from umbilical
-        let (fsw_connected, telemetry) = {
+        let (fsw_connected, telemetry, fsw_captured) = {
             let umb = umbilical_readings.lock().await;
-            (umb.connected, umb.telemetry)
+            (umb.connected, umb.telemetry, if umb.connected { umb.last_telem_instant } else { None })
         };
 
         // 3a. Gather last-commanded ball valve state.
@@ -137,7 +148,24 @@ pub async fn start_mqtt_publisher(
         };
 
         // 4. Build payload
-        let payload = if fsw_connected {
+        // Assembly time is distinct from ADC sample/FSW receive time. Stamp once
+        // before serialization/queueing; MQTT reconnect does not restamp bytes.
+        let (source, captured) = match source_clock.capture(kernel_time_quality()) {
+            Ok(frame) => frame,
+            Err(error) => {
+                error!("MQTT publisher stopped rather than reusing metadata identity: {}", error);
+                return;
+            }
+        };
+        if source.time_generation != last_time_generation {
+            info!("MQTT source clock generation {}: quality {:?}, UNIX valid {} (reference accuracy unverified)",
+                  source.time_generation, source.quality, source.unix_valid);
+            last_time_generation = source.time_generation;
+        }
+        let (adc1_age, adc1_age_valid) = sample_age(captured, adc1_captured);
+        let (adc2_age, adc2_age_valid) = sample_age(captured, adc2_captured);
+        let (fsw_age, fsw_age_valid) = sample_age(captured, fsw_captured);
+        let mut payload = if fsw_connected {
             TelemetryPayload {
                 sync_word: 0,
                 flight_mode: telemetry.flight_mode,
@@ -205,6 +233,7 @@ pub async fn start_mqtt_publisher(
                 availability_version: 1,
                 configured_devices_mask,
                 valid_readings_mask,
+                ..Default::default()
             }
         } else {
             // FSW not connected — still publish fill station data with zeroed FSW fields
@@ -223,6 +252,22 @@ pub async fn start_mqtt_publisher(
                 ..Default::default()
             }
         };
+
+        payload.source_metadata_version = 1;
+        payload.publisher_session_hi = source.session_hi;
+        payload.publisher_session_lo = source.session_lo;
+        payload.publisher_sequence = source.sequence;
+        payload.source_monotonic_ms = source.monotonic_ms;
+        payload.source_unix_ms = source.unix_ms;
+        payload.source_unix_valid = source.unix_valid;
+        payload.source_time_quality = source.quality as u32;
+        payload.source_time_generation = source.time_generation;
+        payload.adc1_sample_age_ms = adc1_age;
+        payload.adc1_sample_age_valid = adc1_age_valid;
+        payload.adc2_sample_age_ms = adc2_age;
+        payload.adc2_sample_age_valid = adc2_age_valid;
+        payload.fsw_receive_age_ms = fsw_age;
+        payload.fsw_receive_age_valid = fsw_age_valid;
 
         // 5. Serialize (nanopb protobuf) and publish
         match telemetry_pb::encode(&payload) {

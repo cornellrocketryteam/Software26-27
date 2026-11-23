@@ -172,3 +172,15 @@ module evaluation passed. Actual enrollment, authentication and remote build/
 publication acceptance still require the mini PC. Kaleb already appears in the
 shared normal-login authorized-keys file used by both systems; verify his login
 later rather than adding another copy or granting extra roles implicitly.
+
+
+## November 23 producer metadata follow-up
+
+The MQTT producer now includes metadata version 1, random per-publisher session,
+sequence, frame time/quality/generation and separate ADC/FSW receive ages. Host
+Cargo and actual codec checks pass; native ARM/Linux and physical checks remain
+pending. SQL/UI still use the earlier arrival-time behavior. Complete compatible
+ingestion/LAN time work before claiming packet ordering or accurate UNIX time.
+Later verify new session on restart, stable session across MQTT reconnect,
+unknown clock/age flags and stale cached samples without modifying the production
+clock. See [the producer guide](../../fill-station/docs/TELEMETRY_SOURCE_TIME.md).
