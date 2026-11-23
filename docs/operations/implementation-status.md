@@ -178,3 +178,14 @@ Native daemon/image build, measured convergence, offline reboot and reconnect
 remain pending. See [LAN time acceptance](lan-time.md). Local reference is not
 verified UTC; source session/sequence remains the ordering authority. Existing
 Grafana queries remain arrival-based.
+
+
+## Session query interface — November 23
+
+Migration 003 adds a read-only session catalog, validated selected-session head
+and bounded sequence history. Host PostgreSQL ordinary/partitioned checks pass;
+asset provisioning includes the migration before reader grants. Later confirm
+Timescale/real provisioning and explicit session choice against interleaved
+reboot sessions. Existing UI/Grafana consumers still need integration; this does
+not activate automatic session selection. See the
+[query interface](telemetry-source-ingestion.md#explicit-session-query-interface-migration-003).

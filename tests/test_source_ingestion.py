@@ -55,6 +55,7 @@ class SourceIngestionDatabase(unittest.TestCase):
         cls.sql("INSERT INTO telemetry_data(time,unit_id,pt_1_pressure) VALUES('2026-11-01 UTC',0,321);")
         cls.sql(MIGRATION.read_text());cls.sql(MIGRATION.read_text())
         cls.legacy_migration=cls.sql('SELECT time,pt_1_pressure,source_metadata_version,source_event_time IS NULL,received_at IS NULL FROM telemetry_data;')
+        cls.sql((GS/'migrations/003-session-queries.sql').read_text())
         cls.sql((GS/'provisioning/roles.sql').read_text(),env={**os.environ,'CRT_INGEST_PASSWORD':'fixture-only-ingest','CRT_READER_PASSWORD':'fixture-only-reader'})
 
     @classmethod

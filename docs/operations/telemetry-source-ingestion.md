@@ -162,3 +162,55 @@ Design references: [Timescale unique-index partition requirements](https://githu
 [PostgreSQL trigger behavior](https://www.postgresql.org/docs/17/trigger-definition.html),
 [SECURITY DEFINER search-path guidance](https://www.postgresql.org/docs/17/sql-createfunction.html),
 and [EMQX built-in conversions](https://docs.emqx.com/en/cloud/latest/data_integration/rule-sql-builtin-functions.html).
+
+## Explicit session query interface (migration 003)
+
+The candidate now packages and applies migration 003 after 002 and before role
+grants. It adds a read-only session catalog and selected-session functions. This
+is the shared database interface for later consumers; the current Grafana and
+Commanding pages have not been switched to it. No global active session is guessed
+or persisted by this migration.
+
+```sql
+SELECT unit_id, session_id, publisher_session_hi::text,
+       publisher_session_lo::text, last_sequence::text,
+       stored_frames, first_received_at, last_received_at
+FROM telemetry_sessions;
+
+-- Replace both example halves with an observed session belonging to this run.
+SELECT publisher_sequence::text, pt_1_pressure, source_event_time, time_provenance
+FROM telemetry_session_head(0, 123::numeric, 456::numeric);
+
+SELECT publisher_sequence::text, display_time, time_provenance, pt_1_pressure
+FROM telemetry_session_history(0, 123::numeric, 456::numeric, 0::numeric, 100)
+ORDER BY publisher_sequence;
+```
+
+The head is the greatest sequence within exactly that session. History returns
+ascending sequence, exclusively after the cursor, at most 1,000 rows (default
+100); use the last returned sequence as the next cursor. An outer SQL query must
+specify its own ORDER BY when it requires guaranteed row order. Cursor paging is
+not a snapshot: late lower-sequence inserts can fall behind an already consumed
+cursor. Use overlapping rereads or a fixed snapshot for archival completeness;
+this API is not a lossless streaming subscription or export protocol.
+
+The 32-character session_id is an exact lowercase hexadecimal rendering of both
+uint64 halves, including leading zeros. IDs/cursors must remain NUMERIC or text,
+never JavaScript Number. Neither random ID ordering nor last_received_at proves
+which boot is active: old sessions can receive delayed data. The catalog receipt
+bounds describe storage activity, not boot times or sensor sample times.
+
+Only known-valid v1 fill-station sessions are selectable. Invalid/null/fractional
+or out-of-range IDs/cursors, all-zero IDs, unsupported unit IDs and invalid page
+sizes fail with SQLSTATE 22023. Unknown but valid IDs return no rows; they never
+fall back to another session or legacy data. Legacy/unknown data remain available
+through telemetry_data and telemetry_event_history. Current function return row
+types track their underlying relations; future schema changes need compatibility
+review. Functions run with caller privileges and a fixed search path; only the
+reader role receives execution permission, not the ingest role or PUBLIC.
+
+Host acceptance covers ordinary PostgreSQL and PostgreSQL time partitions,
+including delayed lower sequences, interleaved sessions, backward source/arrival
+clocks, exact maximum uint64 identity, invalid requests, repeated migration and
+reader/ingest/unrelated-role permissions. Actual Timescale plans/performance,
+service rollout, explicit operator selection and consumer wiring remain pending.

@@ -22,5 +22,8 @@ REVOKE ALL ON telemetry_data FROM ground_ingest, ground_reader;
 GRANT INSERT ON telemetry_data TO ground_ingest;
 GRANT SELECT ON telemetry_data TO ground_reader;
 GRANT SELECT ON telemetry_latest_in_session, telemetry_event_history TO ground_reader;
+GRANT SELECT ON telemetry_sessions TO ground_reader;
+GRANT EXECUTE ON FUNCTION telemetry_session_head(INTEGER,NUMERIC,NUMERIC),
+    telemetry_session_history(INTEGER,NUMERIC,NUMERIC,NUMERIC,INTEGER) TO ground_reader;
 ALTER ROLE ground_reader SET default_transaction_read_only = on;
 COMMIT;
