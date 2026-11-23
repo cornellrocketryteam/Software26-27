@@ -1,4 +1,5 @@
 mod command;
+mod operating_runtime;
 mod components;
 mod csv_logger;
 mod hardware;
@@ -156,9 +157,15 @@ fn main() -> Result<()> {
         let (umb_cmd_tx, umb_cmd_rx) = smol::channel::bounded::<String>(8);
 
         // Spawn umbilical background task
-        info!("Starting Umbilical monitoring task...");
         let umb_task_readings = umbilical_readings.clone();
-        smol::spawn(umbilical_task(umb_task_readings, umb_cmd_rx)).detach();
+        if hardware.lock().await.routing_mode.fsw_enabled() {
+            info!("Starting Umbilical monitoring task...");
+            smol::spawn(umbilical_task(umb_task_readings, umb_cmd_rx)).detach();
+        } else {
+            // Closing the receiver rejects all remote commands; none queue for replay.
+            drop(umb_cmd_rx);
+            info!("FSW monitoring and forwarding disabled for Hybrid-test");
+        }
 
         // Active client tracker
         let active_client_count = Arc::new(AtomicUsize::new(0));

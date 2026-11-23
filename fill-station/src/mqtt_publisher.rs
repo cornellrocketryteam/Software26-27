@@ -7,6 +7,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::command::{ActuatorState, AdcReadings, UmbilicalReadings};
 use crate::hardware::Hardware;
+use crate::operating_runtime::{RoutingMode, Sample, route_sensors};
 // From the lib crate so the nanopb static library (linked into the lib) comes along
 use fill_station::telemetry_pb::{self, TelemetryPayload};
 use fill_station::telemetry_clock::{PublisherClock, kernel_time_quality, sample_age};
@@ -50,6 +51,7 @@ pub async fn start_mqtt_publisher(
         BROKER_HOST, BROKER_PORT, MQTT_TOPIC, PUBLISH_RATE_HZ
     );
 
+    let routing_mode = _hardware.lock().await.routing_mode;
     let mut source_clock = match PublisherClock::new() {
         Ok(clock) => clock,
         Err(error) => {
@@ -91,34 +93,27 @@ pub async fn start_mqtt_publisher(
         let ms_since_boot_fill = boot_time.elapsed().as_millis() as u64;
 
         // 1. Gather ADC data
-        let (pt_1_pressure, pt_2_pressure, load_cell, valid_readings_mask, adc1_captured, adc2_captured) = {
+        let (routed, valid_readings_mask, adc1_captured, adc2_captured) = {
             let adc = adc_readings.lock().await;
-            (
-                if adc.adc1_valid {
-                    adc.adc1[0].scaled.unwrap_or(0.0) as f64
-                } else {
-                    0.0
-                },
-                if adc.adc1_valid {
-                    adc.adc1[1].scaled.unwrap_or(0.0) as f64
-                } else {
-                    0.0
-                },
-                if adc.adc2_valid {
-                    adc.adc2[1].scaled.unwrap_or(0.0) as f64
-                } else {
-                    0.0
-                },
-                adc.valid_readings_mask(),
-                adc.adc1_captured,
-                adc.adc2_captured,
-            )
+            let sample = |s: crate::command::ChannelReading| Sample {
+                raw:s.raw, voltage:s.voltage, scaled:s.scaled,
+            };
+            let routed = route_sensors(routing_mode, adc.adc1.map(sample), adc.adc1_valid,
+                adc.adc2.map(sample), adc.adc2_valid);
+            let mask = u32::from(routed.pressures[0].is_some())
+                | (u32::from(routed.pressures[1].is_some()) << 1)
+                | (u32::from(routed.load_cell_1.is_some()) << 2);
+            (routed, mask, adc.adc1_captured, adc.adc2_captured)
         };
+        let pt_1_pressure = routed.pressures[0].unwrap_or(0.0);
+        let pt_2_pressure = routed.pressures[1].unwrap_or(0.0);
+        let load_cell = routed.load_cell_1.unwrap_or(0.0);
 
         // 2. Gather FSW telemetry from umbilical
         let (fsw_connected, telemetry, fsw_captured) = {
             let umb = umbilical_readings.lock().await;
-            (umb.connected, umb.telemetry, if umb.connected { umb.last_telem_instant } else { None })
+            (umb.connected && routing_mode.fsw_enabled(), umb.telemetry,
+                if umb.connected && routing_mode.fsw_enabled() { umb.last_telem_instant } else { None })
         };
 
         // 3a. Gather last-commanded ball valve state.
@@ -252,6 +247,18 @@ pub async fn start_mqtt_publisher(
                 ..Default::default()
             }
         };
+
+        if routing_mode == RoutingMode::HybridTest {
+            payload.pt3 = routed.pressures[2].unwrap_or(0.0);
+            payload.pt4 = routed.pressures[3].unwrap_or(0.0);
+            payload.valid_readings_mask |= (u32::from(routed.pressures[2].is_some()) << 3)
+                | (u32::from(routed.pressures[3].is_some()) << 4);
+            let hw = _hardware.lock().await;
+            payload.sv_2_open = match hw.solenoid("sv2") {
+                Some(sv) => sv.is_open().await.unwrap_or(false), None => false,
+            };
+            payload.mav_open = hw.mav().is_some_and(|mav| mav.is_open());
+        }
 
         payload.source_metadata_version = 1;
         payload.publisher_session_hi = source.session_hi;

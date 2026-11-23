@@ -212,3 +212,15 @@ builds are unchanged. No Hybrid-test image or second-load-cell telemetry is read
 yet: runtime sensor routing, FSW gating, protocol/client/storage additions and
 paired build selectors precede physical deployment. See
 [operating-profile compiler](../../fill-station/docs/OPERATING_PROFILES.md#effective-wiring-compiler).
+
+
+## Operating runtime — November 23
+
+Runtime now reads an optional operating selector, rejects unknown/mismatched
+families and routes test-stand PT3/PT4/SV2/MAV locally. Hybrid-test skips FSW
+monitoring/forwarding and suppresses FSW MQTT data/age. Internal LC2 raw/voltage
+validity is separate from LC1 scaling; LC2 wire/storage/client fields are still
+pending, so no new image selector is enabled. Existing builds stay legacy. Host
+Cargo Hybrid/Liquid and generated-config mock initialization checks pass; actual
+Linux/serial/ADC/actuator and end-to-end LC2 acceptance remain pending. See
+[the runtime guide](../../fill-station/docs/OPERATING_PROFILES.md#runtime-routing-support).

@@ -10,6 +10,7 @@ use crate::components::{
     solenoid_valve::{LinePull, SolenoidValve},
 };
 use anyhow::{Context, Result, bail};
+use crate::operating_runtime::RoutingMode;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use async_gpiod::Chip;
 use serde::Deserialize;
@@ -35,6 +36,8 @@ pub const DEVICE_ROLES: [&str; 11] = [
 pub struct HardwareConfig {
     pub version: u32,
     pub profile: String,
+    #[serde(default)]
+    pub operating_profile: Option<String>,
     pub configured_devices_mask: u32,
     pub devices: Vec<DeviceConfig>,
 }
@@ -64,6 +67,11 @@ impl HardwareConfig {
         if config.version != 1 {
             bail!("unsupported hardware configuration version");
         }
+        let mode = RoutingMode::parse(config.operating_profile.as_deref())
+            .context("unknown operating-profile runtime selector")?;
+        if mode != RoutingMode::Legacy && config.profile != "hybrid" {
+            bail!("operating profile requires Hybrid physical wiring");
+        }
         Ok(config)
     }
     pub fn missing_roles(&self, required: &[&str]) -> Vec<String> {
@@ -82,6 +90,7 @@ impl HardwareConfig {
 
 #[derive(Default)]
 pub struct Hardware {
+    pub routing_mode: RoutingMode,
     pub configured_devices_mask: u32,
     roles: BTreeMap<String, String>,
     pub igniters: BTreeMap<String, Igniter>,
@@ -98,7 +107,13 @@ impl Hardware {
         Self::from_config(HardwareConfig::parse(HARDWARE_CONFIG_JSON)?).await
     }
     pub async fn from_config(config: HardwareConfig) -> Result<Self> {
+        let routing_mode = RoutingMode::parse(config.operating_profile.as_deref())
+            .context("unknown operating-profile runtime selector")?;
+        if routing_mode != RoutingMode::Legacy && config.profile != "hybrid" {
+            bail!("operating profile requires Hybrid physical wiring");
+        }
         let mut hw = Self {
+            routing_mode,
             configured_devices_mask: config.configured_devices_mask,
             ..Self::default()
         };

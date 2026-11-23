@@ -111,3 +111,40 @@ hashes, untouched saved wiring, pending-Liquid rejection and conflicting selecto
 errors. Existing physical-profile, pinmux and PRU tests remain unchanged and pass.
 Native Rust/image compilation and hardware acceptance of the new configuration
 are still pending.
+
+## Runtime routing support
+
+`operating_profile` in generated hardware runtime JSON is now read by firmware.
+Absent means legacy behavior; only `hybrid` and `hybrid-test` are recognized, both
+requiring the Hybrid physical wiring family. Unknown names or mismatched families
+fail initialization. Existing Cargo/Nix image builds still omit this selector;
+this runtime integration does not itself activate the new profiles.
+
+Hybrid-test policy suppresses the FSW background task and closes its forwarding
+receiver, so attempted remote forwards fail rather than queue for a future FSW
+connection. MQTT ignores FSW readings and receive-age state in this mode. Local
+ADC1 CH2/CH3 populate PT3/PT4; local SV2/MAV state populates their existing wire
+fields. Those state values are driver/command state, not physical position proof.
+Normal Hybrid leaves PT3/PT4 and those actuator fields owned by FSW.
+
+A pure routing layer returns an optional scaled reading for each assigned pressure
+and for LC1. Failed ADCs, missing scaling and nonfinite engineering values clear
+validity rather than publish an apparently valid zero. Existing MQTT mask bits
+0/1/2 remain PT1/PT2/LC1; opt-in test mode adds bits 3/4 for local PT3/PT4. Numeric
+wire fields still use zero placeholders when invalid; consumers must honor masks.
+Bus sample age remains separate from per-reading validity and can indicate an old
+last successful sample.
+
+LC2 on ADC2 CH2 is represented internally as optional raw counts/voltage only;
+scaled input is deliberately discarded even if supplied. Failure/nonfinite voltage
+makes it unavailable, and it is absent outside Hybrid-test. **LC2 is not yet in
+MQTT protobuf/storage/CSV or named UI fields.** Generic ADC WebSocket responses
+already contain the channel readings, but this is not a complete profile UI.
+The coherent LC2 protocol/storage/consumer block must land before new build/image
+selectors are enabled. Neither new profile is an accepted deployment candidate.
+
+Host tests exercise both Hybrid and Liquid Cargo configurations, real generated
+operating JSON into mock hardware, profile-family rejection, exact channel routing,
+FSW policy and failed/nonfinite ADCs. No serial/GPIO/I2C hardware or Linux native
+image was exercised. Physical FSW absence, local outputs/continuity, all sensor
+channels and full end-to-end LC2 telemetry remain later acceptance gates.
