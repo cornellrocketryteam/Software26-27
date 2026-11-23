@@ -530,3 +530,12 @@ Data received back from the Flight software, pushed to clients when `start_fsw_s
 * `connected`: True if the background task can communicate with the serial device.
 * `flight_mode`: Human readable string.
 * `telemetry`: The `FswTelemetry` packet (parsed from a `$TELEM,<54 fields>\n` CSV line emitted by the FSW over the umbilical) exposed as JSON variables.
+## Operating-profile report
+
+`get_operating_profile` returns `operating_profile` with `profile_version: 1`,
+`profile` (`hybrid`, `hybrid-test`, `legacy`) and `fsw_enabled` (false only for
+Hybrid-test). The same additive response is sent on connection after hardware
+availability. It identifies runtime policy, not full release/wiring identity.
+The current UI requires a recognized report before actuation; older firmware
+without the report remains read-only in that UI. See
+[commanding profiles](../../docs/operations/commanding-profiles.md).

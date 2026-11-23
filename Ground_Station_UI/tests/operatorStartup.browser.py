@@ -119,11 +119,11 @@ with sync_playwright() as p:
         page.wait_for_timeout(5200)  # Observe a scheduled read-only heartbeat.
         assert all(s == configured['fillStationWebSocketUrl']
                    for s in page.evaluate('window.testSockets.map(s => s.url)'))
-        assert set(page.evaluate('window.testCommands.map(c => c.command)')) == {'get_hardware_availability', 'heartbeat'}
+        assert set(page.evaluate('window.testCommands.map(c => c.command)')) == {'get_hardware_availability', 'get_operating_profile', 'heartbeat'}
         page.evaluate('window.testSockets.at(-1).close()')
         page.get_by_text('Fill station: disconnected', exact=True).wait_for()
         page.get_by_text('Fill station: connected', exact=True).wait_for()
-        assert set(page.evaluate('window.testCommands.map(c => c.command)')) == {'get_hardware_availability', 'heartbeat'}
+        assert set(page.evaluate('window.testCommands.map(c => c.command)')) == {'get_hardware_availability', 'get_operating_profile', 'heartbeat'}
         assert not external, external
         assert not errors, errors
         page.screenshot(path='/private/tmp/ground-operator-ui-configured.png', full_page=True)

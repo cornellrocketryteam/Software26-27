@@ -256,6 +256,15 @@ fn main() -> Result<()> {
 }
 
 /// Handle WebSocket connection lifecycle
+fn operating_profile_report(hw: &Hardware) -> CommandResponse {
+    let profile = match hw.routing_mode {
+        operating_runtime::RoutingMode::Legacy => "legacy",
+        operating_runtime::RoutingMode::Hybrid => "hybrid",
+        operating_runtime::RoutingMode::HybridTest => "hybrid-test",
+    };
+    CommandResponse::OperatingProfile { profile_version:1, profile:profile.into(), fsw_enabled:hw.routing_mode.fsw_enabled() }
+}
+
 async fn handle_socket(
     mut stream: WebSocketStream<Async<TcpStream>>,
     hardware: Arc<Mutex<Hardware>>,
@@ -278,6 +287,8 @@ async fn handle_socket(
     {
         return;
     }
+    let report = operating_profile_report(&*hardware.lock().await);
+    if send_response(&mut stream, report).await.is_err() { return; }
     info!("Client connected");
     active_client_count.fetch_add(1, Ordering::SeqCst);
 
@@ -439,6 +450,7 @@ async fn execute_command(
         return CommandResponse::DeviceUnavailable { devices: missing };
     }
     match command {
+        Command::GetOperatingProfile => operating_profile_report(&*hardware.lock().await),
         Command::GetHardwareAvailability => CommandResponse::HardwareAvailability {
             availability_version: 1,
             configured_devices_mask: hardware.lock().await.configured_devices_mask,
@@ -1700,5 +1712,19 @@ mod hardware_command_tests {
             assert_eq!(json["devices"], serde_json::json!(["ig1", "ig2"]));
             assert!(rx.try_recv().is_err());
         });
+    }
+}
+
+#[cfg(test)]
+mod operating_report_tests {
+    use super::*;
+    #[test]
+    fn report_is_versioned_and_matches_runtime_policy() {
+        for (mode,name,enabled) in [(operating_runtime::RoutingMode::Legacy,"legacy",true),
+            (operating_runtime::RoutingMode::Hybrid,"hybrid",true),(operating_runtime::RoutingMode::HybridTest,"hybrid-test",false)] {
+            let mut hw=Hardware::default(); hw.routing_mode=mode;
+            let report=serde_json::to_value(operating_profile_report(&hw)).unwrap();
+            assert_eq!(report,serde_json::json!({"type":"operating_profile","profile_version":1,"profile":name,"fsw_enabled":enabled}));
+        }
     }
 }

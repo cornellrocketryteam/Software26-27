@@ -24,6 +24,7 @@ buildNpmPackage {
     mkdir -p ../ground-station ../fill-station/hardware/profiles ../fill-station/src
     cp ${../../../../ground-station/grafana.json} ../ground-station/grafana.json
     cp ${../../../../fill-station/hardware/profiles/hybrid.json} ../fill-station/hardware/profiles/hybrid.json
+    cp ${../../../../fill-station/hardware/operating-profiles.json} ../fill-station/hardware/operating-profiles.json
     cp ${../../../../fill-station/src/command.rs} ../fill-station/src/command.rs
     npm test
     runHook postCheck

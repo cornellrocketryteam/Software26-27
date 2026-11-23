@@ -37,7 +37,7 @@ function Fixture() {
     socket.mask=mask;
     socket.dispatchEvent(new MessageEvent('message',{data:JSON.stringify({type:'hardware_availability',...value})}));
   };
-  return <AppContext.Provider value={{hardwareAvailability:availability,hardwareAvailabilityRef:availabilityRef,wsRef,currFlightMode:'Standby',setCurrFlightMode:()=>{},uri:'fixture://no-network',wsReady:connected,hasLaunched,setHasLaunched}}>
+  return <AppContext.Provider value={{operatingProfile:'legacy',operatingProfileRef:{current:'legacy'},hardwareAvailability:availability,hardwareAvailabilityRef:availabilityRef,wsRef,currFlightMode:'Standby',setCurrFlightMode:()=>{},uri:'fixture://no-network',wsReady:connected,hasLaunched,setHasLaunched}}>
     <div style={{padding:8,border:'3px solid teal',position:'sticky',top:0,background:'white',zIndex:100}}>
       <strong>Local fixture — no hardware connection</strong>{' '}
       <button onClick={()=>setMask(4095)}>All devices</button>{' '}

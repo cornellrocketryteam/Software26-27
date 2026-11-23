@@ -259,3 +259,15 @@ real temporary-file tests pass in Hybrid-test/Liquid suites. Later verify the
 actual board log mount/free space, sustained rate, channel/validity values,
 FSW disconnects and reboot retention. Periodic sync does not prove persistence.
 UI/Grafana variants remain next. See [CSV logging](../../fill-station/docs/CSV_LOGGING.md).
+
+
+## Profile-aware Commanding — November 23
+
+Board reports versioned operating policy; React keeps its existing look and routes
+SV2/MAV locally in Hybrid-test, with local PT3/PT4/LC2raw+voltage and no FSW-only
+controls. Normal Hybrid retains remote FSW controls. Unknown profile blocks sends,
+reconnect/mode changes disable interaction and delayed sends stay socket/mode bound.
+Read-only Recovery map remains usable; forwarding is guarded. Host policy/build,
+firmware and three production-preview mock-browser suites pass. No deployment or
+physical output validation; old boards need the new report before this UI can
+command them. Grafana variants remain next. See [guide](commanding-profiles.md).

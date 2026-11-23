@@ -1,3 +1,4 @@
+import {profileAllowsCommand} from "./operatingProfile";
 import Header from "./components/HeaderComponent";
 import ConfirmationOverlay from './components/ConfirmationOverlayComponent';
 import TargetMap from './components/TargetMapComponent';
@@ -16,7 +17,7 @@ export function RecoveryPage() {
     const [latitudeTar3, setLatitudeTar3] = useState("");
     const [longitudeTar3, setLongitudeTar3] = useState("");
     const [confirmedCoords, setConfirmedCoords] = useState<{lat_1: string, lng_1: string, lat_2: string, lng_2: string, lat_3: string, lng_3: string} | null>(null);
-    const { wsRef, wsReady, currFlightMode, stationConfig } = useAppContext();
+    const { operatingProfileRef, wsRef, wsReady, currFlightMode, stationConfig } = useAppContext();
 
     const toggleAction = (action: BasicAction) => {
         setPendingAction(action);
@@ -26,7 +27,7 @@ export function RecoveryPage() {
     const handleConfirm = () => {
         if (pendingAction !== null) {
             if(pendingAction === "OPEN_PAYLOAD"){
-                wsRef.current?.send(JSON.stringify({"command": "fsw_payload_n1"})); //Send command to extend payload, IMMEDIATELY, no checks needed.
+                if(profileAllowsCommand(operatingProfileRef.current,{command:"fsw_payload_n1"})) wsRef.current?.send(JSON.stringify({"command": "fsw_payload_n1"})); //Send command to extend payload, IMMEDIATELY, no checks needed.
             }
         }
         setShowConfirmation(false);
@@ -218,7 +219,7 @@ export function RecoveryPage() {
                                 const lon_tar2 = Number(longitudeTar2);
                                 setConfirmedCoords({lat_1: latitudeTar1, lng_1: longitudeTar1, lat_2: latitudeTar2, lng_2: longitudeTar2, lat_3: latitudeTar3, lng_3: longitudeTar3});
                             
-                                wsRef.current?.send(JSON.stringify({ "command": "fsw_set_blims_target", lat_tar1, lon_tar1, lat_tar2, lon_tar2 }));
+                                if(profileAllowsCommand(operatingProfileRef.current,{command:"fsw_set_blims_target"})) wsRef.current?.send(JSON.stringify({ "command": "fsw_set_blims_target", lat_tar1, lon_tar1, lat_tar2, lon_tar2 }));
                             }}
                             disabled={!latitudeTar1 || !longitudeTar1 || !latitudeTar2 || !longitudeTar2}
                             className="bg-[#5A87FF] border-[3px] border-black rounded-xl px-6 py-2 font-inter font-bold text-white text-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"

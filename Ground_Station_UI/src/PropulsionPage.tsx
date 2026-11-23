@@ -1,3 +1,4 @@
+import {profileCommand,profileAllowsCommand,testStandReadings,finiteReading} from "./operatingProfile";
 import { commandAvailable, hardwareRoles, readingAvailable, roleAvailable } from "./hardwareAvailability";
 import Header from "./components/HeaderComponent";
 import ButtonComponent from "./components/ButtonComponent";
@@ -124,7 +125,7 @@ export const usePropulsion = () => {
 };
 
 export function PropulsionPage() {
-    const { hardwareAvailability, hardwareAvailabilityRef, wsRef, wsReady, currFlightMode, hasLaunched, setHasLaunched} = useAppContext(); //The App's websocket refrence
+    const { operatingProfile, operatingProfileRef, hardwareAvailability, hardwareAvailabilityRef, wsRef, wsReady, currFlightMode, hasLaunched, setHasLaunched} = useAppContext(); //The App's websocket refrence
 
     const [hardwareError, setHardwareError] = useState('');
     const [sensorValues, setSensorValues] = useState<(number | null)[]>([null,null,null]);
@@ -140,6 +141,10 @@ export function PropulsionPage() {
         sessionStorage.setItem('hasLaunched', String(hasLaunched));
     }, [hasLaunched]);
 
+    const [additionalSensors,setAdditionalSensors]=useState({pt3:null as number|null,pt4:null as number|null,lc2Raw:null as number|null,lc2Voltage:null as number|null});
+    const testStand=operatingProfile==='hybrid-test';
+    const fswEnabled=operatingProfile!=='unknown' && !testStand;
+    useEffect(()=>{setAdditionalSensors({pt3:null,pt4:null,lc2Raw:null,lc2Voltage:null});},[operatingProfile,wsReady]);
     const pageActiveRef = useRef(false);
     const pendingActionRef = useRef<ValveKey | null>(null); // Use useRef to store the pending action for confirmation
     const adcDataRef = useRef<AdcDataMessage[]>([]); // Use useRef to store the latest ADC data received from the server
@@ -154,12 +159,12 @@ export function PropulsionPage() {
     const actuateSV1Open = { "command": "actuate_valve", "valve": "SV1", "open": true };
     const actuateSV1Close = { "command": "actuate_valve", "valve": "SV1", "open": false };
 
-    const actuateSV2Open = { "command": "fsw_open_sv" };
-    const actuateSV2Close = { "command": "fsw_close_sv" };
+    const actuateSV2Open = profileCommand(operatingProfile,"sv2",true);
+    const actuateSV2Close = profileCommand(operatingProfile,"sv2",false);
 
     //Mav comands: 
-    const actuateMavOpen = { "command": "fsw_open_mav" };
-    const actuateMavClose = { "command": "fsw_close_mav" };
+    const actuateMavOpen = profileCommand(operatingProfile,"mav",true);
+    const actuateMavClose = profileCommand(operatingProfile,"mav",false);
 
     //Ball Valve commands:
     const actuateBallValveOpen = { "command": "bv_open" };
@@ -182,7 +187,7 @@ export function PropulsionPage() {
 
     //Command categories for handling pending actions and state updates:
     const queryCommands = ["get_valve_state", "get_ball_valve_state"]; //Only command for state query
-    const actuationCommands = ["actuate_valve", "fsw_open_mav", "fsw_close_mav", "bv_open", "bv_close"]; //Set of commands that are used to change the state of the system
+    const actuationCommands = ["actuate_valve", "fsw_open_sv", "fsw_close_sv", "fsw_open_mav", "fsw_close_mav", "mav_open", "mav_close", "bv_open", "bv_close"]; //Set of commands that are used to change the state of the system
 
 
     //Stored Valve Data For UI Representation:
@@ -202,9 +207,12 @@ export function PropulsionPage() {
 
     //SEND COMMAND DELAY FUNCTION
     const sendCommandWithDelay = (param: any, delay: number) => {
+        if(!param) return;
+        const selectedProfile=operatingProfileRef.current;
         const socket = wsRef.current;
         setTimeout(() => {
             if (!pageActiveRef.current || socket !== wsRef.current || socket?.readyState !== WebSocket.OPEN) return;
+            if(selectedProfile!==operatingProfileRef.current || !profileAllowsCommand(selectedProfile,param)) return;
             if (actuationCommands.includes(param.command) && canInteractRef.current !== 'ENABLED') return;
             if (!commandAvailable(hardwareAvailabilityRef.current, param)) {
                 setHardwareError('Command unavailable: a required device is disabled in the hardware profile.');
@@ -243,6 +251,7 @@ export function PropulsionPage() {
         
     // Triggered when the user hits ‘Confirm’ in the overlay
     const handleKeyConfirm = () => {
+        if(!fswEnabled) return;
         if (pendingKeyAction === "KEY_ARM") {
             if (wsRef.current?.readyState !== WebSocket.OPEN || canInteractRef.current !== 'ENABLED') return;
             wsRef.current.send(JSON.stringify({"command": "fsw_key_arm"}));
@@ -293,6 +302,7 @@ export function PropulsionPage() {
                     sendCommandWithDelay(actuateSV2Open, buttondelay);
                 }
 
+                if(testStand) sendCommandWithDelay({command:"get_valve_state",valve:"SV2"},buttondelay+50);
                 console.log(`Toggling Solenoid Valve 2 to ${!valveDataRef.current.SV2.actuated ? 'OPEN' : 'CLOSED'}`);
                 break;
 
@@ -302,6 +312,7 @@ export function PropulsionPage() {
                 } else if (!valveDataRef.current.MAV.actuated && action === 'OPEN') { 
                     sendCommandWithDelay(actuateMavOpen, buttondelay); 
                 }
+                if(testStand) sendCommandWithDelay({command:"get_mav_state"},buttondelay+50);
                 break;
             
             //For BV and QD, if the query commands for both aren't working, just fall back to the custom query function to update the state after the actuation command
@@ -333,6 +344,7 @@ export function PropulsionPage() {
                 break;
 
             case "adc_data":
+                if(testStand) setAdditionalSensors(testStandReadings(operatingProfile,data));
                 setSensorValues([
                     readingAvailable(data,0) ? data.adc1?.[0]?.scaled ?? null : null,
                     readingAvailable(data,1) ? data.adc1?.[1]?.scaled ?? null : null,
@@ -346,6 +358,9 @@ export function PropulsionPage() {
                 break;
 
             case "fsw_telemetry":
+                if(!fswEnabled) break;
+                setAdditionalSensors({pt3:data.connected?finiteReading(data.telemetry?.pt3):null,
+                    pt4:data.connected?finiteReading(data.telemetry?.pt4):null,lc2Raw:null,lc2Voltage:null});
                 if (umbilicalDataRef.current.length > 500) { //Limit the size of the ADC data array to prevent memory issues, adjust as needed based on how much data you want to keep track of
                     umbilicalDataRef.current.shift();   //Remove the oldest entry when we exceed the limit
                 }
@@ -376,11 +391,17 @@ export function PropulsionPage() {
                         SV1: { "actuated": data.open, "continuity": data.continuity }
                     }));
                 }
+                if (data.valve === "SV2" && testStand) {
+                    updateValveData(prev=>({...prev,SV2:{...prev.SV2,actuated:data.open,continuity:data.continuity}}));
+                }
                 if (data.valve === "SV5") {
                     updateValveData(prev => ({...prev, QD: {energized: data.open}}));
                 }
                 break;
 
+            case "mav_state":
+                if(testStand) updateValveData(prev=>({...prev,MAV:{actuated:data.open,angle:0,pulseWidth:data.pulse_width_us}}));
+                break;
             case "ball_valve_state":
                 updateValveData(prevState => ({
                     ...prevState,
@@ -419,9 +440,10 @@ export function PropulsionPage() {
             sendCommandWithDelay(getSVstate1, 50);
             sendCommandWithDelay(getBallValveState, 50);
             sendCommandWithDelay(getQdState, 50);
+            if(testStand) {sendCommandWithDelay({command:"get_valve_state",valve:"SV2"},50);sendCommandWithDelay({command:"get_mav_state"},50);}
             sendCommandWithDelay(heartbeatCommand, buttondelay);
             sendCommandWithDelay(startADCStream, buttondelay);
-            sendCommandWithDelay(startFSWStream, buttondelay);
+            if(fswEnabled) sendCommandWithDelay(startFSWStream, buttondelay);
             console.log("Command batch finished");
 
             heartbeatInterval = setInterval(() => {
@@ -435,6 +457,7 @@ export function PropulsionPage() {
                     sendCommandWithDelay(getSVstate1, 50);
                     sendCommandWithDelay(getBallValveState, 50);
                     sendCommandWithDelay(getQdState, 50);
+                    if(testStand) {sendCommandWithDelay({command:"get_valve_state",valve:"SV2"},50);sendCommandWithDelay({command:"get_mav_state"},50);}
                 }
             }, 3000);
         };
@@ -456,22 +479,22 @@ export function PropulsionPage() {
             socket?.removeEventListener('message', handleMessage);
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify(stopADCStream));
-                wsRef.current.send(JSON.stringify(stopFSWStream));
+                if(fswEnabled) wsRef.current.send(JSON.stringify(stopFSWStream));
             }
             console.log("Propulsion cleanup.");
         };
-    }, [wsReady]); // Re-run effect if WebSocket connection status changes
+    }, [wsReady,operatingProfile]); // Re-run effect if WebSocket connection status changes
 
     useEffect(() => {
+        setButtonInteractionState('DISABLED');
+        canInteractRef.current = 'DISABLED';
+        setShowKeyConfirmation(false);
         if (!wsReady) {
-            setButtonInteractionState('DISABLED');
-            canInteractRef.current = 'DISABLED';
-            setShowKeyConfirmation(false);
             setSensorValues([null, null, null]);
             adcDataRef.current = [];
             umbilicalDataRef.current = [];
         }
-    }, [wsReady]);
+    }, [wsReady,operatingProfile]);
 
     return (
         <PropulsionContext.Provider value={{ hasLaunched, setHasLaunched, canInteractRef, buttonInteractionState, setButtonInteractionState, valveDataRef, handleButtonClickRef, valveData, adcDataRef: adcDataRef, telemetryDataRef: umbilicalDataRef }}>
@@ -487,19 +510,21 @@ export function PropulsionPage() {
 
                 <div className="px-8 pt-4" role="status">
                     {hardwareAvailability && hardwareRoles.filter(role => !roleAvailable(hardwareAvailability,role)).length > 0 &&
-                        <p>Unavailable hardware: {hardwareRoles.filter(role => !roleAvailable(hardwareAvailability,role)).join(', ')}</p>}
+                        <p>Unavailable local hardware: {hardwareRoles.filter(role => !roleAvailable(hardwareAvailability,role)).join(', ')}</p>}
                     {hardwareError && <p role="alert">{hardwareError}</p>}
-                    <p>PT1: {sensorValues[0] ?? 'Unavailable'} PSI · PT2: {sensorValues[1] ?? 'Unavailable'} PSI · QD release energizes SV5; output off does not reconnect it.</p>
+                    <p>Profile: {operatingProfile} · PT1: {sensorValues[0] ?? 'Unavailable'} PSI · PT2: {sensorValues[1] ?? 'Unavailable'} PSI · QD release energizes SV5; output off does not reconnect it.</p>
+                    <p>PT3: {additionalSensors.pt3 ?? 'Unavailable'} PSI · PT4: {additionalSensors.pt4 ?? 'Unavailable'} PSI · LC1: {sensorValues[2] ?? 'Unavailable'} (existing calibration)</p>
+                    {testStand && <p>LC2: {additionalSensors.lc2Raw ?? 'Unavailable'} raw · {additionalSensors.lc2Voltage ?? 'Unavailable'} V (uncalibrated)</p>}
                 </div>
                 {/* Main Content */}
                 <div className="flex gap-5 p-8">
                     {/* Left Column */}
-                    <div className="flex-1 flex flex-col gap-8">
+                    <div style={{display:fswEnabled?undefined:'none'}} className="flex-1 flex flex-col gap-8">
                         {/* Key Arm Toggle */}
                         <div className="bg-[#D9D9D9] border-[6px] border-black rounded-3xl p-5 flex flex-col gap-4">
                             <h2 className="text-2xl font-inter font-semibold"> Flight Software Key:</h2>
                             <button
-                                disabled={!wsReady || buttonInteractionState !== 'ENABLED'}
+                                disabled={!wsReady || !fswEnabled || buttonInteractionState !== 'ENABLED'}
                                 onClick={() => toggleKeyAction(isKeyArmed ? "KEY_DISARM" : "KEY_ARM")}
                                 className={`${isKeyArmed ? "bg-red-500" : "bg-[#5A87FF]"} border-[6px] border-black rounded-2xl w-full py-4 font-inter font-bold text-3xl text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
@@ -514,16 +539,16 @@ export function PropulsionPage() {
                         <div className="bg-[#D9D9D9] border-[6px] border-black rounded-3xl p-5">
                             <h2 className="text-2xl font-inter font-semibold"> Fill Station Commands:</h2>
                             <div className="grid grid-cols-2 gap-[25px]">
-                                <ButtonComponent available={roleAvailable(hardwareAvailability,'sv1')} buttonName="Solenoid Valve 1" currentState={valveData.SV1.actuated} actuationLock='LOCKED' />
-                                <ButtonComponent buttonName="Solenoid Valve 2" currentState={valveData.SV2.actuated} actuationLock='LOCKED' />
-                                <ButtonComponent available={roleAvailable(hardwareAvailability,'ball_valve')} buttonName="Ball Valve" currentState={valveData.BV.actuated} actuationLock='UNLOCKED' />
-                                <ButtonComponent buttonName="MAV" currentState={valveData.MAV.actuated} actuationLock='LOCKED' />
-                                <ButtonComponent available={roleAvailable(hardwareAvailability,'sv5')} buttonName="Quick Disconnect" currentState={valveData.QD.energized} actuationLock='UNLOCKED' />
-                                <ButtonComponent available={roleAvailable(hardwareAvailability,'ig1') && roleAvailable(hardwareAvailability,'ig2')} buttonName="Launch Button" actuationLock='UNLOCKED' />
+                                <ButtonComponent available={operatingProfile!=='unknown' && roleAvailable(hardwareAvailability,'sv1')} buttonName="Solenoid Valve 1" currentState={valveData.SV1.actuated} actuationLock='LOCKED' />
+                                <ButtonComponent available={operatingProfile!=='unknown' && (!testStand || roleAvailable(hardwareAvailability,'sv2'))} buttonName="Solenoid Valve 2" currentState={valveData.SV2.actuated} actuationLock='LOCKED' />
+                                <ButtonComponent available={operatingProfile!=='unknown' && roleAvailable(hardwareAvailability,'ball_valve')} buttonName="Ball Valve" currentState={valveData.BV.actuated} actuationLock='UNLOCKED' />
+                                <ButtonComponent available={operatingProfile!=='unknown' && (!testStand || roleAvailable(hardwareAvailability,'mav'))} buttonName="MAV" currentState={valveData.MAV.actuated} actuationLock='LOCKED' />
+                                <ButtonComponent available={operatingProfile!=='unknown' && roleAvailable(hardwareAvailability,'sv5')} buttonName="Quick Disconnect" currentState={valveData.QD.energized} actuationLock='UNLOCKED' />
+                                <ButtonComponent available={operatingProfile!=='unknown' && roleAvailable(hardwareAvailability,'ig1') && roleAvailable(hardwareAvailability,'ig2')} buttonName="Launch Button" actuationLock='UNLOCKED' />
                             </div>
                         </div>
                         {/* General System Commands */}
-                        <div className="bg-[#D9D9D9] border-[6px] border-black flex flex-col rounded-3xl p-5">
+                        <div style={{display:fswEnabled?undefined:'none'}} className="bg-[#D9D9D9] border-[6px] border-black flex flex-col rounded-3xl p-5">
                             <h2 className="text-2xl font-inter font-semibold"> General Purpose Commands:</h2>
                             <div className="grid grid-cols-2 gap-[25px]">
                                 <ButtonComponent buttonName="Reset FRAM" actuationLock='UNLOCKED'  />

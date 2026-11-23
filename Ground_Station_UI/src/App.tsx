@@ -1,3 +1,5 @@
+import {profileFromMessage} from './operatingProfile';
+import type {OperatingProfile} from './operatingProfile';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import PropulsionPage from './PropulsionPage';
@@ -11,6 +13,8 @@ import { DEFAULT_STATION_CONFIG } from './runtimeConfig';
 import type { StationConfig } from './runtimeConfig';
 
 type AppContextType = {
+  operatingProfile: OperatingProfile;
+  operatingProfileRef: React.RefObject<OperatingProfile>;
   hardwareAvailability: HardwareAvailability;
   hardwareAvailabilityRef: React.RefObject<HardwareAvailability>;
   wsRef: React.RefObject<WebSocket | null>;
@@ -37,6 +41,8 @@ export const useAppContext = () => {
 function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
   config?: StationConfig; configError?: string | null;
 }) {
+  const [operatingProfile,setOperatingProfile]=useState<OperatingProfile>('unknown');
+  const operatingProfileRef=useRef<OperatingProfile>('unknown');
   const wsRef = useRef<WebSocket | null>(null);
   const [hardwareAvailability, setHardwareAvailability] = useState<HardwareAvailability>(null);
   const hardwareAvailabilityRef = useRef<HardwareAvailability>(null);
@@ -56,6 +62,8 @@ function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
     try { data = JSON.parse(event.data); }
     catch { return; }
     if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+    const profile=profileFromMessage(data);
+    if(profile!==undefined) { operatingProfileRef.current=profile;setOperatingProfile(profile); }
     const availability = availabilityFromMessage(data);
     if (availability !== undefined) {
       hardwareAvailabilityRef.current = availability;
@@ -91,7 +99,9 @@ function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
           active.onopen = () => {
                 if (disposed || wsRef.current !== active) return;
                 console.log("WebSocket connection established.");
+                operatingProfileRef.current='unknown'; setOperatingProfile('unknown');
                 setWsReady(true);
+                active.send(JSON.stringify({command:"get_operating_profile"}));
                 active.send(JSON.stringify({command:"get_hardware_availability"}));
                 // Global heartbeat — keeps the connection alive on every page.
                 // Server disconnects after 15s without one (main.rs:231).
@@ -108,6 +118,7 @@ function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
                 wsRef.current = null;
                 console.log("WebSocket closed. Reconnecting in 3 seconds...");
                 clearInterval(heartbeatInterval);
+                operatingProfileRef.current='unknown';setOperatingProfile('unknown');
                 setWsReady(false);
                 hardwareAvailabilityRef.current = null;
                 setHardwareAvailability(null);
@@ -137,7 +148,7 @@ function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
         };
     }, [uri, handleMessage]);
   return (
-    <AppContext.Provider value={{hardwareAvailability, hardwareAvailabilityRef, hasLaunched, setHasLaunched, setCurrFlightMode, currFlightMode, wsRef, uri: uri, wsReady, stationConfig: config}}>
+    <AppContext.Provider value={{operatingProfile, operatingProfileRef, hardwareAvailability, hardwareAvailabilityRef, hasLaunched, setHasLaunched, setCurrFlightMode, currFlightMode, wsRef, uri: uri, wsReady, stationConfig: config}}>
       <aside role="status" className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b-2 border-black bg-[#F9F9EB] px-8 py-2 text-sm font-semibold">
         <span>Fill station: {!uri ? 'not configured' : wsReady ? 'connected' : 'disconnected'}</span>
         {!config.map.tilesConfigured && <span>Offline maps: not configured</span>}
@@ -150,7 +161,7 @@ function App({ config = DEFAULT_STATION_CONFIG, configError = null }: {
           <Route path="/test-stand" element={<PropulsionPage />} />
           <Route path="/stations" element={<LandingPage />} />
           <Route path="/propulsion" element={<PropulsionPage />} />
-          <Route path="/recovery" element={<RecoveryPage />} />
+          <Route path="/recovery" element={operatingProfile==='hybrid-test' ? <p>Hybrid-test has no FSW recovery controls. <a href="/propulsion">Return to commanding</a></p> : <RecoveryPage />} />
           <Route path="/network" element={<NetworkDevicesPage />} />
         </Routes>
       </BrowserRouter>

@@ -13,6 +13,7 @@ MOCK='''(() => {
   constructor(){super();window.sockets.push(this);setTimeout(()=>{this.readyState=1;this.onopen?.({});},10);}
   emit(m){setTimeout(()=>{if(window.reports)this.dispatchEvent(new MessageEvent('message',{data:JSON.stringify(m)}));},0);}
   send(raw){const m=JSON.parse(raw);window.sent.push(m);
+   if(m.command==='get_operating_profile') this.emit({type:'operating_profile',profile_version:1,profile:'hybrid',fsw_enabled:true});
    if(m.command==='get_hardware_availability'||m.command==='start_adc_stream') {
     this.emit({type:'hardware_availability',availability_version:1,configured_devices_mask:4095});
     this.emit({type:'adc_data',timestamp_ms:stamp++,availability_version:1,configured_devices_mask:4095,

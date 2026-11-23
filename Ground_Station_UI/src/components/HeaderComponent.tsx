@@ -21,7 +21,7 @@ export default function Header({
         setButtonInteractionState
     }: HeaderProps) {
     const navigate = useNavigate();
-    const { hasLaunched, wsReady } = useAppContext(); // Shared launch and connection state
+    const { hasLaunched, wsReady, operatingProfile } = useAppContext(); // Shared launch and connection state
 
     const isPropulsionPage = pageTitle === "Propulsion Page";
     const isRecoveryPage = pageTitle === "Recovery & Payload Page";
@@ -40,11 +40,11 @@ export default function Header({
 
                 {/* CENTER: Rocket State + Display Toggle */}
                 <div className="flex flex-row items-center gap-4 justify-center">
-                    <div className="rounded-xl bg-white border-[3px] border-black px-6 py-2 shadow text-lg font-semibold">
+                    {operatingProfile!=='hybrid-test' && operatingProfile!=='unknown' && <div className="rounded-xl bg-white border-[3px] border-black px-6 py-2 shadow text-lg font-semibold">
                         Curr Rocket State: {currFlightMode}
-                    </div>
+                    </div>}
                     {isPropulsionPage && (<button 
-                        disabled = {!wsReady || hasLaunched} // Disable interaction toggle when fill UI is active
+                        disabled = {!wsReady || operatingProfile==='unknown' || hasLaunched} // Disable interaction toggle when fill UI is active
                         onClick={() => {
                             if(canInteractRef?.current === "DISABLED"){
                                 setButtonInteractionState?.("ENABLED");
@@ -64,7 +64,7 @@ export default function Header({
 
                 {/* RIGHT: Navigation Button */}
                 <div className="flex items-center gap-4 flex-1 justify-end">
-                    {isPropulsionPage && (
+                    {isPropulsionPage && operatingProfile!=='hybrid-test' && operatingProfile!=='unknown' && (
                         <button onClick={
                             () => {
                                 navigate("/recovery")

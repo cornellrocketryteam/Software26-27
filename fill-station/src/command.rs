@@ -26,6 +26,7 @@ pub enum Command {
     /// Fire igniters and send launch command to FSW simultaneously
     Launch,
     GetHardwareAvailability,
+    GetOperatingProfile,
     Ignite,
     /// Query continuity for a specific igniter (1 or 2)
     GetIgniterContinuity {
@@ -148,6 +149,7 @@ pub enum CommandResponse {
     DeviceUnavailable {
         devices: Vec<String>,
     },
+    OperatingProfile { profile_version: u32, profile: String, fsw_enabled: bool },
     HardwareAvailability {
         availability_version: u32,
         configured_devices_mask: u32,
