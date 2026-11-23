@@ -201,3 +201,14 @@ arrival time. Host generated-SQL and partition tests pass; real Grafana browser,
 Timescale query performance and deployment remain pending. Follow
 [Grafana session acceptance](grafana-sessions.md); selected historical values are
 not a freshness indication.
+
+
+## Operating-profile compiler — November 23
+
+Opt-in effective Hybrid/Hybrid-test compiler implemented and host-tested. It
+filters local devices before existing pinmux/runtime validation, preserves retained
+connectors, and emits definition/base/effective wiring identities. Existing image
+builds are unchanged. No Hybrid-test image or second-load-cell telemetry is ready
+yet: runtime sensor routing, FSW gating, protocol/client/storage additions and
+paired build selectors precede physical deployment. See
+[operating-profile compiler](../../fill-station/docs/OPERATING_PROFILES.md#effective-wiring-compiler).

@@ -70,3 +70,44 @@ ownership and ADC semantics, disable FSW startup for standalone operation, and b
 minimal profile-specific Commanding/Grafana views. No automatic fill or replacement
 UI design is planned. Physical channel/calibration/commanding acceptance remains
 separate from the host tests of these definitions.
+
+## Effective wiring compiler
+
+The compiler now accepts an opt-in operating selector, separately from the
+existing physical-profile selector:
+
+```sh
+python3 fill-station/hardware/compiler.py --operating-profile hybrid --output /tmp/hybrid-effective
+python3 fill-station/hardware/compiler.py --operating-profile hybrid-test --output /tmp/hybrid-test-effective
+```
+
+Run these from the repository root. They produce pinmux/runtime files plus
+`operating-profile.json`, containing the validated operating definition and
+separate SHA256 identities for the definition, base wiring and effective wiring.
+These are configuration identities, not a complete firmware/release identity.
+The runtime JSON also records `operating_profile`; consumers still need explicit
+support for its sensor ownership/routing contract.
+
+The compiler copies saved physical wiring, disables the definition's named local
+devices and runs the existing hardware/pinmux validation. It preserves connectors,
+GPIO polarity, ADC addresses and settings of retained devices. Hybrid retains
+local IG1/IG2, ADC1/ADC2, SV1, QD/SV5 and BV; Hybrid-test additionally retains SV2
+and MAV. Neither includes local SV3/SV4. Sensor channel ownership and calibration
+status remain in the emitted operating definition, rather than being guessed
+from enabled ADC hardware. Liquid's pending semantic mapping is rejected by this
+new selector; existing `--profile liquid` builds remain available unchanged.
+
+This is not firmware activation. Existing Cargo/Nix builds still invoke
+`--profile`, and no deployable Hybrid-test target is exposed yet. The MQTT
+publisher currently has hardcoded PT1/PT2/LC1 extraction and the application
+starts FSW monitoring unconditionally. Next integration must consume the contract,
+route local PT3/PT4, add raw/voltage LC2 with explicit validity, disable FSW on the
+test stand, and carry matching metadata through codecs/storage/client consumers.
+Only then pair the Cargo and Nix image/pinmux selectors and deploy a test image.
+Do not flash these standalone generated files as a complete image.
+
+Checks cover exact local roles/masks, retained connector equality, deterministic
+hashes, untouched saved wiring, pending-Liquid rejection and conflicting selector
+errors. Existing physical-profile, pinmux and PRU tests remain unchanged and pass.
+Native Rust/image compilation and hardware acceptance of the new configuration
+are still pending.

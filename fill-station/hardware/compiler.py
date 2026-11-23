@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compile the shared SK-AM64B hardware profile for Rust, Linux and the editor."""
 import argparse
+import copy
 from collections import defaultdict
 import importlib.util
 import json
@@ -24,6 +25,36 @@ def load_profile(name):
     if name not in ('liquid', 'hybrid'):
         raise ValueError('profile must be liquid or hybrid')
     return json.loads((HERE / 'profiles' / f'{name}.json').read_text())
+
+
+def compile_operating_profile(name):
+    """Compile effective local wiring; runtime sensor routing still needs adoption."""
+    spec = importlib.util.spec_from_file_location('operating_profiles', HERE / 'operating_profiles.py')
+    contract = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(contract)
+    profiles = contract.load_profiles()
+    if name not in profiles:
+        raise ValueError('unknown operating profile')
+    definition = copy.deepcopy(profiles[name])
+    if definition['mappingStatus'] != 'specified':
+        raise ValueError('operating mapping is pending; keep the existing hardware profile')
+    base = load_profile(definition['hardwareProfile'])
+    effective = copy.deepcopy(base)
+    disabled = set(definition['disabledLocalDeviceIds'])
+    for device in effective['devices']:
+        if device['id'] in disabled:
+            device['enabled'] = False
+    result = compile_profile(effective)
+    result['runtime']['operating_profile'] = name
+    result['operating'] = {
+        'schemaVersion': 1,
+        'scope': 'effective-wiring; runtime sensor/FSW routing requires separate integration',
+        'definition': definition,
+        'definitionSha256': contract.profile_digest(definition),
+        'baseWiringSha256': contract.profile_digest(base),
+        'effectiveWiringSha256': contract.profile_digest(effective),
+    }
+    return result
 
 
 def keys(obj, allowed, required, context):
@@ -203,11 +234,15 @@ def compile_profile(profile):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--profile', choices=['liquid','hybrid','none'], required=True)
+    selector = parser.add_mutually_exclusive_group(required=True)
+    selector.add_argument('--profile', choices=['liquid','hybrid','none'])
+    selector.add_argument('--operating-profile', choices=['hybrid','hybrid-test','liquid'])
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.profile == 'none':
+        if args.operating_profile:
+            result = compile_operating_profile(args.operating_profile)
+        elif args.profile == 'none':
             result = {'runtime': {'version':1,'profile':'none','devices':[],'configured_devices_mask':0}}
         else:
             result = compile_profile(load_profile(args.profile))
@@ -216,6 +251,8 @@ def main():
             if key in result: (args.output / name).write_text(result[key])
         for name, key in [('pinmux-report.json','report'), ('expectations.json','expectations'), ('hardware-runtime.json','runtime')]:
             if key in result: (args.output / name).write_text(json.dumps(result[key],indent=2)+'\n')
+        if 'operating' in result:
+            (args.output / 'operating-profile.json').write_text(json.dumps(result['operating'], indent=2) + '\n')
         runtime_json = json.dumps(result['runtime'], separators=(',', ':'))
         (args.output / 'hardware_config.rs').write_text('pub const HARDWARE_CONFIG_JSON: &str = ' + json.dumps(runtime_json) + ';\n')
     except (ValueError, KeyError, TypeError) as exc:
