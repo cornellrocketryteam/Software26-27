@@ -101,6 +101,11 @@ SELECT
     false as fsw_receive_age_valid,
     0 as source_time_generation,
 
+    0 as load_cell_2_raw,
+    0 as load_cell_2_voltage,
+    false as load_cell_2_valid,
+    0 as operating_profile,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/raw/0")
     int(nth(3, split(topic, '/'))) as unit_id
   

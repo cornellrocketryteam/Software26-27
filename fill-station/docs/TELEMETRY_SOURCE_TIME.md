@@ -118,3 +118,10 @@ The candidate now runs a supervised BusyBox LAN time client against the station.
 This does not establish externally verified UTC or peer freshness; kernel quality
 and offline local reference must retain their stated uncertainty. See
 [LAN time deployment and acceptance](../../docs/operations/lan-time.md).
+
+
+Source metadata version 2 now extends version 1 for opt-in Hybrid-test with LC2
+raw/voltage/validity and operating-profile code2. Existing producers remain v1;
+session/time semantics are unchanged. Migration004 includes extensions in v2
+fingerprints without modifying v1 receipts. See
+[the v2 contract and acceptance](../../docs/operations/lc2-telemetry.md).

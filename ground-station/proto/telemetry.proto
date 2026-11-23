@@ -101,4 +101,10 @@ message TelemetryPayload {
     uint64 fsw_receive_age_ms = 79;
     bool fsw_receive_age_valid = 80;
     uint32 source_time_generation = 81;
+    // Source metadata v2: uncalibrated Hybrid-test LC2, ADC2 CH2.
+    sint32 load_cell_2_raw = 82;
+    double load_cell_2_voltage = 83;
+    bool load_cell_2_valid = 84;
+    // 0=legacy/unspecified; 1=Hybrid; 2=Hybrid-test; 3=Liquid (future).
+    uint32 operating_profile = 85;
 }

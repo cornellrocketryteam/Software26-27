@@ -40,3 +40,5 @@ is pending. See [LAN time](lan-time.md). No latest candidate has been deployed.
 
 Generated Grafana now has explicit session selection and sequence-based latest
 fill values; deployment/browser acceptance is pending. See [session guide](grafana-sessions.md).
+
+LC2 v2 MQTT/storage support is implemented and host-tested; native/image activation, live broker/ADC, profile UI and CSV remain pending. See [LC2](lc2-telemetry.md).

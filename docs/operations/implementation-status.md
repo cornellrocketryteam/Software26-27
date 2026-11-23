@@ -224,3 +224,14 @@ pending, so no new image selector is enabled. Existing builds stay legacy. Host
 Cargo Hybrid/Liquid and generated-config mock initialization checks pass; actual
 Linux/serial/ADC/actuator and end-to-end LC2 acceptance remain pending. See
 [the runtime guide](../../fill-station/docs/OPERATING_PROFILES.md#runtime-routing-support).
+
+
+## LC2 versioned telemetry — November 23
+
+Opt-in Hybrid-test now publishes source metadata v2 with LC2 raw/voltage/validity
+and profile code2. Migration004/rule/action persist it with v2 duplicate integrity
+while retaining v1 fingerprints. Local test-stand PT3/PT4/SV2/MAV placeholders
+normalize to unavailable using their masks. Existing images stay v1; no new image
+selector is enabled. Host PG/codec/Cargo checks pass; EMQX/Timescale/native ARM,
+real ADC, UI/CSV and deployment remain pending. Follow
+[LC2 acceptance](lc2-telemetry.md) before enabling a combined producer candidate.

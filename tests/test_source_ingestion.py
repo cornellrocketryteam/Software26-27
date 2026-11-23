@@ -56,6 +56,7 @@ class SourceIngestionDatabase(unittest.TestCase):
         cls.sql(MIGRATION.read_text());cls.sql(MIGRATION.read_text())
         cls.legacy_migration=cls.sql('SELECT time,pt_1_pressure,source_metadata_version,source_event_time IS NULL,received_at IS NULL FROM telemetry_data;')
         cls.sql((GS/'migrations/003-session-queries.sql').read_text())
+        cls.sql((GS/'migrations/004-lc2-telemetry.sql').read_text())
         cls.sql((GS/'provisioning/roles.sql').read_text(),env={**os.environ,'CRT_INGEST_PASSWORD':'fixture-only-ingest','CRT_READER_PASSWORD':'fixture-only-reader'})
 
     @classmethod
@@ -173,7 +174,7 @@ class SourceIngestionDatabase(unittest.TestCase):
 
     def test_legacy_unsupported_and_malformed_source_headers_keep_arrival_semantics(self):
         self.sql(self.insert(source_metadata_version=0))
-        self.sql(self.insert(source_metadata_version=2))
+        self.sql(self.insert(source_metadata_version=99))
         self.sql(self.insert(hi=0,lo=0))
         self.assertEqual(self.sql('SELECT count(*) FROM telemetry_data;'),'3')
         self.assertEqual(self.sql('SELECT count(*) FROM ground_telemetry_private.source_receipts;'),'0')

@@ -260,7 +260,15 @@ pub async fn start_mqtt_publisher(
             payload.mav_open = hw.mav().is_some_and(|mav| mav.is_open());
         }
 
-        payload.source_metadata_version = 1;
+        payload.source_metadata_version = if routing_mode == RoutingMode::HybridTest { 2 } else { 1 };
+        if routing_mode == RoutingMode::HybridTest {
+            payload.operating_profile = 2;
+            if let Some(lc2) = routed.load_cell_2 {
+                payload.load_cell_2_raw = i32::from(lc2.raw);
+                payload.load_cell_2_voltage = f64::from(lc2.voltage);
+                payload.load_cell_2_valid = true;
+            }
+        }
         payload.publisher_session_hi = source.session_hi;
         payload.publisher_session_lo = source.session_lo;
         payload.publisher_sequence = source.sequence;

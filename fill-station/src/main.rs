@@ -74,7 +74,7 @@ const ADC1_SCALING: [Option<(f32, f32)>; 4] = [
 const ADC2_SCALING: [Option<(f32, f32)>; 4] = [
     Some((PT1500_SCALE, PT1500_OFFSET)),     // Ch0: PT5
     Some((LOADCELL_SCALE, LOADCELL_OFFSET)), // Ch1: Load Cell
-    None,                                    // Ch2: unused
+    None,                                    // Ch2: Hybrid-test LC2 raw/voltage only
     None,                                    // Ch3: unused
 ];
 

@@ -137,10 +137,9 @@ last successful sample.
 
 LC2 on ADC2 CH2 is represented internally as optional raw counts/voltage only;
 scaled input is deliberately discarded even if supplied. Failure/nonfinite voltage
-makes it unavailable, and it is absent outside Hybrid-test. **LC2 is not yet in
-MQTT protobuf/storage/CSV or named UI fields.** Generic ADC WebSocket responses
+makes it unavailable, and it is absent outside Hybrid-test. **LC2 now has MQTT protobuf/storage fields (source v2); CSV and named UI fields remain pending.** Generic ADC WebSocket responses
 already contain the channel readings, but this is not a complete profile UI.
-The coherent LC2 protocol/storage/consumer block must land before new build/image
+The remaining LC2 consumer and profile build integration must land before new build/image
 selectors are enabled. Neither new profile is an accepted deployment candidate.
 
 Host tests exercise both Hybrid and Liquid Cargo configurations, real generated
@@ -148,3 +147,5 @@ operating JSON into mock hardware, profile-family rejection, exact channel routi
 FSW policy and failed/nonfinite ADCs. No serial/GPIO/I2C hardware or Linux native
 image was exercised. Physical FSW absence, local outputs/continuity, all sensor
 channels and full end-to-end LC2 telemetry remain later acceptance gates.
+
+LC2 wire/storage integration is now implemented: see [the v2 contract](../../docs/operations/lc2-telemetry.md). Earlier compiler-only/runtime-only limitations above describe those earlier blocks. No new image selector or physical acceptance is implied.

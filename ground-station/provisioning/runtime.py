@@ -169,6 +169,7 @@ def database(docker, assets, attempts=30):
            + (assets / "migrations/001-hardware-availability.sql").read_text()
            + "\n" + (assets / "migrations/002-source-metadata.sql").read_text()
            + "\n" + (assets / "migrations/003-session-queries.sql").read_text()
+           + "\n" + (assets / "migrations/004-lc2-telemetry.sql").read_text()
            + "\n" + (assets / "provisioning/roles.sql").read_text()
            + "\nSELECT pg_advisory_unlock(7162738);\n")
     result = _run([docker, "exec", "-i", "ground-timescaledb", "psql", "-X", "-U", "postgres",
@@ -226,7 +227,7 @@ def build_assets(source, output, cameras=False):
     source, output = Path(source), Path(output)
     for relative in ["create-telemetry-table.sql", "emqx_action.sql", "emqx_rule.sql",
                      "emqx_rule_fill_station.sql", "proto/telemetry.proto",
-                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "migrations/003-session-queries.sql", "provisioning/roles.sql"]:
+                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "migrations/003-session-queries.sql", "migrations/004-lc2-telemetry.sql", "provisioning/roles.sql"]:
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / relative, target)

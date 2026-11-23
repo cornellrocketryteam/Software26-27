@@ -108,6 +108,11 @@ SELECT
     CASE WHEN is_null(payload.fsw_receive_age_valid) THEN false ELSE payload.fsw_receive_age_valid END as fsw_receive_age_valid,
     CASE WHEN is_null(payload.source_time_generation) THEN 0 ELSE payload.source_time_generation END as source_time_generation,
 
+    CASE WHEN is_null(payload.load_cell_2_raw) THEN 0 ELSE payload.load_cell_2_raw END as load_cell_2_raw,
+    CASE WHEN is_null(payload.load_cell_2_voltage) THEN 0 ELSE payload.load_cell_2_voltage END as load_cell_2_voltage,
+    CASE WHEN is_null(payload.load_cell_2_valid) THEN false ELSE payload.load_cell_2_valid END as load_cell_2_valid,
+    CASE WHEN is_null(payload.operating_profile) THEN 0 ELSE payload.operating_profile END as operating_profile,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/pb/0")
     int(nth(3, split(topic, '/'))) as unit_id
 

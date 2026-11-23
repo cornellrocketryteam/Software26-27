@@ -128,6 +128,10 @@ mod tests {
             adc2_sample_age_valid: true,
             fsw_receive_age_ms: 0,
             fsw_receive_age_valid: false,
+            load_cell_2_raw: -123,
+            load_cell_2_voltage: 0.125,
+            load_cell_2_valid: true,
+            operating_profile: 2,
         }
     }
 

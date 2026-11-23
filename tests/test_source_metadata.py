@@ -22,6 +22,7 @@ ADDED = {
  'source_unix_valid':73,'source_time_quality':74,'adc1_sample_age_ms':75,
  'adc1_sample_age_valid':76,'adc2_sample_age_ms':77,'adc2_sample_age_valid':78,
  'fsw_receive_age_ms':79,'fsw_receive_age_valid':80,'source_time_generation':81,
+ 'load_cell_2_raw':82,'load_cell_2_voltage':83,'load_cell_2_valid':84,'operating_profile':85,
 }
 
 class SourceSchema(unittest.TestCase):
@@ -99,6 +100,15 @@ bool transcode(const uint8_t *input, size_t length, uint8_t *output, size_t cap,
             adc2_sample_age_valid=True,fsw_receive_age_ms=0,fsw_receive_age_valid=False)
         decoded=self.new_message.FromString(self.transcode(source.SerializeToString()))
         self.assertEqual(decoded,source)
+
+    def test_lc2_signed_raw_voltage_validity_and_profile_survive_real_codec(self):
+        for raw in (-32768, -321, 0, 32767):
+            frame=self.new_message(source_metadata_version=2,operating_profile=2,
+                load_cell_2_raw=raw,load_cell_2_voltage=0.125,load_cell_2_valid=True)
+            self.assertEqual(self.new_message.FromString(self.transcode(frame.SerializeToString())),frame)
+        empty=self.new_message.FromString(self.transcode(self.old_message(pt_1_pressure=1).SerializeToString()))
+        self.assertFalse(empty.load_cell_2_valid)
+        self.assertEqual(empty.operating_profile,0)
 
     def test_old_producer_decodes_as_explicit_legacy_not_valid_epoch_zero(self):
         old=self.old_message(sync_word=0xdeadbeef,pt_1_pressure=123.5,ms_since_boot_fill=2**64-1)

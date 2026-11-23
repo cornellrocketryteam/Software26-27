@@ -101,7 +101,11 @@ INSERT INTO telemetry_data (
     adc2_sample_age_valid,
     fsw_receive_age_ms,
     fsw_receive_age_valid,
-    source_time_generation
+    source_time_generation,
+    load_cell_2_raw,
+    load_cell_2_voltage,
+    load_cell_2_valid,
+    operating_profile
 ) VALUES (
     -- Convert EMQX's internal arrival clock into a standard PostgreSQL TIMESTAMPTZ
     to_timestamp(${broker_arrival_ms} / 1000.0),
@@ -205,5 +209,9 @@ INSERT INTO telemetry_data (
     ${adc2_sample_age_valid},
     CAST(CAST(${fsw_receive_age_ms} AS TEXT) AS NUMERIC),
     ${fsw_receive_age_valid},
-    ${source_time_generation}
+    ${source_time_generation},
+    ${load_cell_2_raw},
+    ${load_cell_2_voltage},
+    ${load_cell_2_valid},
+    ${operating_profile}
 );
