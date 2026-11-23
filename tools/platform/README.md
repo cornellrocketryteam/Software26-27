@@ -10,6 +10,7 @@ standard library `platform` module remains available. Nix, nix-store, Git and
 ./scripts/platform check --station --build-platform x86_64-linux
 ./scripts/platform build fill-station --vehicle liquid --artifact ospi --builder auto
 ./scripts/platform build fill-station --vehicle hybrid --artifact fit --builder local --offline
+./scripts/platform build fill-station --vehicle hybrid-test --artifact ospi --build-platform x86_64-linux --builder station
 ./scripts/platform build fill-station --vehicle liquid --artifact fit --build-platform x86_64-linux --builder station
 ./scripts/platform build ground-station --profile um560-services --builder station
 ./scripts/platform cache-sync

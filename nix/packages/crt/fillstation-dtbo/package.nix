@@ -2,6 +2,7 @@
   buildPackages,
   lib,
   profile ? "hybrid",
+  operatingProfile ? null,
 }:
 let
   inherit (buildPackages)
@@ -13,6 +14,7 @@ let
   # unnecessarily pulls target libc/GCC into a native device-tree build.
   clang = buildPackages.llvmPackages.clang-unwrapped;
 in
+assert lib.assertMsg (operatingProfile == null || (profile == "hybrid" && builtins.elem operatingProfile [ "hybrid" "hybrid-test" ])) "operating selector requires Hybrid wiring";
 assert lib.assertMsg (builtins.elem profile [
   "liquid"
   "hybrid"
@@ -27,7 +29,7 @@ stdenvNoCC.mkDerivation {
   ];
   buildPhase = ''
     runHook preBuild
-    python3 compiler.py --profile ${profile} --output generated
+    python3 compiler.py ${if operatingProfile == null then "--profile ${profile}" else "--operating-profile ${operatingProfile}"} --output generated
     cp ${./src/k3.h} generated/k3.h
     clang -E -P -undef -nostdinc -x assembler-with-cpp -I generated \
       generated/k3-am64-fillstation-pinmux-overlay.dts -o overlay.pp.dts
@@ -46,7 +48,7 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     mkdir -p $out
     cp k3-am64-fillstation-pinmux-overlay.dtbo generated/* $out/
-    cp profiles/${profile}.json $out/profile.json
+    ${if operatingProfile == null then "cp profiles/${profile}.json $out/profile.json" else "cp generated/effective-wiring.json $out/profile.json"}
     cp board-pins.json $out/board-pins.json
     # Use the filename expected by the FIT builder, without the store hash.
     cp ${./verify-merged.py} $out/verify-merged.py

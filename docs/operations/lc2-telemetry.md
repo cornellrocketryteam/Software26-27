@@ -2,7 +2,7 @@
 
 The candidate now carries ADC2 CH2 as raw counts and voltage, with explicit
 validity. It does not apply LC1 calibration, calculate force or infer engineering
-units. This is implemented and host-tested; no new image target is enabled yet.
+units. This is implemented and host-tested; paired image targets are now available.
 Profile-specific UI/Grafana and CSV support remain separate work.
 
 ## Wire and storage contract

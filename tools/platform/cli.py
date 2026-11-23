@@ -21,7 +21,7 @@ def parser():
     for host in ('fill-station', 'ground-station'):
         sub = hosts.add_parser(host)
         if host == 'fill-station':
-            sub.add_argument('--vehicle', choices=('liquid', 'hybrid'), required=True)
+            sub.add_argument('--vehicle', choices=('liquid', 'hybrid', 'hybrid-test'), required=True)
             sub.add_argument('--artifact', choices=(*build.ARTIFACTS, 'release'), default='ospi')
         else:
             sub.set_defaults(vehicle=None, artifact='system')

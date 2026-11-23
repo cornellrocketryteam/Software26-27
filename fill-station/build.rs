@@ -66,13 +66,19 @@ fn main() {
     } else {
         "none"
     };
+    println!("cargo:rerun-if-env-changed=FILL_STATION_OPERATING_PROFILE");
+    let operating = env::var("FILL_STATION_OPERATING_PROFILE").unwrap_or_default();
+    assert!(operating.is_empty() || (hybrid && matches!(operating.as_str(), "hybrid" | "hybrid-test")),
+        "operating selector requires Hybrid Cargo family and a supported name");
+    let selector = if operating.is_empty() { ("--profile", profile) }
+        else { ("--operating-profile", operating.as_str()) };
     println!(
         "cargo:rerun-if-changed={}",
         manifest_dir.join("hardware").display()
     );
     let status = Command::new(python(&manifest_dir))
         .arg(manifest_dir.join("hardware/compiler.py"))
-        .args(["--profile", profile, "--output"])
+        .args([selector.0, selector.1, "--output"])
         .arg(&out_dir)
         .status()
         .expect("failed to execute hardware configuration compiler");

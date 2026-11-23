@@ -8,7 +8,9 @@
   withHelpers ? false,
   # Build mode: "none", "liquid", or "hybrid"
   mode ? "none",
+  operatingProfile ? null,
 }:
+assert lib.assertMsg (operatingProfile == null || (mode == "hybrid" && builtins.elem operatingProfile [ "hybrid" "hybrid-test" ])) "operating selector requires Hybrid Cargo family";
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fill-station";
   version = "0.1.0";
@@ -40,6 +42,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     rustPlatform.bindgenHook
   ];
   env = {
+    FILL_STATION_OPERATING_PROFILE = if operatingProfile == null then "" else operatingProfile;
     NANOPB_DIR = "${nanopb-src}";
     NANOPB_PYTHON = "${buildPackages.python3.withPackages (ps: [ ps.protobuf ])}/bin/python3";
   };

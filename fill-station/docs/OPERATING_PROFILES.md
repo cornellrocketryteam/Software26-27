@@ -2,9 +2,9 @@
 
 `hardware/operating-profiles.json` records agreed device ownership and sensor
 intent separately from `hardware/profiles/*.json`, which define physical wiring.
-The validator is `hardware/operating_profiles.py`. This is a definition-only
-foundation: firmware, MQTT, build targets, UI and Grafana do not consume it yet.
-It does not create a selectable hybrid-test image or alter the existing profiles.
+The validator is `hardware/operating_profiles.py`. Firmware, MQTT/storage and
+paired image builds now support operating intent. UI/Grafana/CSV variants and
+physical acceptance remain pending; see the build-selector table below.
 
 ## Intended device mapping
 
@@ -22,10 +22,9 @@ It does not create a selectable hybrid-test image or alter the existing profiles
 | MAV | FSW over umbilical | Existing local MAV PWM |
 | FSW dependency | Yes | None |
 
-Normal Hybrid intends local SV2/SV3/SV4/MAV to be disabled; hybrid-test intends
-local SV3/SV4 to be disabled. These lists are **not yet applied to the saved
-wiring profiles or runtime command paths**. The current Hybrid image still has
-the earlier local capabilities. Profile-aware runtime integration is a later step.
+Normal Hybrid disables local SV2/SV3/SV4/MAV in its effective wiring; Hybrid-test
+disables SV3/SV4. Saved base wiring is preserved. Existing deployed images do not
+change until rebuilt and deployed; the generic debug target remains legacy.
 
 QD energized means disconnect; de-energizing does not reconnect it. Its declared
 feedback is output intent/continuity, not mechanical position. No pulse or
@@ -97,14 +96,11 @@ status remain in the emitted operating definition, rather than being guessed
 from enabled ADC hardware. Liquid's pending semantic mapping is rejected by this
 new selector; existing `--profile liquid` builds remain available unchanged.
 
-This is not firmware activation. Existing Cargo/Nix builds still invoke
-`--profile`, and no deployable Hybrid-test target is exposed yet. The MQTT
-publisher currently has hardcoded PT1/PT2/LC1 extraction and the application
-starts FSW monitoring unconditionally. Next integration must consume the contract,
-route local PT3/PT4, add raw/voltage LC2 with explicit validity, disable FSW on the
-test stand, and carry matching metadata through codecs/storage/client consumers.
-Only then pair the Cargo and Nix image/pinmux selectors and deploy a test image.
-Do not flash these standalone generated files as a complete image.
+Normal Hybrid and Hybrid-test builds now invoke this operating selector for the
+application and device tree. Runtime ownership/FSW gating and LC2 v2 wire/storage
+support are implemented. Native image compilation, profile-specific consumers and
+physical acceptance remain pending. Do not flash standalone generated compiler
+files as a complete image.
 
 Checks cover exact local roles/masks, retained connector equality, deterministic
 hashes, untouched saved wiring, pending-Liquid rejection and conflicting selector
@@ -117,8 +113,8 @@ are still pending.
 `operating_profile` in generated hardware runtime JSON is now read by firmware.
 Absent means legacy behavior; only `hybrid` and `hybrid-test` are recognized, both
 requiring the Hybrid physical wiring family. Unknown names or mismatched families
-fail initialization. Existing Cargo/Nix image builds still omit this selector;
-this runtime integration does not itself activate the new profiles.
+fail initialization. The paired image configurations below supply this selector;
+direct Cargo without the environment selector and generic debug retain legacy behavior.
 
 Hybrid-test policy suppresses the FSW background task and closes its forwarding
 receiver, so attempted remote forwards fail rather than queue for a future FSW
@@ -139,8 +135,8 @@ LC2 on ADC2 CH2 is represented internally as optional raw counts/voltage only;
 scaled input is deliberately discarded even if supplied. Failure/nonfinite voltage
 makes it unavailable, and it is absent outside Hybrid-test. **LC2 now has MQTT protobuf/storage fields (source v2); CSV and named UI fields remain pending.** Generic ADC WebSocket responses
 already contain the channel readings, but this is not a complete profile UI.
-The remaining LC2 consumer and profile build integration must land before new build/image
-selectors are enabled. Neither new profile is an accepted deployment candidate.
+The remaining LC2 consumer integration must land before a combined candidate
+is accepted for deployment. Neither new profile is physically accepted.
 
 Host tests exercise both Hybrid and Liquid Cargo configurations, real generated
 operating JSON into mock hardware, profile-family rejection, exact channel routing,
@@ -148,4 +144,50 @@ FSW policy and failed/nonfinite ADCs. No serial/GPIO/I2C hardware or Linux nativ
 image was exercised. Physical FSW absence, local outputs/continuity, all sensor
 channels and full end-to-end LC2 telemetry remain later acceptance gates.
 
-LC2 wire/storage integration is now implemented: see [the v2 contract](../../docs/operations/lc2-telemetry.md). Earlier compiler-only/runtime-only limitations above describe those earlier blocks. No new image selector or physical acceptance is implied.
+LC2 wire/storage integration is now implemented: see [the v2 contract](../../docs/operations/lc2-telemetry.md). Paired selectors are available below; physical acceptance is still pending.
+
+## Paired image selectors
+
+The source build configurations now activate operating intent together:
+
+| Target | Cargo wiring family | Operating intent |
+| --- | --- | --- |
+| fill-station | hybrid | hybrid (local SV1/QD/BV/igniters, FSW-owned SV2/MAV/PT3/PT4) |
+| fill-station-hybrid-test | hybrid | hybrid-test (local SV1/SV2/QD/BV/MAV/igniters and all sensors) |
+| fill-station-liquid | liquid | legacy Liquid wiring, unchanged |
+| fill-station-debug | hybrid | legacy full Hybrid wiring, explicitly not the normal operating image |
+
+Existing target names remain available, but **fill-station now disables local
+SV2–SV4/MAV according to the agreed normal Hybrid definition**. Do not expect those
+local connectors to actuate from that image. The separate Hybrid-test target
+keeps local SV2/MAV and disables SV3/SV4. The generic debug target remains a wiring
+bring-up tool and does not enforce these operating-device subsets.
+
+MixOS `fillStation.operatingProfile` is threaded into the application, pinmux and
+PRU packages. PRU core selection filters disabled devices before startup planning.
+The Rust build script validates `FILL_STATION_OPERATING_PROFILE` against the Cargo
+family and invokes the same compiler selector as pinmux/PRU. Pinmux packages ship
+`profile.json` as the effective wiring rather than the unfiltered base; the
+compiler also emits `effective-wiring.json` for inspection. Missing/empty runtime
+build selector retains legacy behavior for direct Cargo and debug builds.
+
+Once the station worker is available and inputs are prepared, the candidate OSPI
+build command is:
+
+```sh
+./scripts/platform build fill-station --vehicle hybrid-test --artifact ospi --build-platform x86_64-linux --builder station
+```
+
+Add `--offline` only after preparing the full input closure. Use `--vehicle hybrid`
+for normal Hybrid or `--vehicle liquid` for Liquid. Routine builds select OSPI;
+SD/recovery artifacts remain explicit optional requests. The release manifest's
+`profileSha256` remains the **base physical wiring** hash (Hybrid for Hybrid-test),
+not an effective wiring hash. The full tracked source snapshot, target attribute,
+derivation/output hashes and vehicle distinguish operating builds. Do not treat
+the base profile hash alone as release identity.
+
+These targets have been graph-evaluated on both builder architectures and the
+operating selectors have passed native host Cargo tests. No full native ARM/FIT
+build or deployment was performed in this block. Current Commanding/Grafana/CSV
+still require their profile-specific controls, labels and LC2 support. Finish
+those consumers and freeze one combined candidate before physical acceptance.

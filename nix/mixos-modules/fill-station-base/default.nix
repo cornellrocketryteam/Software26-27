@@ -11,7 +11,7 @@ let
   # The one fill-station build used by both init and /bin
   fill-station = pkgs.crt.fill-station.override {
     withHelpers = debug; # ADC CLI tools only in debug
-    inherit (config.fillStation) mode;
+    inherit (config.fillStation) mode operatingProfile;
   };
 in
 {

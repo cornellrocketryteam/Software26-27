@@ -51,6 +51,8 @@ class OperatingCompiler(unittest.TestCase):
             runtime=json.loads((Path(d)/'hardware-runtime.json').read_text())
             self.assertEqual(identity['definition']['id'],'hybrid-test')
             self.assertEqual(runtime['operating_profile'],'hybrid-test')
+            effective=json.loads((Path(d)/'effective-wiring.json').read_text())
+            self.assertEqual({x['id'] for x in effective['devices'] if not x['enabled']},{'sv3','sv4'})
             for extra in [['--profile','hybrid'],['--profile','liquid']]:
                 self.assertNotEqual(subprocess.run(args+extra,capture_output=True).returncode,0)
 

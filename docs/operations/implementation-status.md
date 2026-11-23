@@ -235,3 +235,14 @@ normalize to unavailable using their masks. Existing images stay v1; no new imag
 selector is enabled. Host PG/codec/Cargo checks pass; EMQX/Timescale/native ARM,
 real ADC, UI/CSV and deployment remain pending. Follow
 [LC2 acceptance](lc2-telemetry.md) before enabling a combined producer candidate.
+
+
+## Paired operating builds — November 23
+
+Normal Hybrid now selects agreed operating intent; new fill-station-hybrid-test
+target pairs Hybrid wiring with local test-stand intent. App/pinmux/PRU selectors
+and disabled-device core selection are threaded together on ARM/x86 graphs.
+Liquid and generic debug stay legacy. CLI accepts hybrid-test and hashes Hybrid
+base wiring in its manifest; effective identity remains in full source/output.
+Host checks pass; native FIT/OSPI build, profile UI/CSV and full hardware deployment
+remain pending. See [paired selectors](../../fill-station/docs/OPERATING_PROFILES.md#paired-image-selectors).

@@ -589,6 +589,12 @@ class BuildFailureCases(BuildFixture):
         self.assertIn('mixosConfigurations.fill-station.config.system.build.fitImage',
                       self.manifests()[0]['artifacts']['fit']['attribute'])
 
+    def test_hybrid_test_maps_to_its_own_machine(self):
+        self.assert_ok(self.run_cli('build', 'fill-station', '--vehicle', 'hybrid-test', '--artifact', 'ospi'))
+        self.assertIn('mixosConfigurations.fill-station-hybrid-test.config.system.build.ospiImage',
+                      self.manifests()[0]['artifacts']['ospi']['attribute'])
+        self.assertEqual(self.manifests()[0]['vehicle'],'hybrid-test')
+
     def test_ground_station_build_records_x86_and_null_vehicle(self):
         conf = self.station_config(worker_id='fixture-worker')
         conf['station']['platforms'] = ['x86_64-linux']; self.config.write_text(json.dumps(conf))

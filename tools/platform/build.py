@@ -21,7 +21,8 @@ def targets(host, vehicle, artifact, platform, profile="foundation"):
     if host == 'ground-station':
         name = 'ground-station' if profile == 'foundation' else 'ground-station-' + profile
         return {'system': f'nixosConfigurations.{name}.config.system.build.toplevel'}
-    machine = 'fill-station-liquid' if vehicle == 'liquid' else 'fill-station'
+    machine = {'liquid': 'fill-station-liquid', 'hybrid': 'fill-station',
+               'hybrid-test': 'fill-station-hybrid-test'}[vehicle]
     graph = 'mixosConfigurations' if platform == 'aarch64-linux' else 'mixosBuildConfigurations."x86_64-linux"'
     kinds = ('sd', 'ospi', 'data') if artifact == 'release' else (artifact,)
     return {kind: f'{graph}.{machine}.config.system.build.{ARTIFACTS[kind]}' for kind in kinds}
@@ -169,7 +170,8 @@ def _execute(repo, state, config, args):
     release_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex
     state.mkdir(parents=True, exist_ok=True)
     source = snapshot(repo, state / 'sources' / release_id)
-    profile = Path(source['snapshot']) / 'fill-station/hardware/profiles' / f'{args.vehicle}.json'
+    wiring_family = 'hybrid' if args.vehicle == 'hybrid-test' else args.vehicle
+    profile = Path(source['snapshot']) / 'fill-station/hardware/profiles' / f'{wiring_family}.json'
     profile_digest = sha256(profile) if args.host == 'fill-station' else None
     roots = state / 'roots' / release_id
     durable_mkdir(roots)

@@ -402,10 +402,24 @@ mod configuration_tests {
             let hw = Hardware::new().await.unwrap();
             #[cfg(feature = "hybrid")]
             {
-                assert!(hw.missing_roles(&DEVICE_ROLES).is_empty());
-                assert_eq!(hw.configured_devices_mask, 2047);
+                match hw.routing_mode {
+                    RoutingMode::Legacy => {
+                        assert!(hw.missing_roles(&DEVICE_ROLES).is_empty());
+                        assert_eq!(hw.configured_devices_mask, 2047);
+                        assert_eq!(hw.solenoids.len(), 4);
+                    }
+                    RoutingMode::Hybrid => {
+                        assert_eq!(hw.configured_devices_mask, 1311);
+                        assert_eq!(hw.solenoids.len(), 1);
+                        assert!(!hw.has_role("mav"));
+                    }
+                    RoutingMode::HybridTest => {
+                        assert_eq!(hw.configured_devices_mask, 1855);
+                        assert_eq!(hw.solenoids.len(), 2);
+                        assert!(hw.has_role("mav"));
+                    }
+                }
                 assert_eq!(hw.adcs.len(), 2);
-                assert_eq!(hw.solenoids.len(), 4);
                 assert_eq!(hw.quick_disconnects.len(), 1);
                 assert!(hw.quick_disconnect("sv5").is_some());
             }

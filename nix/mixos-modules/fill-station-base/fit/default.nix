@@ -1,6 +1,6 @@
 { config, pkgs, ... }:
 let
-  pinmux = pkgs.crt.fillstation-dtbo.override { profile = config.fillStation.mode; };
+  pinmux = pkgs.crt.fillstation-dtbo.override { profile = config.fillStation.mode; inherit (config.fillStation) operatingProfile; };
 in
 {
   system.build.pinmuxOverlay = pinmux;

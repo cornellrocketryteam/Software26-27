@@ -1,6 +1,11 @@
 { lib, ... }:
 {
   options.fillStation = {
+    operatingProfile = lib.mkOption {
+      type = lib.types.nullOr (lib.types.enum [ "hybrid" "hybrid-test" ]);
+      default = null;
+      description = "Paired operating intent; null retains legacy physical-profile behavior.";
+    };
     timeServer = lib.mkOption {
       type = lib.types.strMatching "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+";
       default = "192.168.1.206";

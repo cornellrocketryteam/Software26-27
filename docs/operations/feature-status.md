@@ -42,3 +42,5 @@ Generated Grafana now has explicit session selection and sequence-based latest
 fill values; deployment/browser acceptance is pending. See [session guide](grafana-sessions.md).
 
 LC2 v2 MQTT/storage support is implemented and host-tested; native/image activation, live broker/ADC, profile UI and CSV remain pending. See [LC2](lc2-telemetry.md).
+
+Paired Hybrid/Hybrid-test image selectors and CLI routing now exist and are graph/host tested; full images, consumer variants and physical acceptance remain pending. Liquid remains on its current wiring.

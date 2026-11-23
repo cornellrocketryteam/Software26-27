@@ -46,6 +46,7 @@ def compile_operating_profile(name):
             device['enabled'] = False
     result = compile_profile(effective)
     result['runtime']['operating_profile'] = name
+    result['effective_wiring'] = effective
     result['operating'] = {
         'schemaVersion': 1,
         'scope': 'effective-wiring; runtime sensor/FSW routing requires separate integration',
@@ -251,6 +252,8 @@ def main():
             if key in result: (args.output / name).write_text(result[key])
         for name, key in [('pinmux-report.json','report'), ('expectations.json','expectations'), ('hardware-runtime.json','runtime')]:
             if key in result: (args.output / name).write_text(json.dumps(result[key],indent=2)+'\n')
+        if 'effective_wiring' in result:
+            (args.output / 'effective-wiring.json').write_text(json.dumps(result['effective_wiring'], indent=2) + '\n')
         if 'operating' in result:
             (args.output / 'operating-profile.json').write_text(json.dumps(result['operating'], indent=2) + '\n')
         runtime_json = json.dumps(result['runtime'], separators=(',', ':'))
