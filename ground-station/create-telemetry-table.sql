@@ -89,5 +89,5 @@ CREATE TABLE telemetry_data (
 SELECT create_hypertable('telemetry_data', 'time');
 CREATE INDEX idx_unit_id_time ON telemetry_data (unit_id, time DESC);
 
--- Complete new installations by applying migrations/001-hardware-availability.sql
--- before starting ingestion; it installs the availability normalization trigger.
+-- Complete new installations with migrations/001-hardware-availability.sql and
+-- migrations/002-source-metadata.sql before role grants and broker ingestion.

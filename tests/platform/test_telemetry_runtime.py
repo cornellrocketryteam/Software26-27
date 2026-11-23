@@ -118,6 +118,8 @@ class RuntimeContracts(unittest.TestCase):
         self.assertIn("CREATE TABLE IF NOT EXISTS telemetry_data", options["input"])
         self.assertIn("if_not_exists => TRUE", options["input"])
         self.assertIn("normalize_fill_hardware_availability", options["input"])
+        self.assertIn("ingest_telemetry_source_metadata", options["input"])
+        self.assertLess(options["input"].index("ingest_telemetry_source_metadata"), options["input"].index("GRANT INSERT ON telemetry_data"))
         self.assertIn("GRANT INSERT ON telemetry_data TO ground_ingest", options["input"])
         self.assertIn("GRANT SELECT ON telemetry_data TO ground_reader", options["input"])
         self.assertTrue(all(call[1]["timeout"] <= 120 for call in calls))
@@ -250,6 +252,7 @@ class RuntimeContracts(unittest.TestCase):
     def test_repeated_reconciliation_does_not_recompile_unchanged_schema(self):
         with http_fixture() as fixture:
             runtime.broker(self.secret, ROOT / "ground-station", fixture.url + "/api/v5", attempts=1)
+            self.assertEqual(fixture.resources["/api/v5/actions/pgsql:ground_telemetry"].get("resource_opts", {}).get("batch_size"), 1)
             fixture.requests.clear()
             runtime.broker(self.secret, ROOT / "ground-station", fixture.url + "/api/v5", attempts=1)
             writes = [(method, path) for method, path, _ in fixture.requests if method != "GET"]

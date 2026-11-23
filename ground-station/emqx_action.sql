@@ -85,7 +85,23 @@ INSERT INTO telemetry_data (
     ms_since_boot_fill,
     availability_version,
     configured_devices_mask,
-    valid_readings_mask
+    valid_readings_mask,
+    broker_arrival_ms,
+    source_metadata_version,
+    publisher_session_hi,
+    publisher_session_lo,
+    publisher_sequence,
+    source_monotonic_ms,
+    source_unix_ms,
+    source_unix_valid,
+    source_time_quality,
+    adc1_sample_age_ms,
+    adc1_sample_age_valid,
+    adc2_sample_age_ms,
+    adc2_sample_age_valid,
+    fsw_receive_age_ms,
+    fsw_receive_age_valid,
+    source_time_generation
 ) VALUES (
     -- Convert EMQX's internal arrival clock into a standard PostgreSQL TIMESTAMPTZ
     to_timestamp(${broker_arrival_ms} / 1000.0),
@@ -173,5 +189,21 @@ INSERT INTO telemetry_data (
     ${ms_since_boot_fill},
     ${availability_version},
     ${configured_devices_mask},
-    ${valid_readings_mask}
+    ${valid_readings_mask},
+    ${broker_arrival_ms},
+    ${source_metadata_version},
+    CAST(CAST(${publisher_session_hi} AS TEXT) AS NUMERIC),
+    CAST(CAST(${publisher_session_lo} AS TEXT) AS NUMERIC),
+    CAST(CAST(${publisher_sequence} AS TEXT) AS NUMERIC),
+    CAST(CAST(${source_monotonic_ms} AS TEXT) AS NUMERIC),
+    CAST(CAST(${source_unix_ms} AS TEXT) AS NUMERIC),
+    ${source_unix_valid},
+    ${source_time_quality},
+    CAST(CAST(${adc1_sample_age_ms} AS TEXT) AS NUMERIC),
+    ${adc1_sample_age_valid},
+    CAST(CAST(${adc2_sample_age_ms} AS TEXT) AS NUMERIC),
+    ${adc2_sample_age_valid},
+    CAST(CAST(${fsw_receive_age_ms} AS TEXT) AS NUMERIC),
+    ${fsw_receive_age_valid},
+    ${source_time_generation}
 );

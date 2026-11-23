@@ -68,8 +68,12 @@ or broker is changed by building the repository.
 1. For a new database, run `create-telemetry-table.sql` first. For both new and
    existing databases, apply `migrations/001-hardware-availability.sql` using
    `psql -v ON_ERROR_STOP=1 -f ground-station/migrations/001-hardware-availability.sql`
-   with your normal database connection options. The migration is transactional
-   and may be applied repeatedly; it preserves existing telemetry.
+   followed by `psql -v ON_ERROR_STOP=1 -f ground-station/migrations/002-source-metadata.sql`.
+   Apply both before the new action/role grants; the NixOS provisioner handles this
+   order automatically. See [source ingestion](../docs/operations/telemetry-source-ingestion.md)
+   for receipt retention, time provenance and rollout limits. Supply your normal
+   database connection options. Both migrations are transactional/repeatable and
+   preserve existing telemetry.
 2. Replace the EMQX Schema Registry `telemetry` schema with
    `ground-station/proto/telemetry.proto`.
 3. Update **both** rules from `emqx_rule.sql` and `emqx_rule_fill_station.sql`,

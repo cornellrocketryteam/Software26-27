@@ -1,10 +1,12 @@
 # MQTT source-frame metadata
 
 Implemented producer increment, November 23, 2026. This adds metadata to MQTT
-protobuf and its optional debug JSON. It does not yet change database ingestion,
-Grafana ordering, WebSocket/CSV output, time-server/client configuration or device
-profiles. The existing SQL still uses broker arrival time and ignores these new
-fields. Out-of-order database handling is therefore not complete.
+protobuf and its optional debug JSON. A subsequent compatible consumer increment
+now stores metadata, suppresses duplicates and exposes per-session sequence heads;
+see [source ingestion](../../docs/operations/telemetry-source-ingestion.md).
+Neither increment has been deployed. The existing Grafana queries remain arrival-
+based; WebSocket/CSV output, time-server/client configuration and device profiles
+are unchanged. Active-session selection and end-to-end view integration are pending.
 
 ## Wire contract
 
@@ -93,10 +95,10 @@ connections and never change the host clock.
 
 ## Remaining work and later acceptance
 
-1. Add compatible storage/decoding of all metadata while retaining broker/database
-   receipt clocks and old producers. Choose deduplication/indexing compatible with
-   Timescale partitioning and full unsigned ranges. Test shuffled/duplicate traffic,
-   old-session late arrivals, clock corrections and unknown-time data.
+1. Compatible storage/decoding, receipt deduplication and per-session query heads
+   are implemented and PostgreSQL-tested. Verify the actual Timescale/EMQX path,
+   old/new producer operation and deployed migration. Global active-session
+   selection and delayed old-session handling in the UI remain pending.
 2. Add the LAN time authority/client and explicit reference-quality/holdover policy.
    Neither system may require WAN or another machine to boot and operate locally.
 3. Update event-time/latest-value queries and minimal Grafana status display only
@@ -107,5 +109,6 @@ connections and never change the host clock.
    MQTT reconnect, advancing sequence and sample ages, late/lost time synchronization
    and offline behavior. Do not change the production clock just to exercise a test.
 
-No SQL migration, operational clock setting, dashboard redesign, image flash or
-hardware acceptance occurred in this producer increment.
+The producer increment itself applied no database or hardware changes. The later
+SQL migration is now in source, not deployed; no operational clock setting,
+dashboard redesign, image flash or hardware acceptance has occurred.

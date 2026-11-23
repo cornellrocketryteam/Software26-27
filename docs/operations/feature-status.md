@@ -24,7 +24,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | Omada switches / wireless bridges | IPs/wiring recorded; no real management adapter yet | Firmware/API inspection, metrics, then reviewed camera-port power controls |
 | Shelly plugs | Local RPC backend implemented/tested; two entries intentionally disabled | Addresses, identities/load mapping and real on/off/read-back acceptance |
 | Three operating-profile definitions | New shared definitions/validator implemented and host-tested | Runtime/build/telemetry/UI consumption; current hardware profiles unchanged |
-| MQTT source timestamps, ordering and deduplication | Producer session/sequence, qualified frame time and sample ages implemented/host-tested; database still arrival-based | LAN time authority, compatible storage/deduplication, ordered/latest queries and shuffled-delivery tests |
+| MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication/per-session heads implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, LAN time authority, active-session selection and Grafana query integration |
 | hybrid-test image with LC2 | Intended local/FSW/channel mapping defined; no image target yet | Standalone firmware, raw/voltage LC2, OSPI build and hardware acceptance |
 | Hybrid/Liquid/test UI and Grafana variants | Planned; accepted layout is retained | Shared-contract bindings, profile identity/mismatch handling and views |
 | Starlink health | Local integration path researched | Terminal identification, adapter, actual route/metrics and outage tests |

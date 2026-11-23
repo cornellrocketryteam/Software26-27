@@ -184,3 +184,17 @@ ingestion/LAN time work before claiming packet ordering or accurate UNIX time.
 Later verify new session on restart, stable session across MQTT reconnect,
 unknown clock/age flags and stale cached samples without modifying the production
 clock. See [the producer guide](../../fill-station/docs/TELEMETRY_SOURCE_TIME.md).
+
+
+## Compatible source ingestion follow-up
+
+The candidate now includes migration 002 and metadata-aware rules/action, private
+receipt deduplication, qualified event-time provenance and per-session sequence
+heads. Database/role migrations precede broker reconciliation. Host checks include
+actual PostgreSQL 17 ordinary/partitioned tables, concurrent retry/rollback and
+role permissions. Later verify real Timescale/EMQX, exact uint64 text binding,
+old-producer compatibility and one-frame action batching before producer rollout.
+No migration or query change has been applied to the mini PC. Existing Grafana
+queries remain arrival-based; active session selection and LAN time are pending.
+Use [the ingestion guide](telemetry-source-ingestion.md) with the final combined
+candidate, not an older transfer bundle or guessed source-session identity.

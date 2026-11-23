@@ -90,6 +90,24 @@ SELECT
     CASE WHEN is_null(payload.configured_devices_mask) THEN 0 ELSE payload.configured_devices_mask END as configured_devices_mask,
     CASE WHEN is_null(payload.valid_readings_mask) THEN 0 ELSE payload.valid_readings_mask END as valid_readings_mask,
 
+    -- Source-frame contract v1; uint64 values cross the SQL driver as exact decimal text.
+    -- Missing fields remain legacy. Never convert session/sequence through float.
+    CASE WHEN is_null(payload.source_metadata_version) THEN 0 ELSE payload.source_metadata_version END as source_metadata_version,
+    CASE WHEN is_null(payload.publisher_session_hi) THEN '0' ELSE str(payload.publisher_session_hi) END as publisher_session_hi,
+    CASE WHEN is_null(payload.publisher_session_lo) THEN '0' ELSE str(payload.publisher_session_lo) END as publisher_session_lo,
+    CASE WHEN is_null(payload.publisher_sequence) THEN '0' ELSE str(payload.publisher_sequence) END as publisher_sequence,
+    CASE WHEN is_null(payload.source_monotonic_ms) THEN '0' ELSE str(payload.source_monotonic_ms) END as source_monotonic_ms,
+    CASE WHEN is_null(payload.source_unix_ms) THEN '0' ELSE str(payload.source_unix_ms) END as source_unix_ms,
+    CASE WHEN is_null(payload.source_unix_valid) THEN false ELSE payload.source_unix_valid END as source_unix_valid,
+    CASE WHEN is_null(payload.source_time_quality) THEN 0 ELSE payload.source_time_quality END as source_time_quality,
+    CASE WHEN is_null(payload.adc1_sample_age_ms) THEN '0' ELSE str(payload.adc1_sample_age_ms) END as adc1_sample_age_ms,
+    CASE WHEN is_null(payload.adc1_sample_age_valid) THEN false ELSE payload.adc1_sample_age_valid END as adc1_sample_age_valid,
+    CASE WHEN is_null(payload.adc2_sample_age_ms) THEN '0' ELSE str(payload.adc2_sample_age_ms) END as adc2_sample_age_ms,
+    CASE WHEN is_null(payload.adc2_sample_age_valid) THEN false ELSE payload.adc2_sample_age_valid END as adc2_sample_age_valid,
+    CASE WHEN is_null(payload.fsw_receive_age_ms) THEN '0' ELSE str(payload.fsw_receive_age_ms) END as fsw_receive_age_ms,
+    CASE WHEN is_null(payload.fsw_receive_age_valid) THEN false ELSE payload.fsw_receive_age_valid END as fsw_receive_age_valid,
+    CASE WHEN is_null(payload.source_time_generation) THEN 0 ELSE payload.source_time_generation END as source_time_generation,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/pb/0")
     int(nth(3, split(topic, '/'))) as unit_id
 

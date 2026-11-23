@@ -84,6 +84,23 @@ SELECT
     CASE WHEN is_null(payload.configured_devices_mask) THEN 0 ELSE payload.configured_devices_mask END as configured_devices_mask,
     CASE WHEN is_null(payload.valid_readings_mask) THEN 0 ELSE payload.valid_readings_mask END as valid_readings_mask,
 
+    -- Legacy flight JSON has no source-frame contract; never infer v1 from its fields.
+    0 as source_metadata_version,
+    '0' as publisher_session_hi,
+    '0' as publisher_session_lo,
+    '0' as publisher_sequence,
+    '0' as source_monotonic_ms,
+    '0' as source_unix_ms,
+    false as source_unix_valid,
+    0 as source_time_quality,
+    '0' as adc1_sample_age_ms,
+    false as adc1_sample_age_valid,
+    '0' as adc2_sample_age_ms,
+    false as adc2_sample_age_valid,
+    '0' as fsw_receive_age_ms,
+    false as fsw_receive_age_valid,
+    0 as source_time_generation,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/raw/0")
     int(nth(3, split(topic, '/'))) as unit_id
   

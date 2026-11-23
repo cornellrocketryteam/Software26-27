@@ -21,5 +21,6 @@ GRANT USAGE ON SCHEMA public TO ground_ingest, ground_reader;
 REVOKE ALL ON telemetry_data FROM ground_ingest, ground_reader;
 GRANT INSERT ON telemetry_data TO ground_ingest;
 GRANT SELECT ON telemetry_data TO ground_reader;
+GRANT SELECT ON telemetry_latest_in_session, telemetry_event_history TO ground_reader;
 ALTER ROLE ground_reader SET default_transaction_read_only = on;
 COMMIT;

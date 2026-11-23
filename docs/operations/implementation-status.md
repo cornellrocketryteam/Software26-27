@@ -143,3 +143,28 @@ time synchronization and consumer/database handling remain pending. The new SQL
 schema decoder source is compatible, but existing action/query logic still ignores
 source metadata and uses arrival time. Out-of-order database handling is not fixed
 by this checkpoint alone. See [source-time guide](../../fill-station/docs/TELEMETRY_SOURCE_TIME.md).
+
+
+## November 23: compatible source ingestion and query heads
+
+Added migration 002, immutable/runtime packaging, both EMQX rule mappings and the
+shared action. Store unsigned source fields exactly, retain arrival partition/time
+and server receipt time, derive nullable qualified source time/provenance and
+use a private ordinary-table receipt key for atomic duplicate suppression. Known
+v1 identity/payload conflicts fail without overwrite. Frozen fingerprint fields
+survive later columns; one-frame action transactions isolate conflicts. New
+views expose per-session maximum-sequence heads and provenance-bearing history.
+Existing Grafana queries and physical clocks are unchanged.
+
+34 source-ingestion checks passed on actual disposable PostgreSQL 17.11, including
+real time partitions, races, rollback, privilege boundaries, prepared TEXT/NUMERIC
+parameters, malformed/old/new cases and unsigned precision. Four existing
+availability/PostgreSQL checks and 24 runtime/provisioning checks passed. Actual
+Nix-filtered assets were tested in isolation. The package recipe evaluated; its
+native build was not attempted after dry-run showed a cold dependency graph.
+PostgreSQL binaries were fetched from the official cache; no Docker/system image
+build or operational database access occurred.
+
+Actual Timescale/EMQX integration and deployment remain pending. The current PC
+still runs its earlier candidate; active-session selection, LAN synchronization
+and Grafana/WS/CSV integration remain further work. See [source ingestion](telemetry-source-ingestion.md).

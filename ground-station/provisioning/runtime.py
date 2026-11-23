@@ -167,6 +167,7 @@ def database(docker, assets, attempts=30):
            "END IF; END $$;\n"
            "CREATE EXTENSION IF NOT EXISTS timescaledb;\n" + schema + "\nCOMMIT;\n"
            + (assets / "migrations/001-hardware-availability.sql").read_text()
+           + "\n" + (assets / "migrations/002-source-metadata.sql").read_text()
            + "\n" + (assets / "provisioning/roles.sql").read_text()
            + "\nSELECT pg_advisory_unlock(7162738);\n")
     result = _run([docker, "exec", "-i", "ground-timescaledb", "psql", "-X", "-U", "postgres",
@@ -180,7 +181,7 @@ def build_assets(source, output, cameras=False):
     source, output = Path(source), Path(output)
     for relative in ["create-telemetry-table.sql", "emqx_action.sql", "emqx_rule.sql",
                      "emqx_rule_fill_station.sql", "proto/telemetry.proto",
-                     "migrations/001-hardware-availability.sql", "provisioning/roles.sql"]:
+                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "provisioning/roles.sql"]:
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / relative, target)
@@ -425,6 +426,9 @@ def broker(secrets_file, assets, api_url, attempts=15):
     reconcile("/actions", "pgsql:ground_telemetry", {
         "name": "ground_telemetry", "type": "pgsql", "enable": True, "connector": "ground_telemetry",
         "parameters": {"sql": (assets / "emqx_action.sql").read_text()},
+        # One frame per SQL transaction: a conflicting identity must not roll
+        # unrelated telemetry back in the same driver batch.
+        "resource_opts": {"batch_size": 1},
     }, {"type", "name"})
     for identifier, filename in [("ground_telemetry_json", "emqx_rule.sql"),
                                  ("ground_telemetry_protobuf", "emqx_rule_fill_station.sql")]:
