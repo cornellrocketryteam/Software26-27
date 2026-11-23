@@ -24,7 +24,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | Omada switches / wireless bridges | IPs/wiring recorded; no real management adapter yet | Firmware/API inspection, metrics, then reviewed camera-port power controls |
 | Shelly plugs | Local RPC backend implemented/tested; two entries intentionally disabled | Addresses, identities/load mapping and real on/off/read-back acceptance |
 | Three operating-profile definitions | New shared definitions/validator implemented and host-tested | Runtime/build/telemetry/UI consumption; current hardware profiles unchanged |
-| MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication/per-session heads implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, LAN time authority, active-session selection and Grafana query integration |
+| MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication/per-session heads implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, active-session selection and Grafana query integration |
 | hybrid-test image with LC2 | Intended local/FSW/channel mapping defined; no image target yet | Standalone firmware, raw/voltage LC2, OSPI build and hardware acceptance |
 | Hybrid/Liquid/test UI and Grafana variants | Planned; accepted layout is retained | Shared-contract bindings, profile identity/mismatch handling and views |
 | Starlink health | Local integration path researched | Terminal identification, adapter, actual route/metrics and outage tests |
@@ -34,3 +34,6 @@ The [implementation checkpoint](implementation-status.md) records check scope an
 remaining native/VM/hardware validation. The [combined return checklist](ground-station-return-testing.md)
 collects the later hardware session. The [profile definition guide](../../fill-station/docs/OPERATING_PROFILES.md)
 explains the new foundation and its explicit limits. Planning/research remain local.
+
+LAN time is now implemented and module-tested; native/image/physical acceptance
+is pending. See [LAN time](lan-time.md). No latest candidate has been deployed.

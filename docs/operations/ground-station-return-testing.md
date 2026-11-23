@@ -198,3 +198,13 @@ No migration or query change has been applied to the mini PC. Existing Grafana
 queries remain arrival-based; active session selection and LAN time are pending.
 Use [the ingestion guide](telemetry-source-ingestion.md) with the final combined
 candidate, not an older transfer bundle or guessed source-session identity.
+
+
+## LAN time candidate — November 23
+
+Chrony LAN reference and supervised board BusyBox client are implemented; ten
+pure Nix contracts pass. No clock was changed or daemon started in development.
+Native daemon/image build, measured convergence, offline reboot and reconnect
+remain pending. See [LAN time acceptance](lan-time.md). Local reference is not
+verified UTC; source session/sequence remains the ordering authority. Existing
+Grafana queries remain arrival-based.

@@ -112,3 +112,9 @@ connections and never change the host clock.
 The producer increment itself applied no database or hardware changes. The later
 SQL migration is now in source, not deployed; no operational clock setting,
 dashboard redesign, image flash or hardware acceptance has occurred.
+
+
+The candidate now runs a supervised BusyBox LAN time client against the station.
+This does not establish externally verified UTC or peer freshness; kernel quality
+and offline local reference must retain their stated uncertainty. See
+[LAN time deployment and acceptance](../../docs/operations/lan-time.md).

@@ -9,6 +9,7 @@
       busybox = prev.busybox.override {
         extraConfig = ''
           CONFIG_FLASHCP y
+          CONFIG_NTPD y
         '';
       };
 

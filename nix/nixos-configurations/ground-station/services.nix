@@ -6,6 +6,7 @@
     nix = config.nix.package;
   }) ];
   groundStation = {
+    timeServer.enable = true;
     kiosk.enable = true;
     networkDevices.enable = true;
     operatorUi.fillStationWebSocketUrl = "ws://192.168.1.106:9000";

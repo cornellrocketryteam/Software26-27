@@ -1,6 +1,11 @@
 { lib, ... }:
 {
   options.fillStation = {
+    timeServer = lib.mkOption {
+      type = lib.types.strMatching "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+";
+      default = "192.168.1.206";
+      description = "LAN NTP peer IPv4 address; never a boot prerequisite.";
+    };
     ethernetInterface = lib.mkOption {
       type = lib.types.strMatching "eth[0-9]+";
       default = "eth0";

@@ -78,6 +78,13 @@ in
       process = lib.getExe fill-station;
     };
 
+    time-sync = {
+      action = "respawn";
+      # Client only: explicit peer bypasses ntp.conf; foreground retains supervision.
+      # Missing cable/peer is handled by ntpd retries, independently of application boot.
+      process = "${lib.getExe' pkgs.busybox "ntpd"} -n -p ${config.fillStation.timeServer}";
+    };
+
     dhcp = {
       action = "respawn";
       # Retry interface discovery without blocking init or rapidly respawning.
