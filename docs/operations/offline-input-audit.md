@@ -92,3 +92,8 @@ closure audits and offline native builds remain pending.
 
 Format references: [Nix derivation JSON](https://nix.dev/manual/nix/2.35/protocols/json/derivation/index.html)
 and [recursive derivation inspection](https://nix.dev/manual/nix/2.32/command-ref/new-cli/nix3-derivation-show).
+
+
+After a passing static audit, the separate explicit
+[offline-pin command](offline-input-pins.md) can retain those checked paths.
+The audit itself remains read-only and adds no roots.

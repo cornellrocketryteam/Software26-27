@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from . import build, cache, deploy, deploy_ssh, offline_audit
+from . import build, cache, deploy, deploy_ssh, offline_audit, offline_pins
 from .builders import local_health, probe_station
 from .config import load_config, state_directory
 from .runtime import PlatformError
@@ -46,6 +46,12 @@ def parser():
     audit = commands.add_parser('offline-audit', help='inspect local static derivation inputs; never compile or certify an offline build')
     audit.add_argument('--drv', required=True, help='evaluated absolute /nix/store/*.drv on this machine')
     audit.add_argument('--timeout-seconds', type=int, default=120)
+    pin = commands.add_parser('offline-pin', help='retain freshly audited static inputs with a metadata-only GC root; never build')
+    pin.add_argument('--drv', required=True)
+    pin.add_argument('--dry-run', action='store_true', help='run read-only audit and report path count without creating roots/state')
+    unpin = commands.add_parser('offline-unpin', help='release one explicit managed input root; never delete store data or run GC')
+    unpin.add_argument('--pin-id', required=True)
+    unpin.add_argument('--dry-run', action='store_true')
     commands.add_parser('status', help='read-only local build/outbox status (no target/deploy health)')
     return cli
 
@@ -74,10 +80,15 @@ def main(argv=None, *, repo=None):
                       else build.resume_transfers(state, config))
         elif args.command == 'offline-audit':
             result = offline_audit.execute(args.drv, args.timeout_seconds)
+        elif args.command == 'offline-pin':
+            result = offline_pins.execute(state, args.drv, dry_run=args.dry_run)
+        elif args.command == 'offline-unpin':
+            result = offline_pins.release(state, args.pin_id, dry_run=args.dry_run)
         elif args.command == 'status':
             result = {'stateDirectory': str(state), 'pending': cache.status(state),
                       'workerTransfers': build.transfer_status(state),
                       'deployments': deploy.status(state),
+                      'offlineInputPins': offline_pins.status(state),
                       'acknowledged': cache.acknowledged(state),
                       'receiptReceiver': 'protocol 1; requires pinned archive identity and installed receiver',
                       'tested': 'not tracked by this foundation', 'active': 'deployment owner tracks activation'}

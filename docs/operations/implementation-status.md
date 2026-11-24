@@ -376,3 +376,14 @@ builds, fetches, creates GC roots or marks an offline build validated. Fixture
 and inert real-derivation checks pass; actual combined PC/board graphs, retained
 input preparation and network-isolated native builds remain pending. See
 [offline audit](offline-input-audit.md).
+
+
+## Explicit offline input pins — November 24
+
+Candidate `offline-pin` requires a fresh passing static audit, registers one
+metadata-only local GC root and verifies required closure references before a
+receipt. No realization/fetch/admission change; dry-run audits without writing.
+Local status exposes recorded/partial state; eight-pin capacity never evicts.
+Fixture and real metadata-only checks pass, but mini-PC reboot/persistence,
+concurrent GC, full graph and network-isolated builds remain pending. Explicit `offline-unpin` releases one managed root/partial attempt without store
+deletion or GC, preserving archived records. See [input pins](offline-input-pins.md).

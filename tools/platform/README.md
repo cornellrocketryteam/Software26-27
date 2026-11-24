@@ -402,3 +402,15 @@ daemon's static derivation/source/fixed-output inventory. Exit 0 means static
 inputs checked; exit 2 means missing/unverifiable report; exit 1 is an audit error.
 It never builds, downloads, retains inputs or certifies an offline build. See
 [scope, formats and acceptance](../../docs/operations/offline-input-audit.md).
+
+### Retain already prepared static inputs
+
+`offline-pin --drv /nix/store/<hash>-name.drv --dry-run` performs a fresh read-only
+audit and reports the path count. Without `--dry-run`, it registers a metadata-only
+local GC root, verifies retained references and records a receipt; it never realizes
+or fetches. `status` includes local pin records. See
+[pin scope, partial state and capacity](../../docs/operations/offline-input-pins.md).
+
+`offline-unpin --pin-id <exact-id> --dry-run` previews selected release; without
+dry-run it removes only that managed root and archives the attempt. No store-data
+deletion or GC occurs. Retain replacements before releasing needed offline pins.

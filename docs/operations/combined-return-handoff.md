@@ -91,7 +91,11 @@ Both variables must be nonempty `/nix/store/*.drv` paths. Before compiling, run
 `./scripts/platform offline-audit --drv "$pc_drv"` and the same command for
 `"$board_drv"` separately. Read the [audit report policy](offline-input-audit.md):
 exit 2 reports missing/unverifiable static inputs; exit 0 still does not prove a
-successful offline build or retain inputs against GC. If offline inputs are
+successful offline build or retain inputs against GC. If the audit passes, use
+`./scripts/platform offline-pin --drv "$pc_drv" --dry-run` and then the same
+command without `--dry-run`; repeat for `"$board_drv"`. Keep each returned receipt
+and root in stable state storage. See [input pinning](offline-input-pins.md): this
+retains checked local inputs without realization, not a successful build result. If offline inputs are
 missing, stop and prepare them while online/on an admitted builder. The source
 bundle alone cannot repair missing dependencies. Do not mark the worker validated
 or remove daemon admission controls to make a command pass.
