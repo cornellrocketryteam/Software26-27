@@ -197,6 +197,17 @@ class RuntimeContracts(unittest.TestCase):
         self.assertIn('fillops-hybrid-test',normal['links'][-1]['url'])
         self.assertEqual(stand['links'][0]['url'],'/grafana/d/adrc2lg/fillops')
 
+    def test_normal_hybrid_view_is_distinct_and_unknown_profile_is_rejected(self):
+        output=self.root / "normal-profile-assets"
+        runtime.build_assets(ROOT / "ground-station",output)
+        dashboard=json.loads((output / "grafana/dashboards/hybrid.json").read_text())
+        self.assertEqual(dashboard['uid'],'fillops-hybrid')
+        self.assertNotIn('LC2',json.dumps(dashboard))
+        self.assertIn('h.operating_profile = 1',dashboard['templating']['list'][0]['query'])
+        self.assertTrue((output / 'migrations/005-operating-profile-identity.sql').is_file())
+        for profile in [None,0,True,3,'hybrid']:
+            with self.assertRaises(runtime.ProvisionError):runtime.operating_dashboard(dashboard,profile)
+
     def test_camera_disabled_assets_keep_placeholder(self):
         output = self.root / "no-camera-assets"
         runtime.build_assets(ROOT / "ground-station", output)

@@ -107,3 +107,10 @@ fn compiler_output_initializes_matching_mock_runtime_and_device_roles() {
         assert!(hardware.has_role("sv5"));
     }
 }
+
+#[test]
+fn telemetry_identity_distinguishes_operating_modes_without_relabelling_legacy() {
+    assert_eq!(RoutingMode::Legacy.telemetry_identity(), (1, 0));
+    assert_eq!(RoutingMode::Hybrid.telemetry_identity(), (2, 1));
+    assert_eq!(RoutingMode::HybridTest.telemetry_identity(), (2, 2));
+}

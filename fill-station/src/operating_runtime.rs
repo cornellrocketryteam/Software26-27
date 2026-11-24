@@ -15,6 +15,14 @@ impl RoutingMode {
             _ => None,
         }
     }
+    /// Source metadata schema and explicit operating profile; legacy stays unspecified.
+    pub fn telemetry_identity(self) -> (u32, u32) {
+        match self {
+            Self::Legacy => (1, 0),
+            Self::Hybrid => (2, 1),
+            Self::HybridTest => (2, 2),
+        }
+    }
     pub fn fsw_enabled(self) -> bool {
         self != Self::HybridTest
     }

@@ -17,9 +17,8 @@ Both protobuf copies append the following tags; existing tags are unchanged:
 | 85 | operating_profile (uint32) | 0 unspecified; 2 Hybrid-test currently supported with v2 |
 
 The opt-in Hybrid-test runtime publishes source_metadata_version=2 and profile
-code 2. Other current runtime configurations remain version 1/profile code 0.
-Codes 1/3 are reserved for later Hybrid/Liquid identification; do not infer they
-are implemented. The code is an operating-mode label, not a wiring/release hash.
+code 2. Normal Hybrid now uses v2/code1; current Liquid/debug remain v1/code0.
+Code3 remains reserved for Liquid; no mapped Liquid identification is implemented. The code is an operating-mode label, not a wiring/release hash.
 Invalid/unavailable LC2 uses zero wire placeholders and validity false. It shares
 ADC2's existing sample age; it is not a separately timed channel acquisition.
 
@@ -32,7 +31,7 @@ identities are never rekeyed. Legacy/v1/unsupported source claims cannot assert
 LC2 validity. Consumers should require valid source identity, metadata version 2,
 profile code 2 and load_cell_2_valid before displaying LC2 as a measurement.
 
-Version 2 requires availability_version 1/profile 2, finite voltage and int16 raw
+The test-stand v2 path requires availability_version 1/profile 2, finite voltage and int16 raw
 counts, including finite placeholders when unavailable. Malformed supported
 frames fail SQLSTATE 22023 before receipt insertion. Invalid local PT3/PT4 become
 NULL using mask bits 3/4, and unavailable local SV2/MAV become NULL using configured
@@ -41,7 +40,7 @@ state is still not a physical valve position measurement.
 
 ## Deployment and later checks
 
-Provision PC schema/migrations 001–004, EMQX schema/rule/action and reader grants
+Provision PC schema/migrations 001–005, EMQX schema/rule/action and reader grants
 before enabling a v2 producer. An older v1-only stack does not provide LC2 integrity
 or display support. Runtime asset packaging includes 004 before role grants and
 broker reconciliation. Existing selected-session views/functions include the new
@@ -64,3 +63,5 @@ Host checks use disposable PostgreSQL 17 ordinary/time-partitioned tables, the
 actual generated SQL action, real nanopb C round trips, and Hybrid/Liquid Rust
 suites. They do not prove live EMQX descriptor deployment, Timescale extension
 behavior, native ARM compilation or physical ADC operation. No hardware was used.
+
+Migration005 adds normal Hybrid v2/code1 without changing existing test-stand fingerprints. See [normal Hybrid compatibility](hybrid-telemetry.md). Use ordered migrations 001–005 before new producers.

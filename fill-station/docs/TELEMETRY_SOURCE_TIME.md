@@ -131,3 +131,5 @@ The MQTT publisher logs its exact 32-hex-character session ID on its first frame
 for explicit dashboard selection. This identifies the publisher lifetime, not
 CSV rows, physical wiring or authenticated delivery. Reconnect retains the ID;
 task restart changes it. See [Grafana profile selection](../../docs/operations/grafana-profiles.md).
+
+Normal Hybrid now uses source v2/profile1; Hybrid-test remains v2/profile2. Liquid/debug stay v1/profile0. Migration005 preserves old hashes and must precede the new normal producer. See [compatibility](../../docs/operations/hybrid-telemetry.md).

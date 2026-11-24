@@ -53,15 +53,14 @@ as the MQTT session identity.
 
 The raw exported dashboard is unchanged. Generated standard FillOps gains only
 its navigation link in this block; its existing session queries/layout remain.
-A separately filtered normal-Hybrid/Liquid split is still pending: those MQTT
-streams currently use v1/profile code 0, so they cannot reliably be distinguished
-by operating mode. Normal Hybrid can use the standard view with explicit session
-selection. Liquid also needs its semantic sensor/device mapping before custom
-views are defined. The Commanding UI already follows the board's reported mode.
+A separate normal-Hybrid view is now generated with v2/profile1 filtering; see
+[normal Hybrid identity](hybrid-telemetry.md). Legacy normal-Hybrid v1 data remain
+in standard FillOps. Liquid still needs semantic sensor/device mapping before its
+custom view can be defined. The Commanding UI already follows the board's reported mode.
 
 ## Later acceptance
 
-1. Build/deploy the combined ground-station candidate, with migrations 001–004,
+1. Build/deploy the combined ground-station candidate, with migrations 001–005,
    matching protobuf descriptor/rules and both provisioned dashboard files.
 2. Build/deploy the matched Hybrid-test board candidate. Capture its publisher
    session line, confirm Commanding reports Hybrid-test, reload the Grafana view

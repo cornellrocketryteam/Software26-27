@@ -171,6 +171,7 @@ def database(docker, assets, attempts=30):
            + "\n" + (assets / "migrations/002-source-metadata.sql").read_text()
            + "\n" + (assets / "migrations/003-session-queries.sql").read_text()
            + "\n" + (assets / "migrations/004-lc2-telemetry.sql").read_text()
+           + "\n" + (assets / "migrations/005-operating-profile-identity.sql").read_text()
            + "\n" + (assets / "provisioning/roles.sql").read_text()
            + "\nSELECT pg_advisory_unlock(7162738);\n")
     result = _run([docker, "exec", "-i", "ground-timescaledb", "psql", "-X", "-U", "postgres",
@@ -181,7 +182,7 @@ def database(docker, assets, attempts=30):
 
 def configure_fill_session(dashboard, operating_profile=None):
     """Preserve panel layout; require an explicit source session for fill data."""
-    if operating_profile not in (None, 2):
+    if operating_profile is not None and (type(operating_profile) is not int or operating_profile not in (1, 2)):
         raise ProvisionError("Unsupported dashboard operating profile.")
     variable = "${fill_session:sqlstring}"
     catalog = """SELECT __text, __value FROM (
@@ -191,21 +192,22 @@ def configure_fill_session(dashboard, operating_profile=None):
           publisher_session_hi::text || ':' || publisher_session_lo::text
         FROM public.telemetry_sessions WHERE unit_id = 0
     ) sessions ORDER BY rank, __text"""
-    if operating_profile == 2:
+    if operating_profile is not None:
+        label = "Hybrid-test" if operating_profile == 2 else "Hybrid"
         catalog = """SELECT __text, __value FROM (
-            SELECT 0 AS rank, 'Select a Hybrid-test session' AS __text, 'none' AS __value
+            SELECT 0 AS rank, 'Select a __PROFILE_LABEL__ session' AS __text, 'none' AS __value
             UNION ALL SELECT 1, s.session_id || ' (seq ' || s.last_sequence::text || ')',
               s.publisher_session_hi::text || ':' || s.publisher_session_lo::text
             FROM public.telemetry_sessions s JOIN public.telemetry_latest_in_session h
               USING (unit_id, publisher_session_hi, publisher_session_lo)
-            WHERE s.unit_id = 0 AND h.source_metadata_version = 2 AND h.operating_profile = 2
-        ) sessions ORDER BY rank, __text"""
+            WHERE s.unit_id = 0 AND h.source_metadata_version = 2 AND h.operating_profile = __PROFILE_CODE__
+        ) sessions ORDER BY rank, __text""".replace("__PROFILE_LABEL__", label).replace("__PROFILE_CODE__", str(operating_profile))
     dashboard.setdefault("templating", {})["list"] = [{
         "name": "fill_session", "label": "Fill session", "type": "query",
         "datasource": {"type": "grafana-postgresql-datasource", "uid": "bfk1elo58d3pca"},
         "query": catalog, "definition": catalog, "refresh": 1, "sort": 0,
         "multi": False, "includeAll": False, "hide": 0, "skipUrlSync": False,
-        "current": {"text": "Select a Hybrid-test session" if operating_profile == 2 else "Select a fill session", "value": "none"},
+        "current": {"text": "Select a Hybrid-test session" if operating_profile == 2 else ("Select a Hybrid session" if operating_profile == 1 else "Select a fill session"), "value": "none"},
         "options": [],
     }]
     # SQL-string interpolation quotes the complete value. The bounded numeric
@@ -217,9 +219,9 @@ def configure_fill_session(dashboard, operating_profile=None):
         (""" + variable + """ = 'legacy' AND d.source_metadata_version = 0)
         OR (d.source_identity_valid AND d.publisher_session_hi = (""" + hi + """)
             AND d.publisher_session_lo = (""" + lo + """)))) AS telemetry_data"""
-    if operating_profile == 2:
+    if operating_profile is not None:
         relation = """(SELECT d.* FROM public.telemetry_data d WHERE d.unit_id = 0
-            AND d.source_identity_valid AND d.source_metadata_version = 2 AND d.operating_profile = 2
+            AND d.source_identity_valid AND d.source_metadata_version = 2 AND d.operating_profile = """ + str(operating_profile) + """
             AND d.publisher_session_hi = (""" + hi + """) AND d.publisher_session_lo = (""" + lo + """)) AS telemetry_data"""
     for panel in dashboard["panels"]:
         if panel["id"] not in [2, 3, 4, 5, 6, 35]:
@@ -238,15 +240,19 @@ def configure_fill_session(dashboard, operating_profile=None):
             target["rawSql"] = query
 
 
-def hybrid_test_dashboard(original):
+def operating_dashboard(original, operating_profile):
     """Copy only the existing fill section; do not restyle the accepted view."""
+    if type(operating_profile) is not int or operating_profile not in (1, 2):
+        raise ProvisionError("Unsupported operating dashboard profile.")
     dashboard = copy.deepcopy(original)
-    dashboard.update(uid="fillops-hybrid-test", title="FillOps - Hybrid-test", id=None)
+    name = "hybrid-test" if operating_profile == 2 else "hybrid"
+    label = "Hybrid-test" if operating_profile == 2 else "Hybrid"
+    dashboard.update(uid="fillops-" + name, title="FillOps - " + label, id=None)
     keep = {7, 1, 2, 3, 5, 35, 6, 4}
     dashboard["panels"] = [p for p in dashboard["panels"] if p["id"] in keep]
     panels = {p["id"]: p for p in dashboard["panels"]}
-    panels[7]["title"] = "Hybrid-test - local fill station"
-    panels[6]["title"] = "Local pressures"
+    panels[7]["title"] = label + (" - local fill station" if operating_profile == 2 else " - fill station and umbilical")
+    panels[6]["title"] = "Local pressures" if operating_profile == 2 else "Local / FSW pressures"
     panels[3]["title"] = "Load Cell 1 (existing calibration)"
     panels[3]["targets"][0]["rawSql"] = (
         'SELECT load_cell AS "LC1 Scaled" FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
@@ -255,24 +261,36 @@ def hybrid_test_dashboard(original):
                "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": None}]}}
     panels[3]["fieldConfig"] = {"defaults": copy.deepcopy(neutral), "overrides": []}
     panels[3]["options"]["showThresholdMarkers"] = False
-    panels[35]["title"] = "Load Cell 2 (uncalibrated)"
-    panels[35]["targets"][0]["rawSql"] = (
-        'SELECT CASE WHEN load_cell_2_valid THEN load_cell_2_raw END AS "LC2 Raw", '
-        'CASE WHEN load_cell_2_valid THEN load_cell_2_voltage END AS "LC2 Voltage" '
-        'FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
-    panels[35]["fieldConfig"] = {"defaults": copy.deepcopy(neutral), "overrides": [
-        {"matcher": {"id": "byName", "options": "LC2 Raw"},
-         "properties": [{"id": "decimals", "value": 0}]},
-        {"matcher": {"id": "byName", "options": "LC2 Voltage"},
-         "properties": [{"id": "unit", "value": "suffix:V"}, {"id": "decimals", "value": 3}]},
-    ]}
+    if operating_profile == 2:
+        panels[35]["title"] = "Load Cell 2 (uncalibrated)"
+        panels[35]["targets"][0]["rawSql"] = (
+            'SELECT CASE WHEN load_cell_2_valid THEN load_cell_2_raw END AS "LC2 Raw", '
+            'CASE WHEN load_cell_2_valid THEN load_cell_2_voltage END AS "LC2 Voltage" '
+            'FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+        panels[35]["fieldConfig"] = {"defaults": copy.deepcopy(neutral), "overrides": [
+            {"matcher": {"id": "byName", "options": "LC2 Raw"},
+             "properties": [{"id": "decimals", "value": 0}]},
+            {"matcher": {"id": "byName", "options": "LC2 Voltage"},
+             "properties": [{"id": "unit", "value": "suffix:V"}, {"id": "decimals", "value": 3}]},
+        ]}
+    else:
+        panels[35]["title"] = "FSW age at frame"
+        panels[35]["targets"][0]["rawSql"] = (
+            'SELECT CASE WHEN fsw_receive_age_valid THEN fsw_receive_age_ms END AS "FSW Receive Age" '
+            'FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+        panels[35]["fieldConfig"] = {"defaults": {**copy.deepcopy(neutral), "unit": "ms"}, "overrides": []}
     panels[35]["options"]["reduceOptions"]["calcs"] = ["last"]
     panels[5]["title"] = "Igniter command"
     panels[5]["targets"][0]["rawSql"] = (
         'SELECT ignition AS "Ignition Command" FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+    if operating_profile == 1:
+        panels[5]["title"] = "FSW mode / igniter command"
+        panels[5]["targets"][0]["rawSql"] = (
+            'SELECT flight_mode AS "Flight Mode", ignition AS "Ignition Command" '
+            'FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
     panels[5]["fieldConfig"]["overrides"] = [
         o for o in panels[5]["fieldConfig"].get("overrides", [])
-        if o.get("matcher", {}).get("options") == "Ignition Command"]
+        if o.get("matcher", {}).get("options") in (["Ignition Command"] if operating_profile == 2 else ["Ignition Command", "Flight Mode"])]
     # This is current combined output intent, not an acknowledgement that a
     # historical ignition command was sent or physically ignited anything.
     for override in panels[5]["fieldConfig"]["overrides"]:
@@ -282,9 +300,9 @@ def hybrid_test_dashboard(original):
                     for key, label in [("false", "INACTIVE"), ("true", "ACTIVE")]:
                         if key in mapping.get("options", {}):
                             mapping["options"][key]["text"] = label
-    configure_fill_session(dashboard, operating_profile=2)
+    configure_fill_session(dashboard, operating_profile=operating_profile)
     panels[3]["description"] += " LC1 uses existing coefficients; engineering unit is unconfirmed."
-    panels[35]["description"] += " LC2 is raw/voltage only, not calibrated force."
+    panels[35]["description"] += (" LC2 is raw/voltage only, not calibrated force." if operating_profile == 2 else " Unknown FSW receive age is unavailable, not zero; age alone is not a freshness guarantee.")
     panels[5]["description"] += " Combined igniter command, not proof of ignition. QD release state is available in Commanding, not the deprecated motor field."
     dashboard["links"] = [{"title": "Standard FillOps", "type": "link", "url": "/grafana/d/adrc2lg/fillops", "targetBlank": False}]
     return dashboard
@@ -295,7 +313,7 @@ def build_assets(source, output, cameras=False):
     source, output = Path(source), Path(output)
     for relative in ["create-telemetry-table.sql", "emqx_action.sql", "emqx_rule.sql",
                      "emqx_rule_fill_station.sql", "proto/telemetry.proto",
-                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "migrations/003-session-queries.sql", "migrations/004-lc2-telemetry.sql", "provisioning/roles.sql"]:
+                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "migrations/003-session-queries.sql", "migrations/004-lc2-telemetry.sql", "migrations/005-operating-profile-identity.sql", "provisioning/roles.sql"]:
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / relative, target)
@@ -318,11 +336,14 @@ def build_assets(source, output, cameras=False):
     }
     dashboard = json.loads((source / "grafana.json").read_text())
     dashboard["id"] = None
-    test_dashboard = hybrid_test_dashboard(dashboard)
+    test_dashboard = operating_dashboard(dashboard, 2)
+    normal_dashboard = operating_dashboard(dashboard, 1)
     configure_fill_session(dashboard)
+    dashboard.setdefault("links", []).append({"title": "Hybrid (with FSW)", "type": "link",
+        "url": "/grafana/d/fillops-hybrid/hybrid", "targetBlank": False})
     dashboard.setdefault("links", []).append({"title": "Hybrid-test (local only)", "type": "link",
         "url": "/grafana/d/fillops-hybrid-test/hybrid-test", "targetBlank": False})
-    for panel in dashboard["panels"] + test_dashboard["panels"]:
+    for panel in dashboard["panels"] + test_dashboard["panels"] + normal_dashboard["panels"]:
         if panel["id"] == 1:
             panel["options"]["mode"] = "html" if cameras else "markdown"
             panel["options"]["content"] = ('<iframe title="Fill cameras" src="/cameras/" allow="autoplay; fullscreen" style="width:100%;height:100%;border:0"></iframe>' if cameras else "Camera feeds are not configured for this deployment.")
@@ -338,6 +359,7 @@ def build_assets(source, output, cameras=False):
         "grafana/provisioning/dashboards/telemetry.yaml": provider,
         "grafana/dashboards/dashboard.json": dashboard,
         "grafana/dashboards/hybrid-test.json": test_dashboard,
+        "grafana/dashboards/hybrid.json": normal_dashboard,
     }
     for relative, document in documents.items():
         target = output / relative

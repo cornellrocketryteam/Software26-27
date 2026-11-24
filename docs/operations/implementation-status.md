@@ -283,3 +283,15 @@ Publisher startup now logs the exact MQTT session ID for manual matching.
 Host JSON/SQL/runtime/Cargo checks pass; actual Grafana rendering, Timescale
 performance and combined deployment remain pending. Normal Hybrid/Liquid source
 profile separation is still pending. See [acceptance](grafana-profiles.md).
+
+
+## Normal Hybrid identity/view — November 23
+
+Normal Hybrid now uses v2/profile1, test remains v2/profile2, legacy Liquid/debug
+v1/0. Migration005 extends supported modes while preserving old hashes, rejects
+LC2 claims in normal Hybrid and qualifies visible remote fields with FSW age
+validity; local connector masks do not erase remote SV2/MAV. Separate fillops-hybrid
+view/camera/session filters are generated, default FillOps retained. Provision
+001–005 before producer update. Host PG/runtime/Cargo checks pass; live stack,
+images and physical mixed local/FSW acceptance remain pending. See
+[normal Hybrid acceptance](hybrid-telemetry.md).
