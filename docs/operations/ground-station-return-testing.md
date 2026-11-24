@@ -362,3 +362,14 @@ redirect following, polling adapter or power control. Host fixture tests pass.
 Later run it on the mini PC and collect installed model/revision/firmware,
 standalone/controller mode and available metric labels from existing management
 UIs. All Omada adapters remain disabled. See [inspection steps](omada-inspection.md).
+
+
+## Operating pressure source-time charts — November 24
+
+Hybrid/Hybrid-test pressure histories now use qualified source frame-assembly
+time, split clock generations into separate series and select the greatest
+sequence for equal timestamps within a generation. Unknown source time is omitted;
+latest cards remain sequence-based. Original/default FillOps remains arrival-based.
+Generated SQL host checks cover ordinary/time-partitioned PostgreSQL; Grafana
+rendering, hardware LAN clock and real Timescale query costs remain pending.
+See [source-time chart acceptance](source-time-charts.md).

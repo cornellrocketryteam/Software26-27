@@ -225,3 +225,12 @@ On the updated PC run `crt-inspect-omada` to review its plan, then
 `crt-inspect-omada --probe` to collect the fixed-inventory endpoint report. Follow
 [Omada inspection](omada-inspection.md) for firmware and metrics collection.
 This does not enable any device controls or establish authenticated identity.
+
+
+## Operating pressure chart check
+
+Hybrid/Hybrid-test pressure charts now use qualified source time, with separate
+clock-generation series; latest cards remain sequence-based. Verify actual legend,
+null handling, clock/range selection and delayed-packet fixtures using the
+[source-time chart checklist](source-time-charts.md). Default FillOps stays
+arrival-based; a blank source-time chart can mean an unqualified board clock.

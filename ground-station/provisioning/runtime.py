@@ -234,6 +234,32 @@ def configure_fill_session(dashboard, operating_profile=None):
         )
         for target in panel.get("targets", []):
             query = target.get("rawSql", "")
+            if operating_profile is not None and panel["id"] == 2:
+                # The stored event time is qualified by ingestion. Do not mix
+                # arrival fallback into a source-time series or join clock jumps.
+                query = """SELECT source_event_time AS "time",
+                    pressure.label || ' / clock ' || source_time_generation::text AS metric,
+                    pressure.value AS value
+                    FROM (
+                      SELECT DISTINCT ON (source_event_time, source_time_generation) *
+                      FROM telemetry_data
+                      WHERE source_event_time IS NOT NULL AND $__timeFilter(source_event_time)
+                      ORDER BY source_event_time, source_time_generation, publisher_sequence DESC
+                    ) AS source_frame
+                    CROSS JOIN LATERAL (VALUES
+                      ('PT1', pt_1_pressure), ('PT2', pt_2_pressure),
+                      ('PT3', pt3), ('PT4', pt4)
+                    ) AS pressure(label, value)
+                    ORDER BY source_event_time, publisher_sequence, pressure.label;"""
+                target["format"] = "time_series"
+                panel["fieldConfig"]["defaults"].setdefault("custom", {})["spanNulls"] = False
+                panel["description"] = (
+                    "Selected session: pressure history uses qualified board frame assembly time, not arrival time. "
+                    "Missing source time is omitted; latest-value cards still use sequence. "
+                    "Separate clock-generation series avoid joining clock corrections; timestamp ties use the highest sequence. "
+                    "Kernel/LAN synchronization does not establish absolute UTC or sensor acquisition time. "
+                    "A stopped selected session can remain visible; this is not a freshness alarm."
+                )
             if query.count("FROM telemetry_data") != 1:
                 raise ProvisionError("Fill dashboard query requires session-filter review.")
             query = query.replace("FROM telemetry_data", "FROM " + relation)

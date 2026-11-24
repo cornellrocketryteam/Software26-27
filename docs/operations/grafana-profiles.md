@@ -24,12 +24,16 @@ readings distinguish false from unavailable; older v2 sessions have unavailable
 new diagnostics. Output intent does not prove ignition or mechanical QD release,
 and output OFF does not reconnect the QD. See [diagnostics](output-diagnostics.md).
 
-The pressure chart keeps broker arrival time as its axis. Latest pressure,
-actuator and both load-cell values use source sequence within the selected session.
-LC2 fields are NULL when invalid; an invalid latest reading does not recover an
-older valid value. Zero with validity true remains a measurement. The LC2 stat
-uses Last rather than Last non-null. The view is historical context, not a
-freshness alarm: a stopped selected session can keep its last values visible.
+The operating pressure chart uses qualified board frame-assembly time, ordered
+by source timestamp. Clock generations become separate `PTn / clock N` series;
+missing time produces no plotted point. Equal timestamps in one generation use
+the highest source sequence once, while all frames remain stored. Invalid pressure
+stays null and line bridging over nulls is disabled. See [source-time charts](source-time-charts.md).
+
+Latest pressure, actuator and load-cell cards still use source sequence within
+the selected session. Invalid LC2 does not recover an older valid value; zero
+with validity true remains a measurement. The view is historical context, not
+a freshness alarm: a stopped selected session can keep its last values visible.
 
 ## Choosing the session
 

@@ -19,7 +19,7 @@ The page's initial unqualified URL does not automatically choose the latest boot
 Latest-value panels use the greatest sequence within the selected session, so a
 late earlier packet does not replace a newer reading. Legacy latest values use
 arrival order. Unknown/malformed selections produce no rows and never fall back
-to another boot. Charts still use broker arrival time and the normal time range;
+to another boot. In the standard/default FillOps view, charts still use broker arrival time and the normal time range;
 this does not yet put samples on a source-event-time axis or reorder plotted
 samples by acquisition time. Mixed clock generations and timestamp uncertainty
 therefore remain visible in the database rather than being implicitly resolved.
@@ -60,3 +60,8 @@ and [SQL-string formatting](https://grafana.com/docs/grafana/latest/visualizatio
 A separately filtered Hybrid-test view is now generated; standard FillOps remains
 the default. Match the publisher's startup session log to the dropdown. See
 [profile-specific Grafana](grafana-profiles.md) for scope and later acceptance.
+
+
+The separate Hybrid and Hybrid-test pressure charts now use qualified source
+frame-assembly time with separate clock-generation series. Default FillOps and
+legacy charts retain arrival time. See [source-time chart policy](source-time-charts.md).

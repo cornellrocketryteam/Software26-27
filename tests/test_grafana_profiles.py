@@ -25,7 +25,7 @@ class GrafanaProfiles(base.SourceIngestionDatabase):
         values.update(extra);return self.insert(**values)
     def query(self,panel,selection='100:200'):
         q=self.panels[panel]['targets'][0]['rawSql'].replace('${fill_session:sqlstring}',"'"+selection.replace("'","''")+"'")
-        return re.sub(r'\$__timeFilter\(time\)',"time BETWEEN '2026-01-01' AND '2028-01-01'",q)
+        return re.sub(r'\$__timeFilter\(([^)]+)\)',r"\1 BETWEEN '2026-01-01' AND '2028-01-01'",q)
     def test_test_dashboard_keeps_fill_layout_and_removes_fsw(self):
         self.assertEqual(self.dashboard['uid'],'fillops-hybrid-test')
         self.assertEqual(set(self.panels),{7,1,2,3,5,35,6,4})
