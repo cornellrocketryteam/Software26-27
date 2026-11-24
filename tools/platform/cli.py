@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from . import build, cache, deploy, deploy_ssh
+from . import build, cache, deploy, deploy_ssh, offline_audit
 from .builders import local_health, probe_station
 from .config import load_config, state_directory
 from .runtime import PlatformError
@@ -43,6 +43,9 @@ def parser():
     sync.add_argument('--dry-run', action='store_true')
     resume = commands.add_parser('transfer-resume', help='resume retained worker requests/imports; never creates a new release')
     resume.add_argument('--dry-run', action='store_true', help='list journals without contacting the worker')
+    audit = commands.add_parser('offline-audit', help='inspect local static derivation inputs; never compile or certify an offline build')
+    audit.add_argument('--drv', required=True, help='evaluated absolute /nix/store/*.drv on this machine')
+    audit.add_argument('--timeout-seconds', type=int, default=120)
     commands.add_parser('status', help='read-only local build/outbox status (no target/deploy health)')
     return cli
 
@@ -69,6 +72,8 @@ def main(argv=None, *, repo=None):
         elif args.command == 'transfer-resume':
             result = ({'dryRun': True, 'pending': build.transfer_status(state)} if args.dry_run
                       else build.resume_transfers(state, config))
+        elif args.command == 'offline-audit':
+            result = offline_audit.execute(args.drv, args.timeout_seconds)
         elif args.command == 'status':
             result = {'stateDirectory': str(state), 'pending': cache.status(state),
                       'workerTransfers': build.transfer_status(state),
@@ -91,6 +96,8 @@ def main(argv=None, *, repo=None):
                               stationValidated=config.get('station', {}).get('validated') is True,
                               requestedBuildPlatform=args.build_platform)
         print(json.dumps(result, indent=2, sort_keys=True))
+        if args.command == 'offline-audit' and result['assessment'] != 'static_inputs_present':
+            return 2
         return 0
     except (PlatformError, OSError, ValueError) as exc:
         print(f'platform: {exc}', file=sys.stderr)

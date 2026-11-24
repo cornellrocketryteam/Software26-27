@@ -394,3 +394,11 @@ refuses conflicting aliases, symlinked files and changed pins rather than replac
 them silently. Enroll the returned public key through a reviewed board image;
 `boardEnrolled:false` remains explicit because local setup cannot prove enrollment.
 See [enrollment and acceptance](../../docs/operations/ground-station-accepted-system.md).
+
+### Inspect offline static inputs without building
+
+`./scripts/platform offline-audit --drv /nix/store/<hash>-name.drv` audits the local
+daemon's static derivation/source/fixed-output inventory. Exit 0 means static
+inputs checked; exit 2 means missing/unverifiable report; exit 1 is an audit error.
+It never builds, downloads, retains inputs or certifies an offline build. See
+[scope, formats and acceptance](../../docs/operations/offline-input-audit.md).

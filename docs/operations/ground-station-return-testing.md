@@ -421,3 +421,14 @@ No automatic clock or loss claims; duplicate rejections/broker rates need separa
 evidence. Disposable ordinary/partitioned PostgreSQL reader-role checks pass;
 actual Timescale plans, container command and sustained 50 Hz remain pending.
 See [receiver report](telemetry-throughput-report.md).
+
+
+## Offline static-input audit — November 24
+
+Candidate `platform offline-audit --drv ...` inspects local daemon metadata and
+registration for full static source/derivation/fixed-output inputs. Missing and
+unverifiable states stay separate; unknown/dynamic metadata cannot pass. It never
+builds, fetches, creates GC roots or marks an offline build validated. Fixture
+and inert real-derivation checks pass; actual combined PC/board graphs, retained
+input preparation and network-isolated native builds remain pending. See
+[offline audit](offline-input-audit.md).

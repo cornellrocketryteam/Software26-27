@@ -87,7 +87,11 @@ board_drv=$(nix --extra-experimental-features 'nix-command flakes' eval --offlin
 printf '%s\n' "$pc_drv" "$board_drv" > "$HOME/return-handoff/recipes.txt"
 ```
 
-Both variables must be nonempty `/nix/store/*.drv` paths. If offline inputs are
+Both variables must be nonempty `/nix/store/*.drv` paths. Before compiling, run
+`./scripts/platform offline-audit --drv "$pc_drv"` and the same command for
+`"$board_drv"` separately. Read the [audit report policy](offline-input-audit.md):
+exit 2 reports missing/unverifiable static inputs; exit 0 still does not prove a
+successful offline build or retain inputs against GC. If offline inputs are
 missing, stop and prepare them while online/on an admitted builder. The source
 bundle alone cannot repair missing dependencies. Do not mark the worker validated
 or remove daemon admission controls to make a command pass.
