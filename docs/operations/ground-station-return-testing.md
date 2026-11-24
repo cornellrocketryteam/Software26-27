@@ -410,3 +410,14 @@ or delivery success is inferred. Existing QoS, queue size, ADC/CSV/UI behavior a
 10 Hz default remain. Host/Nix checks pass; native images and staged 10/20/25/50 Hz
 end-to-end load/latency/commanding/recovery acceptance remain pending. See
 [rate configuration and testing](telemetry-rate-testing.md).
+
+
+## Receiver throughput report — November 24
+
+Candidate `crt-telemetry-throughput` generates bounded READ ONLY SQL for an explicit
+publisher session/window: stored receipt rate, internal sequence gaps, receipt
+timestamp-order regressions/ties and optional operator-qualified signed latency.
+No automatic clock or loss claims; duplicate rejections/broker rates need separate
+evidence. Disposable ordinary/partitioned PostgreSQL reader-role checks pass;
+actual Timescale plans, container command and sustained 50 Hz remain pending.
+See [receiver report](telemetry-throughput-report.md).

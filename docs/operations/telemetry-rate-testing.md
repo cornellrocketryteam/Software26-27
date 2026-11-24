@@ -75,3 +75,8 @@ Host tests cover parsing/range limits, 20 ms at 50 Hz, fractional-millisecond
 periods, queue/error accounting, work overruns and actual Nix startup commands for
 10/50 Hz. Host tests do not establish scheduler performance, delivery, Linux GPIO
 contention, native image build success or actual 50 Hz capacity.
+
+
+For the receiver side, use the explicit-session
+[database throughput report](telemetry-throughput-report.md). It complements local
+queue measurements without inferring delivery or packet-loss causes.

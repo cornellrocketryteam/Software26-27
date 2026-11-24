@@ -243,3 +243,9 @@ measurements. Collect a baseline first, then use separate recorded configuration
 for 20/25/50 Hz only in approved test windows. Follow
 [telemetry-rate acceptance](telemetry-rate-testing.md); local queue acceptance
 is not delivered throughput, and actual 50 Hz remains unvalidated.
+
+
+For each rate stage, collect the explicit-session
+[receiver throughput report](telemetry-throughput-report.md) alongside publisher
+window logs. Local queue acceptance and stored receipt rate are separate evidence;
+internal gaps are not proof of transport loss.
