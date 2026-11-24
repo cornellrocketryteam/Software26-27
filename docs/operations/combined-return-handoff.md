@@ -217,3 +217,11 @@ normal daemon containment/admission, interrupted-transfer/GC/outage acceptance
 and network-device integrations. See [worker enrollment](worker-cache-enrollment.md)
 and the cumulative [return checklist](ground-station-return-testing.md). This
 handoff does not silently enable worker/admin roles or mark those gates passed.
+
+
+## Optional read-only network evidence after acceptance
+
+On the updated PC run `crt-inspect-omada` to review its plan, then
+`crt-inspect-omada --probe` to collect the fixed-inventory endpoint report. Follow
+[Omada inspection](omada-inspection.md) for firmware and metrics collection.
+This does not enable any device controls or establish authenticated identity.

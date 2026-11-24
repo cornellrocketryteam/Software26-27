@@ -5,7 +5,7 @@ stdenvNoCC.mkDerivation {
   src = lib.fileset.toSource {
     root = ../../../../ground-station/network-devices;
     fileset = lib.fileset.unions (map (name: ../../../../ground-station/network-devices + "/${name}") [
-      "service.py" "shelly.py" "inventory.json"
+      "service.py" "shelly.py" "inspect_omada.py" "inventory.json"
     ]);
   };
   nativeBuildInputs = [ python3 makeWrapper ];
@@ -20,6 +20,8 @@ stdenvNoCC.mkDerivation {
     cp *.py inventory.json "$testRoot/ground-station/network-devices/"
     cp ${../../../../tests/platform/test_network_devices.py} "$testRoot/tests/platform/"
     cp ${../../../../tests/platform/test_shelly.py} "$testRoot/tests/platform/"
+    cp ${../../../../tests/platform/test_omada_inspection.py} "$testRoot/tests/platform/"
+    python -m unittest discover -s "$testRoot/tests/platform" -p test_omada_inspection.py
     python -m unittest discover -s "$testRoot/tests/platform" -p test_network_devices.py
     python -m unittest discover -s "$testRoot/tests/platform" -p test_shelly.py
     python service.py --check-config
@@ -29,6 +31,8 @@ stdenvNoCC.mkDerivation {
     cp *.py inventory.json "$out/libexec/ground-network-devices/"
     makeWrapper ${python3}/bin/python3 "$out/bin/crt-network-devices" \
       --add-flags "$out/libexec/ground-network-devices/service.py"
+    makeWrapper ${python3}/bin/python3 "$out/bin/crt-inspect-omada" \
+      --add-flags "$out/libexec/ground-network-devices/inspect_omada.py"
   '';
   meta = {
     description = "Local network-device status and explicit authenticated Shelly power API";

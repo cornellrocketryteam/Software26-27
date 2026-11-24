@@ -67,3 +67,12 @@ remain in the return-to-hardware checklist.
 The source UI now includes `/network` and a station-selector card. It is read-only
 and uses only the same-origin status API, with unknown/stale handling and no device
 requests or power commands. See `docs/operations/network-device-ui.md`.
+
+## Manual Omada inspection
+
+The package also installs `crt-inspect-omada`: default prints a fixed-inventory
+plan; `--probe` makes read-only unauthenticated HTTP/HTTPS root checks. It neither
+logs in nor enables the pending adapters or power writes. HTTPS certificate
+fingerprints are unverified observations. See the ordered instructions and
+firmware/metric collection list in
+[`docs/operations/omada-inspection.md`](../../docs/operations/omada-inspection.md).

@@ -351,3 +351,14 @@ actuation, or UI recording alarm was added. Other processes can still use disk.
 Commanding/MQTT continue independently. Native Linux probes, actual reboot
 retention, sustained performance and disposable-fixture limit acceptance remain
 pending. See [CSV storage policy](../../fill-station/docs/CSV_LOGGING.md).
+
+
+## Omada read-only inspection — November 24
+
+Candidate package adds `crt-inspect-omada`, a manual fixed-inventory plan/probe
+command for the three switches and two bridges. Bounded root HTTP/HTTPS checks
+return reachability/status and unverified TLS fingerprints only; no login,
+redirect following, polling adapter or power control. Host fixture tests pass.
+Later run it on the mini PC and collect installed model/revision/firmware,
+standalone/controller mode and available metric labels from existing management
+UIs. All Omada adapters remain disabled. See [inspection steps](omada-inspection.md).
