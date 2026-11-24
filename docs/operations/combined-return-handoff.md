@@ -265,3 +265,12 @@ Default unknown-address plugs must remain disabled. Once physical addresses/load
 mapping are supplied, follow [manual Shelly acceptance](shelly-controls.md):
 status first, then explicit per-device write opt-in and private authorization.
 No power request is automatic and Omada controls remain unimplemented.
+
+
+## Optional cache-only preparation for missing inputs
+
+If static audit reports missing non-derivation paths and an independently
+prepared approved cache contains them, use the explicit
+[cache-only preparation workflow](offline-cache-preparation.md), preview first.
+It cannot repair absent metadata/locked evaluation inputs or invent fetch results
+not in that cache. Do not treat an incomplete report as offline readiness.

@@ -455,3 +455,15 @@ no automatic retry. Both shipped unknown-address plugs remain disabled. Host and
 mocked browser checks pass; actual mapping, firmware, authorization enrollment,
 PC deployment and physical relay/load acceptance remain pending. Omada remains
 inspection-pending. See [Shelly controls](shelly-controls.md).
+
+
+## Cache-only input preparation — November 24
+
+Candidate `offline-prepare` copies only missing static roots from an explicit
+HTTP(S) cache/public key under Nix signature policy, re-audits and optionally
+registers metadata-only input pins. No compilation, raw source fetch, fallback
+cache, global trust or admission change. Incomplete copies cannot claim prepared
+or pin success. Host/injected checks pass; actual imports/signature rejection,
+interrupted transfers, full graphs and isolated builds remain pending. Full
+source fetching/evaluation input retention and portable prepared-set transfer
+are still separate work. See [cache preparation](offline-cache-preparation.md).

@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from . import build, cache, deploy, deploy_ssh, offline_audit, offline_pins
+from . import build, cache, deploy, deploy_ssh, offline_audit, offline_pins, offline_prepare
 from .builders import local_health, probe_station
 from .config import load_config, state_directory
 from .runtime import PlatformError
@@ -46,6 +46,13 @@ def parser():
     audit = commands.add_parser('offline-audit', help='inspect local static derivation inputs; never compile or certify an offline build')
     audit.add_argument('--drv', required=True, help='evaluated absolute /nix/store/*.drv on this machine')
     audit.add_argument('--timeout-seconds', type=int, default=120)
+    prepare = commands.add_parser('offline-prepare', help='copy missing static inputs from one explicit cache; never compile')
+    prepare.add_argument('--drv', required=True)
+    prepare.add_argument('--cache-url', required=True)
+    prepare.add_argument('--public-key', required=True)
+    prepare.add_argument('--copy-timeout-seconds', type=int, default=600)
+    prepare.add_argument('--dry-run', action='store_true', help='read-only audit and copy plan; no copy or pins')
+    prepare.add_argument('--pin', action='store_true', help='retain static inputs only after final audit succeeds')
     pin = commands.add_parser('offline-pin', help='retain freshly audited static inputs with a metadata-only GC root; never build')
     pin.add_argument('--drv', required=True)
     pin.add_argument('--dry-run', action='store_true', help='run read-only audit and report path count without creating roots/state')
@@ -80,6 +87,9 @@ def main(argv=None, *, repo=None):
                       else build.resume_transfers(state, config))
         elif args.command == 'offline-audit':
             result = offline_audit.execute(args.drv, args.timeout_seconds)
+        elif args.command == 'offline-prepare':
+            result = offline_prepare.execute(state, args.drv, args.cache_url, args.public_key,
+                dry_run=args.dry_run, pin=args.pin, timeout_seconds=args.copy_timeout_seconds)
         elif args.command == 'offline-pin':
             result = offline_pins.execute(state, args.drv, dry_run=args.dry_run)
         elif args.command == 'offline-unpin':
@@ -108,6 +118,8 @@ def main(argv=None, *, repo=None):
                               requestedBuildPlatform=args.build_platform)
         print(json.dumps(result, indent=2, sort_keys=True))
         if args.command == 'offline-audit' and result['assessment'] != 'static_inputs_present':
+            return 2
+        if args.command == 'offline-prepare' and not args.dry_run and not result['prepared']:
             return 2
         return 0
     except (PlatformError, OSError, ValueError) as exc:

@@ -21,7 +21,7 @@ standard library `platform` module remains available. Nix, nix-store, Git and
 `--config` is a global option, before the command. `--artifact` defaults to
 `ospi`, so routine builds do not regenerate SD/DATA cards. Explicit
 `release` builds `sd`, `ospi`, `data` from one frozen source for provisioning. OSPI
-contains the FIT. Individual `fit`, `sd`, `ospi`, `data` are supported. `prepare-offline` is not implemented. Invalid/incomplete commands return nonzero.
+contains the FIT. Individual `fit`, `sd`, `ospi`, `data` are supported. Full automatic source-fetching `prepare-offline` is not implemented; the explicit cache-only `offline-prepare` stage is described below. Invalid/incomplete commands return nonzero.
 Build, cache-sync, transfer-resume, check and status never deploy or reboot.
 The separate explicit `deploy` command writes only a verified release's FIT and
 never builds/reboots. `status` includes deployment attempt records, not live board
@@ -414,3 +414,12 @@ or fetches. `status` includes local pin records. See
 `offline-unpin --pin-id <exact-id> --dry-run` previews selected release; without
 dry-run it removes only that managed root and archives the attempt. No store-data
 deletion or GC occurs. Retain replacements before releasing needed offline pins.
+
+
+### Cache-only static input preparation
+
+`offline-prepare --drv /nix/store/<hash>-target.drv --cache-url <url> --public-key <key> --dry-run`
+inspects missing local static inputs without contacting the cache. Remove dry-run
+to copy from that explicit cache under Nix signature policy, and optionally add
+`--pin` after final static audit. No compilation, raw URL fetch or global trust
+change. See [workflow and partial-result limits](../../docs/operations/offline-cache-preparation.md).
