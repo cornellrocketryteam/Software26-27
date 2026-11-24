@@ -46,3 +46,16 @@ LC2 v2 MQTT/storage support is implemented and host-tested; native/image activat
 Paired Hybrid/Hybrid-test image selectors and CLI routing now exist and are graph/host tested; full images, consumer variants and physical acceptance remain pending. Liquid remains on its current wiring.
 
 Profile-aware CSV schema2 now records named sensors/validity, LC2 raw/voltage, owner-correct actuator state and independent CSV time identity. Host formatter/file checks pass; board mount/retention/performance and physical recordings remain pending.
+
+
+## Output diagnostics and combined handoff — November 23
+
+Hybrid/Hybrid-test now emit v3 IG1/IG2/QD output intent and continuity with
+independent validity. Migration 006, operating Grafana cards and CSV schema 3
+carry them through without changing default FillOps or Commanding layouts.
+Board deployment public keys now have a separate board-only file; contributor
+PC access stays separate. No real key was enrolled and no hardware deployed.
+See [diagnostics](output-diagnostics.md) and the ordered
+[combined build/deploy/test handoff](combined-return-handoff.md).
+Hardware, native image builds, offline input availability, actual SSH enrollment,
+and worker/publication admission remain acceptance gates, not assumed passes.

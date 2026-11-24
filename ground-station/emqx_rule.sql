@@ -106,6 +106,19 @@ SELECT
     false as load_cell_2_valid,
     0 as operating_profile,
 
+    false as ig1_output_active,
+    false as ig1_continuity,
+    false as ig1_output_valid,
+    false as ig1_continuity_valid,
+    false as ig2_output_active,
+    false as ig2_continuity,
+    false as ig2_output_valid,
+    false as ig2_continuity_valid,
+    false as qd_release_energized,
+    false as qd_continuity,
+    false as qd_output_valid,
+    false as qd_continuity_valid,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/raw/0")
     int(nth(3, split(topic, '/'))) as unit_id
   

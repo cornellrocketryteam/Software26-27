@@ -23,10 +23,10 @@ change. Log growth must fit the field run and available storage. Failed director
 file, header or row writes stop this logger with a diagnostic; a sync failure is
 reported and logging continues. The logger does not command actuators.
 
-## Compatibility and schema 2
+## Compatibility and schema 3
 
-The complete legacy header stays at the beginning in the same order. New fields
-are appended, with `CSV_Schema_Version=2`. Read columns by header name and allow
+The complete legacy and schema-2 headers stay at the beginning in the same order.
+Output diagnostic fields are appended, with `CSV_Schema_Version=3`. Read columns by header name and allow
 additional columns; consumers requiring an exact old column count need updating.
 Old files remain readable with their old headers and have no fabricated new data.
 
@@ -100,3 +100,12 @@ channels with ADC and telemetry readings, then disconnect/reconnect FSW/ADC in a
 approved hardware setup. Confirm invalid values and sample ages. Verify the real
 log mount, free space and power/reboot retention separately before trusting field
 recordings. No new hardware test is needed before the remaining UI work lands.
+
+## Output diagnostics
+
+Schema 3 appends IG1 and IG2 `Output_Active`, `Continuity`, `Output_Valid` and
+`Continuity_Valid` fields, followed by QD `Release_Energized`, `Continuity`,
+`Output_Valid` and `Continuity_Valid` (all prefixed with `IG1_`, `IG2_`, or `QD_`).
+Missing observations are empty with validity false. Known false remains false
+with validity true. Driver intent and continuity do not establish physical
+ignition or release. Existing SV5/QD legacy columns remain in place.

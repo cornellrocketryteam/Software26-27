@@ -8,7 +8,7 @@ stdenvNoCC.mkDerivation {
       "provisioning/runtime.py" "provisioning/roles.sql"
       "create-telemetry-table.sql" "emqx_action.sql" "emqx_rule.sql"
       "emqx_rule_fill_station.sql" "proto/telemetry.proto"
-      "migrations/001-hardware-availability.sql" "migrations/002-source-metadata.sql" "migrations/003-session-queries.sql" "migrations/004-lc2-telemetry.sql" "migrations/005-operating-profile-identity.sql" "grafana.json"
+      "migrations/001-hardware-availability.sql" "migrations/002-source-metadata.sql" "migrations/003-session-queries.sql" "migrations/004-lc2-telemetry.sql" "migrations/005-operating-profile-identity.sql" "migrations/006-output-diagnostics.sql" "grafana.json"
     ]);
   };
   nativeBuildInputs = [ python3 makeWrapper ];

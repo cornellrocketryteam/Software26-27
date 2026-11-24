@@ -10,7 +10,7 @@ use crate::components::{
     solenoid_valve::{LinePull, SolenoidValve},
 };
 use anyhow::{Context, Result, bail};
-use crate::operating_runtime::RoutingMode;
+use crate::operating_runtime::{RoutingMode, OutputDiagnostic};
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use async_gpiod::Chip;
 use serde::Deserialize;
@@ -239,6 +239,19 @@ impl Hardware {
         for d in hw.eregs.values() { d.enable_native().await?; }
         crate::components::pwm::arm_pru_outputs().await?;
         Ok(hw)
+    }
+    /// Read-only observations. Output is driver command memory, not physical proof.
+    pub async fn output_diagnostics(&self) -> [OutputDiagnostic;3] {
+        let mut result=[OutputDiagnostic::default();3];
+        for (i,role) in ["ig1","ig2"].iter().enumerate() {
+            if let Some(ig)=self.igniter(role) {
+                result[i]=OutputDiagnostic {output:Some(ig.is_igniting().await),continuity:ig.read_continuity().await.ok()};
+            }
+        }
+        if let Some(qd)=self.quick_disconnect("sv5") {
+            result[2]=OutputDiagnostic {output:qd.is_open().await.ok(),continuity:qd.check_continuity().await.ok()};
+        }
+        result
     }
     pub fn has_role(&self, role: &str) -> bool {
         self.roles.contains_key(role)

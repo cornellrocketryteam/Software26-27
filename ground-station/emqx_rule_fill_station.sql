@@ -113,6 +113,19 @@ SELECT
     CASE WHEN is_null(payload.load_cell_2_valid) THEN false ELSE payload.load_cell_2_valid END as load_cell_2_valid,
     CASE WHEN is_null(payload.operating_profile) THEN 0 ELSE payload.operating_profile END as operating_profile,
 
+    CASE WHEN is_null(payload.ig1_output_active) THEN false ELSE payload.ig1_output_active END as ig1_output_active,
+    CASE WHEN is_null(payload.ig1_continuity) THEN false ELSE payload.ig1_continuity END as ig1_continuity,
+    CASE WHEN is_null(payload.ig1_output_valid) THEN false ELSE payload.ig1_output_valid END as ig1_output_valid,
+    CASE WHEN is_null(payload.ig1_continuity_valid) THEN false ELSE payload.ig1_continuity_valid END as ig1_continuity_valid,
+    CASE WHEN is_null(payload.ig2_output_active) THEN false ELSE payload.ig2_output_active END as ig2_output_active,
+    CASE WHEN is_null(payload.ig2_continuity) THEN false ELSE payload.ig2_continuity END as ig2_continuity,
+    CASE WHEN is_null(payload.ig2_output_valid) THEN false ELSE payload.ig2_output_valid END as ig2_output_valid,
+    CASE WHEN is_null(payload.ig2_continuity_valid) THEN false ELSE payload.ig2_continuity_valid END as ig2_continuity_valid,
+    CASE WHEN is_null(payload.qd_release_energized) THEN false ELSE payload.qd_release_energized END as qd_release_energized,
+    CASE WHEN is_null(payload.qd_continuity) THEN false ELSE payload.qd_continuity END as qd_continuity,
+    CASE WHEN is_null(payload.qd_output_valid) THEN false ELSE payload.qd_output_valid END as qd_output_valid,
+    CASE WHEN is_null(payload.qd_continuity_valid) THEN false ELSE payload.qd_continuity_valid END as qd_continuity_valid,
+
     -- Unit ID routing (Dynamically grabbed from topic "rats/pb/0")
     int(nth(3, split(topic, '/'))) as unit_id
 

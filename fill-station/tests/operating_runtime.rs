@@ -105,12 +105,51 @@ fn compiler_output_initializes_matching_mock_runtime_and_device_roles() {
         assert!(!hardware.has_role("sv3"));
         assert!(!hardware.has_role("sv4"));
         assert!(hardware.has_role("sv5"));
+        let readings = smol::block_on(hardware.output_diagnostics());
+        for reading in readings {
+            assert_eq!(reading.output, Some(false));
+            assert_eq!(reading.continuity, Some(false));
+        }
     }
 }
 
 #[test]
 fn telemetry_identity_distinguishes_operating_modes_without_relabelling_legacy() {
     assert_eq!(RoutingMode::Legacy.telemetry_identity(), (1, 0));
-    assert_eq!(RoutingMode::Hybrid.telemetry_identity(), (2, 1));
-    assert_eq!(RoutingMode::HybridTest.telemetry_identity(), (2, 2));
+    assert_eq!(RoutingMode::Hybrid.telemetry_identity(), (3, 1));
+    assert_eq!(RoutingMode::HybridTest.telemetry_identity(), (3, 2));
+}
+
+#[test]
+fn diagnostic_wire_values_distinguish_false_from_unknown() {
+    use fill_station::operating_runtime::OutputDiagnostic;
+    assert_eq!(
+        OutputDiagnostic::default().wire_values(),
+        (false, false, false, false)
+    );
+    assert_eq!(
+        OutputDiagnostic {
+            output: Some(false),
+            continuity: Some(true)
+        }
+        .wire_values(),
+        (false, true, true, true)
+    );
+    assert_eq!(
+        OutputDiagnostic {
+            output: Some(true),
+            continuity: None
+        }
+        .wire_values(),
+        (true, false, true, false)
+    );
+}
+
+#[test]
+fn missing_devices_have_no_diagnostic_claims() {
+    let hardware = fill_station::hardware::Hardware::default();
+    assert_eq!(
+        smol::block_on(hardware.output_diagnostics()),
+        [fill_station::operating_runtime::OutputDiagnostic::default(); 3]
+    );
 }

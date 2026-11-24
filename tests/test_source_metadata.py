@@ -24,6 +24,7 @@ ADDED = {
  'fsw_receive_age_ms':79,'fsw_receive_age_valid':80,'source_time_generation':81,
  'load_cell_2_raw':82,'load_cell_2_voltage':83,'load_cell_2_valid':84,'operating_profile':85,
 }
+ADDED.update({'ig1_output_active': 86, 'ig1_continuity': 87, 'ig1_output_valid': 88, 'ig1_continuity_valid': 89, 'ig2_output_active': 90, 'ig2_continuity': 91, 'ig2_output_valid': 92, 'ig2_continuity_valid': 93, 'qd_release_energized': 94, 'qd_continuity': 95, 'qd_output_valid': 96, 'qd_continuity_valid': 97})
 
 class SourceSchema(unittest.TestCase):
     def test_schema_copies_match_with_new_unique_tags_and_legacy_fields_retained(self):
@@ -109,6 +110,13 @@ bool transcode(const uint8_t *input, size_t length, uint8_t *output, size_t cap,
         empty=self.new_message.FromString(self.transcode(self.old_message(pt_1_pressure=1).SerializeToString()))
         self.assertFalse(empty.load_cell_2_valid)
         self.assertEqual(empty.operating_profile,0)
+
+    def test_v3_diagnostics_roundtrip_with_false_distinct_from_unknown(self):
+        frame=self.new_message(source_metadata_version=3,operating_profile=2,
+            ig1_output_active=False,ig1_output_valid=True,ig1_continuity=True,ig1_continuity_valid=True,
+            ig2_output_active=False,ig2_output_valid=False,qd_release_energized=True,qd_output_valid=True,
+            qd_continuity=False,qd_continuity_valid=True)
+        self.assertEqual(self.new_message.FromString(self.transcode(frame.SerializeToString())),frame)
 
     def test_old_producer_decodes_as_explicit_legacy_not_valid_epoch_zero(self):
         old=self.old_message(sync_word=0xdeadbeef,pt_1_pressure=123.5,ms_since_boot_fill=2**64-1)

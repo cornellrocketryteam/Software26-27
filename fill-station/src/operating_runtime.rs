@@ -19,8 +19,8 @@ impl RoutingMode {
     pub fn telemetry_identity(self) -> (u32, u32) {
         match self {
             Self::Legacy => (1, 0),
-            Self::Hybrid => (2, 1),
-            Self::HybridTest => (2, 2),
+            Self::Hybrid => (3, 1),
+            Self::HybridTest => (3, 2),
         }
     }
     pub fn fsw_enabled(self) -> bool {
@@ -66,5 +66,22 @@ pub fn route_sensors(
             raw: adc2[2].raw,
             voltage: adc2[2].voltage,
         }),
+    }
+}
+
+/// Independent last-commanded output and electrical continuity observations.
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct OutputDiagnostic {
+    pub output: Option<bool>,
+    pub continuity: Option<bool>,
+}
+impl OutputDiagnostic {
+    pub fn wire_values(self) -> (bool, bool, bool, bool) {
+        (
+            self.output.unwrap_or(false),
+            self.continuity.unwrap_or(false),
+            self.output.is_some(),
+            self.continuity.is_some(),
+        )
     }
 }

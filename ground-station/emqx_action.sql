@@ -105,7 +105,19 @@ INSERT INTO telemetry_data (
     load_cell_2_raw,
     load_cell_2_voltage,
     load_cell_2_valid,
-    operating_profile
+    operating_profile,
+    ig1_output_active,
+    ig1_continuity,
+    ig1_output_valid,
+    ig1_continuity_valid,
+    ig2_output_active,
+    ig2_continuity,
+    ig2_output_valid,
+    ig2_continuity_valid,
+    qd_release_energized,
+    qd_continuity,
+    qd_output_valid,
+    qd_continuity_valid
 ) VALUES (
     -- Convert EMQX's internal arrival clock into a standard PostgreSQL TIMESTAMPTZ
     to_timestamp(${broker_arrival_ms} / 1000.0),
@@ -213,5 +225,17 @@ INSERT INTO telemetry_data (
     ${load_cell_2_raw},
     ${load_cell_2_voltage},
     ${load_cell_2_valid},
-    ${operating_profile}
+    ${operating_profile},
+    ${ig1_output_active},
+    ${ig1_continuity},
+    ${ig1_output_valid},
+    ${ig1_continuity_valid},
+    ${ig2_output_active},
+    ${ig2_continuity},
+    ${ig2_output_valid},
+    ${ig2_continuity_valid},
+    ${qd_release_energized},
+    ${qd_continuity},
+    ${qd_output_valid},
+    ${qd_continuity_valid}
 );

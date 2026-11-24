@@ -107,4 +107,17 @@ message TelemetryPayload {
     bool load_cell_2_valid = 84;
     // 0=legacy/unspecified; 1=Hybrid; 2=Hybrid-test; 3=Liquid (future).
     uint32 operating_profile = 85;
+    // Source v3: output intent and continuity, with independent validity.
+    bool ig1_output_active = 86;
+    bool ig1_continuity = 87;
+    bool ig1_output_valid = 88;
+    bool ig1_continuity_valid = 89;
+    bool ig2_output_active = 90;
+    bool ig2_continuity = 91;
+    bool ig2_output_valid = 92;
+    bool ig2_continuity_valid = 93;
+    bool qd_release_energized = 94;
+    bool qd_continuity = 95;
+    bool qd_output_valid = 96;
+    bool qd_continuity_valid = 97;
 }

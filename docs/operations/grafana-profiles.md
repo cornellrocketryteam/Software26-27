@@ -18,12 +18,11 @@ counts and voltage, with separate display units. LC1 keeps its existing scaling
 but drops the unconfirmed pounds label and mass thresholds. No new force
 calibration or mass unit is introduced.
 
-The old Pad Safety card now shows the combined igniter command only. It does not
-show FSW flight mode or the deprecated QD motor-step field. Combined ignition is
-command intent, not proof of ignition. Individual igniter and QD release telemetry
-are not supplied by these existing MQTT fields; use Commanding readback for QD
-intent/continuity and validate physical state separately. No implied QD position
-is invented for this dashboard.
+The Pad Safety card shows individual IG1/IG2 output intent and continuity. The
+valve card includes QD release output and continuity. Validity-qualified v3
+readings distinguish false from unavailable; older v2 sessions have unavailable
+new diagnostics. Output intent does not prove ignition or mechanical QD release,
+and output OFF does not reconnect the QD. See [diagnostics](output-diagnostics.md).
 
 The pressure chart keeps broker arrival time as its axis. Latest pressure,
 actuator and both load-cell values use source sequence within the selected session.
@@ -36,7 +35,7 @@ freshness alarm: a stopped selected session can keep its last values visible.
 
 The initial value is **Select a Hybrid-test session**, with no fill readings.
 Reload after a new publisher starts to refresh the choices. Only known-valid
-source version 2 / operating-profile code 2 session heads appear in the catalog.
+source versions 2 or 3 / operating-profile code 2 session heads appear in the catalog.
 Every panel also enforces that profile/version on its rows. Legacy-only choices,
 unknown IDs and non-test session IDs never fall back to other telemetry.
 
@@ -53,14 +52,14 @@ as the MQTT session identity.
 
 The raw exported dashboard is unchanged. Generated standard FillOps gains only
 its navigation link in this block; its existing session queries/layout remain.
-A separate normal-Hybrid view is now generated with v2/profile1 filtering; see
+A separate normal-Hybrid view is now generated with v2/v3 profile1 filtering; see
 [normal Hybrid identity](hybrid-telemetry.md). Legacy normal-Hybrid v1 data remain
 in standard FillOps. Liquid still needs semantic sensor/device mapping before its
 custom view can be defined. The Commanding UI already follows the board's reported mode.
 
 ## Later acceptance
 
-1. Build/deploy the combined ground-station candidate, with migrations 001–005,
+1. Build/deploy the combined ground-station candidate, with migrations 001–006,
    matching protobuf descriptor/rules and both provisioned dashboard files.
 2. Build/deploy the matched Hybrid-test board candidate. Capture its publisher
    session line, confirm Commanding reports Hybrid-test, reload the Grafana view

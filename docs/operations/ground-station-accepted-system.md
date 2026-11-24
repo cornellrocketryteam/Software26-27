@@ -57,8 +57,8 @@ disables agent use/forwarding for this alias, and refuses an unmanaged alias,
 symlinked configuration or changed existing host pin. Inspect conflicts manually;
 do not delete identities or host pins just to bypass an error. Run without sudo.
 
-Include the returned `publicKey` alongside existing contributor keys in
-`nix/mixos-modules/fill-station-base/authorized_keys`. The private key stays on
+Include the returned `publicKey` in the board-only file
+`nix/mixos-modules/fill-station-base/deployment_authorized_keys`. The private key stays on
 the PC. Build/review the enrollment FIT, then perform one update using existing
 Mac recovery/forwarded access. After explicit board reboot, test independently:
 

@@ -172,6 +172,7 @@ def database(docker, assets, attempts=30):
            + "\n" + (assets / "migrations/003-session-queries.sql").read_text()
            + "\n" + (assets / "migrations/004-lc2-telemetry.sql").read_text()
            + "\n" + (assets / "migrations/005-operating-profile-identity.sql").read_text()
+           + "\n" + (assets / "migrations/006-output-diagnostics.sql").read_text()
            + "\n" + (assets / "provisioning/roles.sql").read_text()
            + "\nSELECT pg_advisory_unlock(7162738);\n")
     result = _run([docker, "exec", "-i", "ground-timescaledb", "psql", "-X", "-U", "postgres",
@@ -200,7 +201,7 @@ def configure_fill_session(dashboard, operating_profile=None):
               s.publisher_session_hi::text || ':' || s.publisher_session_lo::text
             FROM public.telemetry_sessions s JOIN public.telemetry_latest_in_session h
               USING (unit_id, publisher_session_hi, publisher_session_lo)
-            WHERE s.unit_id = 0 AND h.source_metadata_version = 2 AND h.operating_profile = __PROFILE_CODE__
+            WHERE s.unit_id = 0 AND h.source_metadata_version IN (2, 3) AND h.operating_profile = __PROFILE_CODE__
         ) sessions ORDER BY rank, __text""".replace("__PROFILE_LABEL__", label).replace("__PROFILE_CODE__", str(operating_profile))
     dashboard.setdefault("templating", {})["list"] = [{
         "name": "fill_session", "label": "Fill session", "type": "query",
@@ -221,7 +222,7 @@ def configure_fill_session(dashboard, operating_profile=None):
             AND d.publisher_session_lo = (""" + lo + """)))) AS telemetry_data"""
     if operating_profile is not None:
         relation = """(SELECT d.* FROM public.telemetry_data d WHERE d.unit_id = 0
-            AND d.source_identity_valid AND d.source_metadata_version = 2 AND d.operating_profile = """ + str(operating_profile) + """
+            AND d.source_identity_valid AND d.source_metadata_version IN (2, 3) AND d.operating_profile = """ + str(operating_profile) + """
             AND d.publisher_session_hi = (""" + hi + """) AND d.publisher_session_lo = (""" + lo + """)) AS telemetry_data"""
     for panel in dashboard["panels"]:
         if panel["id"] not in [2, 3, 4, 5, 6, 35]:
@@ -300,10 +301,39 @@ def operating_dashboard(original, operating_profile):
                     for key, label in [("false", "INACTIVE"), ("true", "ACTIVE")]:
                         if key in mapping.get("options", {}):
                             mapping["options"][key]["text"] = label
+    diagnostics = [
+        ('ig1_output_active','ig1_output_valid','IG1 Output',False),
+        ('ig1_continuity','ig1_continuity_valid','IG1 Continuity',True),
+        ('ig2_output_active','ig2_output_valid','IG2 Output',False),
+        ('ig2_continuity','ig2_continuity_valid','IG2 Continuity',True),
+        ('qd_release_energized','qd_output_valid','QD Release Output',False),
+        ('qd_continuity','qd_continuity_valid','QD Continuity',True),
+    ]
+    def diagnostic_sql(items):
+        return ', '.join('CASE WHEN source_metadata_version = 3 AND '+valid+' THEN '+field+' END AS "'+alias+'"'
+                         for field,valid,alias,_ in items)
+    panels[5]["title"] = "Igniter outputs / continuity" if operating_profile==2 else "FSW mode / igniter outputs"
+    panels[5]["targets"][0]["rawSql"] = ('SELECT '+('flight_mode AS "Flight Mode", ' if operating_profile==1 else '')
+        + diagnostic_sql(diagnostics[:4]) + ' FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+    panels[4]["targets"][0]["rawSql"] = panels[4]["targets"][0]["rawSql"].replace(
+        'mav_open AS "MAV"','mav_open AS "MAV", '+diagnostic_sql(diagnostics[4:]))
+    for index,items in [(5,diagnostics[:4]),(4,diagnostics[4:])]:
+        # Do not reuse valve CLOSED/OPEN mappings for QD or electrical continuity.
+        panels[index]["fieldConfig"]["overrides"] = [o for o in panels[index]["fieldConfig"].get("overrides",[])
+            if o.get("matcher",{}).get("options")=="Flight Mode"]
+        for _,_,alias,continuity in items:
+            inactive='NO CONTINUITY' if continuity else ('OFF' if alias.startswith('QD') else 'INACTIVE')
+            active='CONTINUITY' if continuity else ('ENERGIZED' if alias.startswith('QD') else 'ACTIVE')
+            panels[index]["fieldConfig"]["overrides"].append({
+                "matcher":{"id":"byName","options":alias},
+                "properties":[{"id":"mappings","value":[{"type":"value","options":{
+                    "false":{"text":inactive,"index":0},"true":{"text":active,"index":1}}}]}]})
+        panels[index]["fieldConfig"]["defaults"]["noValue"]="Unavailable"
+        panels[index]["options"]["reduceOptions"]["calcs"]=["last"]
     configure_fill_session(dashboard, operating_profile=operating_profile)
     panels[3]["description"] += " LC1 uses existing coefficients; engineering unit is unconfirmed."
     panels[35]["description"] += (" LC2 is raw/voltage only, not calibrated force." if operating_profile == 2 else " Unknown FSW receive age is unavailable, not zero; age alone is not a freshness guarantee.")
-    panels[5]["description"] += " Combined igniter command, not proof of ignition. QD release state is available in Commanding, not the deprecated motor field."
+    panels[5]["description"] += " Driver output intent and electrical continuity are separate and do not prove ignition or mechanical QD release; old records without v3 validity stay unavailable."
     dashboard["links"] = [{"title": "Standard FillOps", "type": "link", "url": "/grafana/d/adrc2lg/fillops", "targetBlank": False}]
     return dashboard
 
@@ -313,7 +343,7 @@ def build_assets(source, output, cameras=False):
     source, output = Path(source), Path(output)
     for relative in ["create-telemetry-table.sql", "emqx_action.sql", "emqx_rule.sql",
                      "emqx_rule_fill_station.sql", "proto/telemetry.proto",
-                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "migrations/003-session-queries.sql", "migrations/004-lc2-telemetry.sql", "migrations/005-operating-profile-identity.sql", "provisioning/roles.sql"]:
+                     "migrations/001-hardware-availability.sql", "migrations/002-source-metadata.sql", "migrations/003-session-queries.sql", "migrations/004-lc2-telemetry.sql", "migrations/005-operating-profile-identity.sql", "migrations/006-output-diagnostics.sql", "provisioning/roles.sql"]:
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / relative, target)

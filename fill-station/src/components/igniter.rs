@@ -40,14 +40,19 @@ mod implementation {
             })
         }
 
-        pub async fn has_continuity(&self) -> bool {
-            *self
-                .continuity_line
+        /// Fallible read for telemetry: GPIO errors must not become false continuity.
+        pub async fn read_continuity(&self) -> Result<bool> {
+            self.continuity_line
                 .get_values([false])
-                .await
-                .expect("The GPIO File Descriptor should not be able to close?")
+                .await?
                 .get(0)
-                .expect("We know one value exists since we are requesting one value")
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("missing igniter continuity sample"))
+        }
+        pub async fn has_continuity(&self) -> bool {
+            self.read_continuity()
+                .await
+                .expect("igniter continuity GPIO read failed")
         }
 
         /// Set the ignition state (true = firing, false = off)
@@ -74,6 +79,9 @@ mod implementation {
             Ok(Self {
                 firing: AtomicBool::new(false),
             })
+        }
+        pub async fn read_continuity(&self) -> Result<bool> {
+            Ok(false)
         }
         pub async fn has_continuity(&self) -> bool {
             false

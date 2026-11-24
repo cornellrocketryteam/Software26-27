@@ -7,7 +7,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::command::{ActuatorState, AdcReadings, UmbilicalReadings};
 use crate::hardware::Hardware;
-use crate::operating_runtime::{RoutingMode, Sample, route_sensors};
+use crate::operating_runtime::{RoutingMode, Sample, OutputDiagnostic, route_sensors};
 // From the lib crate so the nanopb static library (linked into the lib) comes along
 use fill_station::telemetry_pb::{self, TelemetryPayload};
 use fill_station::telemetry_clock::{PublisherClock, kernel_time_quality, sample_age};
@@ -125,21 +125,15 @@ pub async fn start_mqtt_publisher(
         let qd_state: i32 = 0;
 
         // 3. Gather hardware state (SV1, igniters)
-        let (sv_1_open, ignition, configured_devices_mask) = {
+        let (sv_1_open, ignition, configured_devices_mask, diagnostics) = {
             let hw = _hardware.lock().await;
             let sv1 = match hw.solenoid("sv1") {
                 Some(sv) => sv.is_open().await.unwrap_or(false),
                 None => false,
             };
-            let ig1 = match hw.igniter("ig1") {
-                Some(ig) => ig.is_igniting().await,
-                None => false,
-            };
-            let ig2 = match hw.igniter("ig2") {
-                Some(ig) => ig.is_igniting().await,
-                None => false,
-            };
-            (sv1, ig1 || ig2, hw.configured_devices_mask)
+            let diagnostics=hw.output_diagnostics().await;
+            let ignition=diagnostics[0].output.unwrap_or(false) || diagnostics[1].output.unwrap_or(false);
+            (sv1, ignition, hw.configured_devices_mask, diagnostics)
         };
 
         // 4. Build payload
@@ -272,6 +266,7 @@ pub async fn start_mqtt_publisher(
                 payload.load_cell_2_valid = true;
             }
         }
+        if payload.source_metadata_version == 3 { apply_output_diagnostics(&mut payload, diagnostics); }
         payload.publisher_session_hi = source.session_hi;
         payload.publisher_session_lo = source.session_lo;
         payload.publisher_sequence = source.sequence;
@@ -316,5 +311,25 @@ pub async fn start_mqtt_publisher(
         if elapsed < interval {
             Timer::after(interval - elapsed).await;
         }
+    }
+}
+
+fn apply_output_diagnostics(payload: &mut TelemetryPayload, diagnostics:[OutputDiagnostic;3]) {
+    (payload.ig1_output_active,payload.ig1_continuity,payload.ig1_output_valid,payload.ig1_continuity_valid) = diagnostics[0].wire_values();
+    (payload.ig2_output_active,payload.ig2_continuity,payload.ig2_output_valid,payload.ig2_continuity_valid) = diagnostics[1].wire_values();
+    (payload.qd_release_energized,payload.qd_continuity,payload.qd_output_valid,payload.qd_continuity_valid) = diagnostics[2].wire_values();
+}
+#[cfg(test)]
+mod output_diagnostic_tests {
+    use super::*;
+    #[test]
+    fn payload_preserves_unknown_vs_false_and_uses_explicit_qd_release_field() {
+        let mut payload=TelemetryPayload::default();
+        apply_output_diagnostics(&mut payload,[OutputDiagnostic {output:Some(false),continuity:Some(true)},
+            OutputDiagnostic::default(),OutputDiagnostic {output:Some(true),continuity:None}]);
+        assert!(!payload.ig1_output_active && payload.ig1_output_valid && payload.ig1_continuity_valid);
+        assert!(payload.ig1_continuity && !payload.ig2_output_valid && !payload.ig2_continuity_valid);
+        assert!(payload.qd_release_energized && payload.qd_output_valid && !payload.qd_continuity_valid);
+        assert_eq!(payload.qd_state,0);
     }
 }

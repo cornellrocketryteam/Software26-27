@@ -1,6 +1,6 @@
 use crate::command::{ActuatorState, AdcReadings, UmbilicalReadings};
 use crate::hardware::Hardware;
-use crate::operating_runtime::{RoutingMode, Sample, route_sensors};
+use crate::operating_runtime::{OutputDiagnostic, RoutingMode, Sample, route_sensors};
 use fill_station::telemetry_clock::{
     FrameMetadata, PublisherClock, kernel_time_quality, sample_age,
 };
@@ -23,12 +23,19 @@ FSW_PT3,FSW_PT4,FSW_RTD,FSW_SV_Open,FSW_MAV_Open,\
 QD_Enabled,QD_Direction,Availability_Version,Configured_Devices_Mask,Valid_Readings_Mask\n";
 
 const EXTRA_HEADER: &str = "CSV_Schema_Version,Operating_Profile,FSW_Enabled,PT1_PSI,PT1_Valid,PT2_PSI,PT2_Valid,PT3_PSI,PT3_Valid,PT4_PSI,PT4_Valid,LC1_Scaled,LC1_Valid,LC2_Raw,LC2_Voltage,LC2_Valid,SV2_Profile_Open,MAV_Profile_Open,BV_Commanded_Open,CSV_Session_Hi,CSV_Session_Lo,CSV_Sequence,CSV_Monotonic_ms,CSV_Unix_ms,CSV_Unix_Valid,CSV_Time_Quality,CSV_Time_Generation,ADC1_Sample_Age_ms,ADC1_Sample_Age_Valid,ADC2_Sample_Age_ms,ADC2_Sample_Age_Valid,FSW_Receive_Age_ms,FSW_Receive_Age_Valid";
+const DIAGNOSTIC_HEADER: &str = "IG1_Output_Active,IG1_Continuity,IG1_Output_Valid,IG1_Continuity_Valid,IG2_Output_Active,IG2_Continuity,IG2_Output_Valid,IG2_Continuity_Valid,QD_Release_Energized,QD_Continuity,QD_Output_Valid,QD_Continuity_Valid";
 fn csv_header() -> String {
-    format!("{},{}\n", LEGACY_HEADER.trim_end(), EXTRA_HEADER)
+    format!(
+        "{},{},{}\n",
+        LEGACY_HEADER.trim_end(),
+        EXTRA_HEADER,
+        DIAGNOSTIC_HEADER
+    )
 }
 
 struct CsvHardware {
     mode: RoutingMode,
+    diagnostics: [OutputDiagnostic; 3],
     igniters: [Option<bool>; 2],
     valves: [(Option<bool>, Option<bool>); 5],
     mav_open: Option<bool>,
@@ -136,7 +143,7 @@ fn render_row(
         RoutingMode::Hybrid => "hybrid",
         RoutingMode::HybridTest => "hybrid-test",
     };
-    values.extend(["2".into(), name.into(), hw.mode.fsw_enabled().to_string()]);
+    values.extend(["3".into(), name.into(), hw.mode.fsw_enabled().to_string()]);
     for i in 0..4 {
         let value = if i < 2 || hw.mode == RoutingMode::HybridTest {
             routed.pressures[i]
@@ -194,6 +201,14 @@ fn render_row(
                 String::new()
             },
             valid.to_string(),
+        ]);
+    }
+    for diagnostic in hw.diagnostics {
+        values.extend([
+            csv_value(diagnostic.output),
+            csv_value(diagnostic.continuity),
+            diagnostic.output.is_some().to_string(),
+            diagnostic.continuity.is_some().to_string(),
         ]);
     }
     values.join(",") + "\n"
@@ -278,20 +293,19 @@ pub async fn start_logging(
         let umb = umbilical_readings.lock().await.clone();
         let hw = {
             let hw = hardware.lock().await;
-            let mut igniters = [None; 2];
-            for (i, role) in ["ig1", "ig2"].iter().enumerate() {
-                if let Some(d) = hw.igniter(role) {
-                    igniters[i] = Some(d.is_igniting().await);
-                }
-            }
+            let diagnostics = hw.output_diagnostics().await;
+            let igniters = [diagnostics[0].output, diagnostics[1].output];
             let mut valves = [(None, None); 5];
             for (i, role) in ["sv1", "sv2", "sv3", "sv4", "sv5"].iter().enumerate() {
-                if let Some(d) = hw.solenoid(role) {
+                if i == 4 && hw.quick_disconnect("sv5").is_some() {
+                    valves[i] = (diagnostics[2].output, diagnostics[2].continuity);
+                } else if let Some(d) = hw.solenoid(role) {
                     valves[i] = (d.is_open().await.ok(), d.check_continuity().await.ok());
                 }
             }
             CsvHardware {
                 mode: hw.routing_mode,
+                diagnostics,
                 igniters,
                 valves,
                 mav_open: hw.mav().map(|d| d.is_open()),
@@ -423,6 +437,17 @@ mod profile_csv_tests {
         umb.telemetry.mav_open = false;
         let hw = CsvHardware {
             mode,
+            diagnostics: [
+                OutputDiagnostic {
+                    output: Some(false),
+                    continuity: Some(true),
+                },
+                OutputDiagnostic::default(),
+                OutputDiagnostic {
+                    output: Some(true),
+                    continuity: None,
+                },
+            ],
             igniters: [Some(false); 2],
             valves: [(Some(true), Some(false)); 5],
             mav_open: Some(true),
@@ -469,6 +494,18 @@ mod profile_csv_tests {
         assert_eq!(f["SV2_Profile_Open"], "true");
         assert_eq!(f["MAV_Profile_Open"], "true");
         assert_eq!(f["BV_Commanded_Open"], "false");
+    }
+    #[test]
+    fn diagnostic_columns_keep_known_false_distinct_from_missing() {
+        let f = fields(RoutingMode::HybridTest);
+        assert_eq!(f["CSV_Schema_Version"], "3");
+        assert_eq!(f["IG1_Output_Active"], "false");
+        assert_eq!(f["IG1_Output_Valid"], "true");
+        assert_eq!(f["IG2_Output_Active"], "");
+        assert_eq!(f["IG2_Output_Valid"], "false");
+        assert_eq!(f["QD_Release_Energized"], "true");
+        assert_eq!(f["QD_Continuity"], "");
+        assert_eq!(f["QD_Continuity_Valid"], "false");
     }
     #[test]
     fn hybrid_keeps_fsw_ownership_and_lc2_absent() {

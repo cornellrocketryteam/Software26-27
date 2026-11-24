@@ -295,3 +295,16 @@ view/camera/session filters are generated, default FillOps retained. Provision
 001–005 before producer update. Host PG/runtime/Cargo checks pass; live stack,
 images and physical mixed local/FSW acceptance remain pending. See
 [normal Hybrid acceptance](hybrid-telemetry.md).
+
+
+## Output diagnostics and combined handoff — November 23
+
+Hybrid/Hybrid-test now emit v3 IG1/IG2/QD output intent and continuity with
+independent validity. Migration 006, operating Grafana cards and CSV schema 3
+carry them through without changing default FillOps or Commanding layouts.
+Board deployment public keys now have a separate board-only file; contributor
+PC access stays separate. No real key was enrolled and no hardware deployed.
+See [diagnostics](output-diagnostics.md) and the ordered
+[combined build/deploy/test handoff](combined-return-handoff.md).
+Hardware, native image builds, offline input availability, actual SSH enrollment,
+and worker/publication admission remain acceptance gates, not assumed passes.

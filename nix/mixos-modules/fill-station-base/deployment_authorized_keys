@@ -1,0 +1,2 @@
+# Board-only deployment identities. Add public keys only; never private keys.
+# This file is deliberately NOT loaded for ground-admin or worker/cache accounts.

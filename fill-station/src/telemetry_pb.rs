@@ -132,6 +132,19 @@ mod tests {
             load_cell_2_voltage: 0.125,
             load_cell_2_valid: true,
             operating_profile: 2,
+            ig1_output_active: false,
+            ig1_continuity: false,
+            ig1_output_valid: true,
+            ig1_continuity_valid: true,
+            ig2_output_active: false,
+            ig2_continuity: false,
+            ig2_output_valid: true,
+            ig2_continuity_valid: true,
+            qd_release_energized: false,
+            qd_continuity: false,
+            qd_output_valid: true,
+            qd_continuity_valid: true,
+
         }
     }
 

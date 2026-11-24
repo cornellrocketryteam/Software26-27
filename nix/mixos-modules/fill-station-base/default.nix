@@ -102,7 +102,9 @@ in
   ];
 
   etc."dropbear/authorized_keys" = {
-    source = ./authorized_keys;
+    source = pkgs.writeText "fill-station-authorized-keys" (
+      builtins.readFile ./authorized_keys + "\n" + builtins.readFile ./deployment_authorized_keys
+    );
     mode = "0600";
   };
 

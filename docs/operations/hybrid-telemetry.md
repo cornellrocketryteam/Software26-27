@@ -1,9 +1,9 @@
 # Normal Hybrid telemetry identity and view
 
-The candidate's normal Hybrid image now publishes source metadata version 2,
-operating-profile code 1. Hybrid-test remains v2/code 2; current Liquid and generic
-debug remain legacy v1/code 0. No new protobuf tags are introduced here. The
-Commanding WebSocket report remains its separate version-1 report format.
+The candidate's normal Hybrid image publishes source metadata version 3,
+operating-profile code 1. Hybrid-test uses v3/code 2; Liquid and generic debug
+remain legacy v1/code 0. Tags 86–97 add output/continuity diagnostics. The
+Commanding WebSocket report keeps its separate version-1 format.
 
 Normal Hybrid gets a separate dashboard at:
 
@@ -21,7 +21,7 @@ PT3/PT4 stay FSW-owned over the umbilical; disabled local SV2/MAV connector bits
 must not erase those remote values. The new normal view preserves the existing
 fill-section positions and cameras. It has no LC2 card. The former RTD slot shows
 FSW receive age at stored-frame assembly rather than introducing a sensor outside the agreed profile.
-FSW flight mode is retained in the status card, alongside combined igniter intent.
+FSW flight mode is retained in the status card, alongside individual igniter intent and continuity.
 Broader unit-1 flight panels remain in standard FillOps, not this scoped view.
 
 A normal-Hybrid frame must carry LC2's absent placeholders (raw 0, voltage 0,
@@ -41,8 +41,8 @@ never rewrites historical data or receipt keys. Existing v1 and v2/code2 receipt
 still match after migration. Changing the profile under the same frame identity
 is a conflicting payload, not an allowed reassignment.
 
-Apply migrations 001–005 and reader grants before deploying the new normal Hybrid
-producer. The runtime asset pack and provisioning order include 005. A database
+Apply migrations 001–006 and reader grants before deploying the new normal Hybrid
+producer. The runtime asset pack and provisioning order include 006. A database
 with only migration 004 rejects v2/code1 frames. Do not replay older migrations
 alone against a running new producer; use the ordered maintenance/provisioning
 procedure. New normal publisher lifetimes use new sessions; older normal v1 data
@@ -50,8 +50,8 @@ remain accessible in standard FillOps and are not relabelled as v2/code1.
 
 The test-stand path and its local mask interpretation remain unchanged. Liquid
 is not assigned code 3 or a new dashboard: its semantic mappings are still pending.
-The runtime profile is not physical wiring or release attestation. Per-igniter /
-QD MQTT detail and freshness presentation still have separately recorded gaps.
+The runtime profile is not physical wiring or release attestation. Per-igniter and QD diagnostics are described in [output diagnostics](output-diagnostics.md).
+Freshness alarms and physical state verification remain pending.
 
 ## Later acceptance
 
