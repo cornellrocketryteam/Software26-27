@@ -64,9 +64,10 @@ The Nix package has not been built/run on the actual mini PC. Systemd IP-policy
 support, network routes, device firmware/authentication and physical power outcomes
 remain in the return-to-hardware checklist.
 
-The source UI now includes `/network` and a station-selector card. It is read-only
-and uses only the same-origin status API, with unknown/stale handling and no device
-requests or power commands. See `docs/operations/network-device-ui.md`.
+The source UI includes `/network` and a station-selector card. Status uses the
+same-origin API with unknown/stale handling. Shelly manual controls now use the
+explicit opt-in and authorization policy below; Omada remains read-only. See
+`docs/operations/network-device-ui.md`.
 
 ## Manual Omada inspection
 
@@ -76,3 +77,15 @@ logs in nor enables the pending adapters or power writes. HTTPS certificate
 fingerprints are unverified observations. See the ordered instructions and
 firmware/metric collection list in
 [`docs/operations/omada-inspection.md`](../../docs/operations/omada-inspection.md).
+
+
+## Explicit per-plug control policy
+
+Enabled Shelly adapters may read status, but `canSetOutput` and actual writes now
+also require `powerControlEnabled:true` plus nonempty `connectedLoad`. Existing
+configs without that flag become read-only. A runtime operator token remains
+required independently. The Network page adds manual confirmation/readback
+controls; both shipped entries remain disabled. See
+[operator flow and physical acceptance](../../docs/operations/shelly-controls.md).
+Busy-device writes return 409 without dispatch and are never queued for later
+actuation. Already-dispatched requests still require readback/unknown handling.

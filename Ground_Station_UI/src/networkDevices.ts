@@ -63,3 +63,19 @@ export function parseNetworkSnapshot(value: unknown): NetworkSnapshot {
   return {schemaVersion: 1, devices, powerWritesConfigured: bool(raw.powerWritesConfigured),
     operatorAuthorizationRequired: bool(raw.operatorAuthorizationRequired)};
 }
+
+export function canControlPower(snapshot: NetworkSnapshot | null, device: NetworkDevice, token: string, fresh: boolean, busy: boolean): boolean {
+  return !!snapshot?.powerWritesConfigured && snapshot.operatorAuthorizationRequired && fresh && !busy
+    && device.kind === 'shelly' && device.canSetOutput && device.state === 'available' && !device.stale
+    && device.output !== null && !!device.address && !!device.connectedLoad?.trim()
+    && token.length >= 24 && token.length <= 512 && /^[\x20-\x7e]+$/.test(token);
+}
+export function parsePowerReply(value: unknown, requested: boolean): {confirmed: boolean; output: boolean} {
+  const raw = object(value); const observed = object(raw.observed);
+  if (raw.requestedOutput !== requested || typeof raw.confirmed !== 'boolean' || observed.state !== 'available'
+    || typeof observed.output !== 'boolean') throw new Error('Invalid power readback');
+  for (const value of Object.values(object(observed.metrics))) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Invalid power metric');
+  }
+  return {confirmed: raw.confirmed && observed.output === requested, output: observed.output};
+}

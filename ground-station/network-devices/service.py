@@ -13,6 +13,10 @@ from shelly import ShellyDevice, UnknownOutcome
 ID=re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}\Z')
 
 
+class DeviceBusy(Exception):
+    """No request dispatched: do not queue delayed power actions."""
+
+
 class DeviceRegistry:
     def __init__(self, inventory, *, credentials=None, adapter_factory=None, clock=time.monotonic):
         if not isinstance(inventory,dict) or inventory.get('schemaVersion')!=1 or not isinstance(inventory.get('devices'),list):
@@ -28,12 +32,18 @@ class DeviceRegistry:
             if name in self.devices:raise ValueError('Duplicate device ID')
             if device.get('kind') not in ('shelly','omada-switch','omada-bridge'):raise ValueError('Unsupported device kind')
             if device['kind']=='shelly' and type(device.get('enabled',False)) is not bool:raise ValueError('Invalid enabled flag')
-            self.devices[name]=device;self.locks[name]=threading.RLock()
+            if device['kind']=='shelly' and type(device.get('powerControlEnabled',False)) is not bool:raise ValueError('Invalid power control flag')
+            self.devices[name]=device;self.locks[name]=threading.Lock()
             if device['kind']=='shelly' and device.get('enabled') is True:
                 auth=credentials.get(name,{})
                 if not isinstance(auth,dict) or set(auth)-{'username','password'}:raise ValueError('Invalid device credential fields')
                 if any(not isinstance(v,str) for v in auth.values()):raise ValueError('Invalid credential value')
                 self.adapters[name]=factory(device,auth)
+
+    def can_write(self,name):
+        device=self.devices[name]
+        load=device.get('connectedLoad')
+        return name in self.adapters and device.get('powerControlEnabled') is True and isinstance(load,str) and bool(load.strip())
 
     def _public(self,name,status):
         device=self.devices[name]
@@ -41,7 +51,7 @@ class DeviceRegistry:
         if device['kind']=='omada-switch':
             result['ports']=[{**port,'powerControlEnabled':False} for port in device.get('ports',[])]
         result.update(status)
-        result['canSetOutput']=name in self.adapters
+        result['canSetOutput']=self.can_write(name)
         return result
 
     def read(self,name):
@@ -65,8 +75,9 @@ class DeviceRegistry:
 
     def set_output(self,name,on):
         if name not in self.devices:raise KeyError(name)
-        if name not in self.adapters or type(on) is not bool:raise ValueError('Device power control unavailable')
-        with self.locks[name]:
+        if not self.can_write(name) or type(on) is not bool:raise ValueError('Device power control unavailable')
+        if not self.locks[name].acquire(blocking=False):raise DeviceBusy()
+        try:
             try:
                 result=self.adapters[name].set_output(on)
             except UnknownOutcome:
@@ -74,6 +85,7 @@ class DeviceRegistry:
                 raise
             self.cached[name]={'checked':self.clock(),'status':{**result['observed'],'stale':False,'lastSuccessUnixMs':int(time.time()*1000)}}
             return result
+        finally:self.locks[name].release()
 
 
 def handler_for(registry, *, operator_token=None):
@@ -116,6 +128,7 @@ def handler_for(registry, *, operator_token=None):
                 if not isinstance(body,dict) or set(body)!={'on'} or type(body['on']) is not bool:
                     return self.reply(400,{'error':'Explicit boolean on required'})
                 result=registry.set_output(match[1],body['on'])
+            except DeviceBusy:return self.reply(409,{'error':'Device busy; no power request dispatched'})
             except KeyError:return self.reply(404,{'error':'Unknown device'})
             except UnknownOutcome:return self.reply(503,{'error':'Power outcome unknown; read state before another request','outcome':'unknown'})
             except (ValueError,TimeoutError):return self.reply(400,{'error':'Invalid request or unavailable control'})

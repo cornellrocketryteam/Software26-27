@@ -27,7 +27,7 @@ class NetworkTests(unittest.TestCase):
                 if self.fail:raise parent.module.UnknownOutcome('fixture')
                 return {'requestedOutput':on,'confirmed':True,'observed':{'state':'available','output':on,'metrics':{}}}
         self.adapter=Adapter()
-        inventory={'schemaVersion':1,'devices':[{'id':'plug','kind':'shelly','model':'fixture','enabled':True,'address':'192.168.1.120','componentId':0}]}
+        inventory={'schemaVersion':1,'devices':[{'id':'plug','kind':'shelly','model':'fixture','enabled':True,'address':'192.168.1.120','componentId':0,'powerControlEnabled':True,'connectedLoad':'Fixture lamp'}]}
         return self.module.DeviceRegistry(inventory,adapter_factory=lambda d,c:self.adapter,clock=lambda:self.now)
 
     def test_current_inventory_has_no_network_activity(self):
@@ -37,6 +37,29 @@ class NetworkTests(unittest.TestCase):
         rows=registry.snapshot()['devices'];self.assertEqual(len(rows),7)
         self.assertTrue(all(row['state'] in ('not_configured','inspection_pending') for row in rows))
         self.assertTrue(all(row['output'] is None for row in rows))
+
+    def test_writes_require_explicit_opt_in_and_load_mapping(self):
+        registry=self.fixture()
+        registry.devices['plug'].pop('powerControlEnabled')
+        registry.devices['plug'].pop('connectedLoad')
+        self.assertFalse(registry.read('plug')['canSetOutput'])
+        with self.assertRaises(ValueError):registry.set_output('plug',True)
+        registry.devices['plug']['powerControlEnabled']=True
+        with self.assertRaises(ValueError):registry.set_output('plug',True)
+        registry.devices['plug']['connectedLoad']='Fixture lamp'
+        self.assertTrue(registry.read('plug')['canSetOutput'])
+
+    def test_busy_device_rejects_write_without_waiting_or_dispatch(self):
+        registry=self.fixture();registry.locks['plug'].acquire()
+        try:
+            with self.assertRaises(self.module.DeviceBusy):registry.set_output('plug',True)
+            token='fixture-operator-secret-token'
+            status,body,_=self.http_request(registry,token=token,supplied=token,
+                method='POST',path='/v1/devices/plug/output',body={'on':True})
+            self.assertEqual(status,409)
+            self.assertIn('no power request dispatched',body['error'])
+        finally:registry.locks['plug'].release()
+        self.assertNotIn(('write',True),self.calls)
 
     def test_status_cache_and_expiry(self):
         registry=self.fixture()

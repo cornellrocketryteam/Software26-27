@@ -1,4 +1,4 @@
-# Ground/fill-station feature status — November 23, 2026
+# Ground/fill-station feature status — November 24, 2026
 
 This separates earlier operator acceptance from current implementation. The latest
 combined source has not been deployed during the hardware-access gap. Earlier
@@ -9,7 +9,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | NixOS mini PC, wired LAN and local service startup | Earlier operator-confirmed installation/operation | Verify latest accepted generation is the persistent boot default |
 | Board Ethernet at .106, local OSPI boot, telemetry and reboot recovery | Earlier operator-confirmed | Rebuild/deploy and repeat smoke test for the final combined candidate |
 | Original manual Commanding/Recovery UI, automated fill removed | Earlier operator-confirmed commanding/recovery; source retained | Latest combined candidate and profile-aware variants |
-| Grafana telemetry/cameras, dual monitors, one-monitor fallback | Earlier operator-confirmed; current source checked with mocks | Latest physical activation/reboot; Safari playback still unsupported |
+| Grafana telemetry/cameras, dual monitors, one-monitor fallback | Earlier operator-confirmed; current source checked with mocks | Latest physical activation/reboot; Safari unsupported and excluded from active scope |
 | Solenoid QD on SV5 | Driver/protocol/profile/client changes implemented and host-tested | Separate physical release/continuity acceptance; off is not reconnection |
 | ADS7128 selectable device, existing PRU PWM support | Existing source available; preserved by current work | Device-specific physical validation as used; not newly validated here |
 | Ethernet image slimming | Wi-Fi stack removed in source; saved kernel configuration checked | Latest complete FIT build/boot/size comparison |
@@ -20,9 +20,9 @@ successful tests do not prove every newly committed change is running on the PC.
 | Explicit FIT deployment CLI | Manifest/hash/partition checks and attempt records implemented; fake-transport tests pass | Real manifest-based deployment through enrolled PC identity |
 | Reduced GitHub image CI / FlakeHub dependencies | Repo inputs use GitHub pins; image workflow is manual OSPI-only with no FlakeHub cache action | Run revised workflow; verify offline input preparation and local tool dependencies |
 | Cleanup | Some superseded local artifacts removed; no broad data/store purge | Final PC cleanup/GC only after persistence and retained-release acceptance |
-| Network page and inventory | Read-only UI/backend implemented and host/browser-tested | Deploy latest PC candidate |
+| Network page and inventory | Status UI/backend and manual Shelly controls implemented and host/browser-tested; Omada remains read-only | Deploy latest PC candidate |
 | Omada switches / wireless bridges | IPs/wiring recorded; no real management adapter yet | Firmware/API inspection, metrics, then reviewed camera-port power controls |
-| Shelly plugs | Local RPC backend implemented/tested; two entries intentionally disabled | Addresses, identities/load mapping and real on/off/read-back acceptance |
+| Shelly plugs | Local RPC backend and manual control UI implemented/tested; two entries intentionally disabled | Addresses, identities/load mapping and real on/off/read-back acceptance |
 | Three operating-profile definitions | Definitions, opt-in compiler and runtime sensor/FSW policy implemented and host-tested | Native build and physical acceptance; Liquid mapping; saved base wiring retained |
 | MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication and explicit session query interface implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, operator selection/browser acceptance and source-time chart integration |
 | hybrid-test image with LC2 | Paired image target, firmware routing, LC2 raw/voltage, CSV and profile-aware UI/Grafana implemented and host-tested | Native OSPI builds and combined hardware acceptance |
@@ -146,3 +146,22 @@ Local status exposes recorded/partial state; eight-pin capacity never evicts.
 Fixture and real metadata-only checks pass, but mini-PC reboot/persistence,
 concurrent GC, full graph and network-isolated builds remain pending. Explicit `offline-unpin` releases one managed root/partial attempt without store
 deletion or GC, preserving archived records. See [input pins](offline-input-pins.md).
+
+
+## Scope update — November 24
+
+Safari camera compatibility is excluded from the active backlog. Continue using
+Chrome/Chromium. Reconsider only if the operator explicitly adds it back at the
+end; it is not a blocker for the remaining work or combined acceptance.
+
+
+## Manual Shelly UI controls — November 24
+
+Existing Network cards gain explicit on/off confirmation, memory-only operator
+token and relay readback handling. Backend independently requires per-plug write
+opt-in plus an assigned load. Fresh status and exact load/address are rechecked;
+pre-write polls cannot overwrite post-request state, unknown outcomes lock with
+no automatic retry. Both shipped unknown-address plugs remain disabled. Host and
+mocked browser checks pass; actual mapping, firmware, authorization enrollment,
+PC deployment and physical relay/load acceptance remain pending. Omada remains
+inspection-pending. See [Shelly controls](shelly-controls.md).

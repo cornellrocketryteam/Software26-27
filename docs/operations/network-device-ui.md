@@ -5,17 +5,18 @@ card on `/stations`. It follows the existing cream header, CRT logo and grey/whi
 card style. Propulsion, Recovery and Grafana layouts are preserved. The old landing
 card's fill/vent description was corrected to describe manual controls.
 
-The page is read-only. It displays the three known ES205GP switches, both bridge
+The page displays the three known ES205GP switches, both bridge
 ends and two unconfigured Shelly plugs. Recorded switch wiring is explicitly not
 live link/PoE state. Omada metrics remain inspection-pending; no API capabilities
 were invented. Shelly addresses and load mappings can be supplied later.
 
-Only same-origin GET requests go to `/network-api/v1/devices`; the browser never
+Status uses only same-origin GET requests to `/network-api/v1/devices`; the browser never
 connects directly to device addresses. Polling is sequential, every three seconds
 with a seven-second request deadline. It stops on navigation. Invalid response,
 service failure or stale data does not turn an unknown relay into Off or missing
-power into 0 W. Actual false/zero readings remain distinguishable. No credentials,
-operator token entry, power requests or actuation buttons are in this page yet.
+power into 0 W. Actual false/zero readings remain distinguishable. The candidate now adds explicit Shelly controls behind per-device load/write opt-in
+and private operator authorization; see [manual controls](shelly-controls.md).
+Omada remains read-only/inspection-pending. The default unknown plugs cannot write.
 
 ## Software verification
 
@@ -42,8 +43,8 @@ Once actual plug configuration is enrolled, verify its real off/zero readings an
 missing/stale readings. Interrupt only the network API during maintenance and
 confirm the page marks previous readings unavailable, then recovers after restart;
 operator telemetry/Commanding/Grafana must continue. Do not cut an infrastructure
-PoE port to simulate a UI outage. Power controls and actual Omada adapters still
-need implementation/physical acceptance; this page does not claim them ready.
+PoE port to simulate a UI outage. Manual Shelly controls now have source/host support; physical acceptance remains.
+Actual Omada adapters and port controls still need implementation.
 
 The running PC has not been updated by these source/host tests. See the
 [combined hardware checklist](ground-station-return-testing.md).

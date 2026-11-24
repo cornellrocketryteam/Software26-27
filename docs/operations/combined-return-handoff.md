@@ -257,3 +257,11 @@ For each rate stage, collect the explicit-session
 [receiver throughput report](telemetry-throughput-report.md) alongside publisher
 window logs. Local queue acceptance and stored receipt rate are separate evidence;
 internal gaps are not proof of transport loss.
+
+
+## Optional Shelly UI acceptance after device identification
+
+Default unknown-address plugs must remain disabled. Once physical addresses/load
+mapping are supplied, follow [manual Shelly acceptance](shelly-controls.md):
+status first, then explicit per-device write opt-in and private authorization.
+No power request is automatic and Omada controls remain unimplemented.

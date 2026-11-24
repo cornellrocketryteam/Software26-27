@@ -205,7 +205,7 @@ the likely explanation for working Chromium playback on the station and failed
 Safari playback remotely. Chrome/Edge on the same Mac remains the confirmation
 check; direct `/cameras/` behavior was not yet reported.
 
-Queue explicit Safari/HLS or another verified Safari-compatible playback path
+Historical proposal (removed from active scope November 24): explicit Safari/HLS or another verified Safari-compatible playback path
 with the UI work, retaining fixed camera IDs and private runtime credentials.
 Do not expose go2rtc management APIs as a workaround. No camera password, board
 firmware or network configuration change is indicated by the current evidence.
@@ -217,5 +217,12 @@ The operator confirmed both the standalone `/cameras/` view and camera playback
 inside the full Grafana dashboard work in Chrome on the Mac. Combined with
 working local Chromium playback on the mini PC, this isolates the reported
 remote-viewing failure to the Safari playback path. Remote Chrome camera viewing
-is accepted; Safari compatibility remains queued with the UI work. No network,
+is accepted; Safari compatibility is excluded from the active backlog (November 24); revisit only if explicitly requested at the end. No network,
 camera credential or board firmware correction was required.
+
+
+## Active scope — November 24
+
+The operator removed Safari playback work from the active backlog. Chrome /
+Chromium remains the supported camera-viewing path. Earlier Safari proposals
+above are historical, not queued implementation or an acceptance requirement.

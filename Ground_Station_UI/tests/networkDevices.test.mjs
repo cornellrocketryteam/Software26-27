@@ -16,3 +16,23 @@ test('invalid protocol, duplicates and malformed device state are rejected',()=>
 test('invalid metric numbers and port data are rejected',()=>{
  for(const d of [{...device,metrics:{powerW:Infinity}},{...device,ports:[{port:0}]},{...device,lastSuccessUnixMs:-1}]) assert.throws(()=>parseNetworkSnapshot(snapshot([d])));
 });
+
+test('power eligibility requires explicit fresh configured authorized Shelly state',async()=>{
+ const {canControlPower}=await import('../src/networkDevices.ts');
+ const d={...device,address:'192.168.1.120',connectedLoad:'Fixture lamp',canSetOutput:true,state:'available',output:false,stale:false};
+ const s={...snapshot([d]),powerWritesConfigured:true};const token='fixture-token-at-least-24-chars';
+ assert.equal(canControlPower(s,d,token,true,false),true);
+ for(const changed of [{...d,connectedLoad:null},{...d,canSetOutput:false},{...d,stale:true},{...d,state:'unknown'},{...d,kind:'omada-switch'},{...d,address:null}]) assert.equal(canControlPower(s,changed,token,true,false),false);
+ assert.equal(canControlPower(s,d,token,false,false),false);
+ assert.equal(canControlPower(s,d,token,true,true),false);
+ assert.equal(canControlPower(s,d,'',true,false),false);
+ assert.equal(canControlPower({...s,powerWritesConfigured:false},d,token,true,false),false);
+});
+test('power reply validates requested state and never invents confirmation',async()=>{
+ const {parsePowerReply}=await import('../src/networkDevices.ts');
+ const raw={requestedOutput:true,confirmed:true,observed:{state:'available',output:true,metrics:{powerW:0}}};
+ assert.equal(parsePowerReply(raw,true).confirmed,true);
+ assert.equal(parsePowerReply({...raw,observed:{...raw.observed,output:false}},true).confirmed,false);
+ assert.throws(()=>parsePowerReply({...raw,requestedOutput:false},true));
+ assert.throws(()=>parsePowerReply({...raw,observed:{...raw.observed,output:null}},true));
+});

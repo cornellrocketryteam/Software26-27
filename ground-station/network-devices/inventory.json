@@ -161,7 +161,8 @@
       "address": null,
       "componentId": 0,
       "connectedLoad": null,
-      "credentialRef": null
+      "credentialRef": null,
+      "powerControlEnabled": false
     },
     {
       "id": "shelly-plug-2",
@@ -171,7 +172,8 @@
       "address": null,
       "componentId": 0,
       "connectedLoad": null,
-      "credentialRef": null
+      "credentialRef": null,
+      "powerControlEnabled": false
     }
   ]
 }

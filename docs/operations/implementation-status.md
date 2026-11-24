@@ -72,7 +72,7 @@ was not executed in this checkpoint. No heavy Docker/Linux build was started.
 - Omada firmware/API inspection and actual switch/bridge telemetry/control;
   Shelly addresses, load mapping, firmware and real relay/read-back acceptance.
 - The revised manual GitHub image workflow has not yet run on GitHub.
-- Safari camera playback remains unsupported by the current MP4 viewer path;
+- Safari camera playback remains unsupported and excluded from the active backlog;
   Chrome playback was previously accepted.
 
 MQTT source timestamps, the new hybrid-test profile/profile-specific views,
@@ -387,3 +387,15 @@ Local status exposes recorded/partial state; eight-pin capacity never evicts.
 Fixture and real metadata-only checks pass, but mini-PC reboot/persistence,
 concurrent GC, full graph and network-isolated builds remain pending. Explicit `offline-unpin` releases one managed root/partial attempt without store
 deletion or GC, preserving archived records. See [input pins](offline-input-pins.md).
+
+
+## Manual Shelly UI controls — November 24
+
+Existing Network cards gain explicit on/off confirmation, memory-only operator
+token and relay readback handling. Backend independently requires per-plug write
+opt-in plus an assigned load. Fresh status and exact load/address are rechecked;
+pre-write polls cannot overwrite post-request state, unknown outcomes lock with
+no automatic retry. Both shipped unknown-address plugs remain disabled. Host and
+mocked browser checks pass; actual mapping, firmware, authorization enrollment,
+PC deployment and physical relay/load acceptance remain pending. Omada remains
+inspection-pending. See [Shelly controls](shelly-controls.md).
