@@ -55,3 +55,8 @@ Timescale extension was run during development.
 
 The variable uses Grafana's documented [PostgreSQL key/value query variables](https://grafana.com/docs/grafana/latest/datasources/postgres/template-variables/)
 and [SQL-string formatting](https://grafana.com/docs/grafana/latest/visualizations/dashboards/variables/variable-syntax/).
+
+
+A separately filtered Hybrid-test view is now generated; standard FillOps remains
+the default. Match the publisher's startup session log to the dropdown. See
+[profile-specific Grafana](grafana-profiles.md) for scope and later acceptance.

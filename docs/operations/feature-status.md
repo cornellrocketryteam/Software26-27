@@ -26,7 +26,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | Three operating-profile definitions | Definitions, opt-in compiler and runtime sensor/FSW policy implemented and host-tested | Runtime/build/telemetry/UI consumption; current hardware profiles unchanged |
 | MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication and explicit session query interface implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, operator selection/browser acceptance and source-time chart integration |
 | hybrid-test image with LC2 | Intended local/FSW/channel mapping defined; no image target yet | Standalone firmware, raw/voltage LC2, OSPI build and hardware acceptance |
-| Hybrid/Liquid/test UI and Grafana variants | Commanding runtime-profile routing and views implemented/tested with original styling; legacy Liquid retained | Grafana variants, Liquid semantic mapping, real combined deployment |
+| Hybrid/Liquid/test UI and Grafana variants | Commanding runtime-profile routing and views implemented/tested with original styling; legacy Liquid retained | Hybrid-test Grafana implemented/SQL tested; normal Hybrid/Liquid separation, Liquid mapping and real combined deployment remain |
 | Starlink health | Local integration path researched | Terminal identification, adapter, actual route/metrics and outage tests |
 | EcoFlow RIVER 2 Pro | Cloud integration path researched; physical electronics only | Account/device/API enrollment, AC/DC-bank adapter and read-back tests; individual socket control/metering unproven |
 

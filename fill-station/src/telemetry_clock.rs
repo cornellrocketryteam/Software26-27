@@ -23,6 +23,13 @@ pub struct FrameMetadata {
     pub time_generation: u32,
 }
 
+impl FrameMetadata {
+    /// Exact public publisher identity, matching the database session catalog.
+    pub fn session_id(&self) -> String {
+        format!("{:016x}{:016x}", self.session_hi, self.session_lo)
+    }
+}
+
 pub struct PublisherClock {
     session_hi: u64,
     session_lo: u64,
@@ -161,6 +168,14 @@ mod tests {
 
     fn clock() -> PublisherClock {
         PublisherClock::from_entropy(&mut Cursor::new([1u8; 16])).unwrap()
+    }
+
+    #[test]
+    fn session_id_is_exact_hex_matching_the_catalog_label() {
+        let mut frame = clock().stamp_at(0, None, TimeQuality::Unknown).unwrap();
+        frame.session_hi = u64::MAX;
+        frame.session_lo = 1;
+        assert_eq!(frame.session_id(), "ffffffffffffffff0000000000000001");
     }
 
     #[test]

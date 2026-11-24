@@ -3,8 +3,8 @@
 `hardware/operating-profiles.json` records agreed device ownership and sensor
 intent separately from `hardware/profiles/*.json`, which define physical wiring.
 The validator is `hardware/operating_profiles.py`. Firmware, MQTT/storage and
-paired image builds now support operating intent. Commanding views are implemented; Grafana variants and
-physical acceptance remain pending; see the build-selector table below.
+paired image builds now support operating intent. Commanding and Hybrid-test Grafana views are implemented; normal Hybrid/Liquid
+Grafana separation and physical acceptance remain pending; see the build-selector table below.
 
 ## Intended device mapping
 
@@ -133,7 +133,7 @@ last successful sample.
 
 LC2 on ADC2 CH2 is represented internally as optional raw counts/voltage only;
 scaled input is deliberately discarded even if supplied. Failure/nonfinite voltage
-makes it unavailable, and it is absent outside Hybrid-test. **LC2 now has MQTT protobuf/storage fields (source v2); profile-aware CSV is implemented and named Commanding fields are implemented; Grafana variants remain pending.** Generic ADC WebSocket responses
+makes it unavailable, and it is absent outside Hybrid-test. **LC2 now has MQTT protobuf/storage fields (source v2); profile-aware CSV is implemented and named Commanding fields are implemented; normal Hybrid/Liquid Grafana separation remains pending.** Generic ADC WebSocket responses
 already contain the channel readings, but this is not a complete profile UI.
 The remaining LC2 consumer integration must land before a combined candidate
 is accepted for deployment. Neither new profile is physically accepted.
@@ -193,3 +193,5 @@ still require their profile-specific controls, labels and LC2 support. Profile-a
 those consumers and freeze one combined candidate before physical acceptance.
 
 Profile-aware React Commanding is now implemented with versioned board reporting. See [the commanding guide](../../docs/operations/commanding-profiles.md). Grafana variants and physical acceptance remain pending.
+
+Hybrid-test now has a separate generated Grafana view with v2/profile2 filtering and both load cells. See [Grafana profiles](../../docs/operations/grafana-profiles.md). Standard FillOps remains the default; normal Hybrid/Liquid separation and physical acceptance remain pending.

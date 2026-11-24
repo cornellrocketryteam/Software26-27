@@ -1,6 +1,7 @@
 """Bounded, local telemetry provisioning; never operates physical devices."""
 import argparse
 import base64
+import copy
 import ipaddress
 import json
 import os
@@ -178,8 +179,10 @@ def database(docker, assets, attempts=30):
         raise ProvisionError("Telemetry schema/migration failed; ingestion remains unprovisioned.")
 
 
-def configure_fill_session(dashboard):
+def configure_fill_session(dashboard, operating_profile=None):
     """Preserve panel layout; require an explicit source session for fill data."""
+    if operating_profile not in (None, 2):
+        raise ProvisionError("Unsupported dashboard operating profile.")
     variable = "${fill_session:sqlstring}"
     catalog = """SELECT __text, __value FROM (
         SELECT 0 AS rank, 'Select a fill session' AS __text, 'none' AS __value
@@ -188,12 +191,21 @@ def configure_fill_session(dashboard):
           publisher_session_hi::text || ':' || publisher_session_lo::text
         FROM public.telemetry_sessions WHERE unit_id = 0
     ) sessions ORDER BY rank, __text"""
+    if operating_profile == 2:
+        catalog = """SELECT __text, __value FROM (
+            SELECT 0 AS rank, 'Select a Hybrid-test session' AS __text, 'none' AS __value
+            UNION ALL SELECT 1, s.session_id || ' (seq ' || s.last_sequence::text || ')',
+              s.publisher_session_hi::text || ':' || s.publisher_session_lo::text
+            FROM public.telemetry_sessions s JOIN public.telemetry_latest_in_session h
+              USING (unit_id, publisher_session_hi, publisher_session_lo)
+            WHERE s.unit_id = 0 AND h.source_metadata_version = 2 AND h.operating_profile = 2
+        ) sessions ORDER BY rank, __text"""
     dashboard.setdefault("templating", {})["list"] = [{
         "name": "fill_session", "label": "Fill session", "type": "query",
         "datasource": {"type": "grafana-postgresql-datasource", "uid": "bfk1elo58d3pca"},
         "query": catalog, "definition": catalog, "refresh": 1, "sort": 0,
         "multi": False, "includeAll": False, "hide": 0, "skipUrlSync": False,
-        "current": {"text": "Select a fill session", "value": "none"},
+        "current": {"text": "Select a Hybrid-test session" if operating_profile == 2 else "Select a fill session", "value": "none"},
         "options": [],
     }]
     # SQL-string interpolation quotes the complete value. The bounded numeric
@@ -205,6 +217,10 @@ def configure_fill_session(dashboard):
         (""" + variable + """ = 'legacy' AND d.source_metadata_version = 0)
         OR (d.source_identity_valid AND d.publisher_session_hi = (""" + hi + """)
             AND d.publisher_session_lo = (""" + lo + """)))) AS telemetry_data"""
+    if operating_profile == 2:
+        relation = """(SELECT d.* FROM public.telemetry_data d WHERE d.unit_id = 0
+            AND d.source_identity_valid AND d.source_metadata_version = 2 AND d.operating_profile = 2
+            AND d.publisher_session_hi = (""" + hi + """) AND d.publisher_session_lo = (""" + lo + """)) AS telemetry_data"""
     for panel in dashboard["panels"]:
         if panel["id"] not in [2, 3, 4, 5, 6, 35]:
             continue
@@ -220,6 +236,58 @@ def configure_fill_session(dashboard):
             query = query.replace("FROM telemetry_data", "FROM " + relation)
             query = query.replace("ORDER BY time DESC", "ORDER BY CASE WHEN source_identity_valid THEN publisher_sequence END DESC NULLS LAST, time DESC")
             target["rawSql"] = query
+
+
+def hybrid_test_dashboard(original):
+    """Copy only the existing fill section; do not restyle the accepted view."""
+    dashboard = copy.deepcopy(original)
+    dashboard.update(uid="fillops-hybrid-test", title="FillOps - Hybrid-test", id=None)
+    keep = {7, 1, 2, 3, 5, 35, 6, 4}
+    dashboard["panels"] = [p for p in dashboard["panels"] if p["id"] in keep]
+    panels = {p["id"]: p for p in dashboard["panels"]}
+    panels[7]["title"] = "Hybrid-test - local fill station"
+    panels[6]["title"] = "Local pressures"
+    panels[3]["title"] = "Load Cell 1 (existing calibration)"
+    panels[3]["targets"][0]["rawSql"] = (
+        'SELECT load_cell AS "LC1 Scaled" FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+    neutral = {"unit": "none", "noValue": "Unavailable", "mappings": [],
+               "color": {"mode": "fixed", "fixedColor": "blue"},
+               "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": None}]}}
+    panels[3]["fieldConfig"] = {"defaults": copy.deepcopy(neutral), "overrides": []}
+    panels[3]["options"]["showThresholdMarkers"] = False
+    panels[35]["title"] = "Load Cell 2 (uncalibrated)"
+    panels[35]["targets"][0]["rawSql"] = (
+        'SELECT CASE WHEN load_cell_2_valid THEN load_cell_2_raw END AS "LC2 Raw", '
+        'CASE WHEN load_cell_2_valid THEN load_cell_2_voltage END AS "LC2 Voltage" '
+        'FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+    panels[35]["fieldConfig"] = {"defaults": copy.deepcopy(neutral), "overrides": [
+        {"matcher": {"id": "byName", "options": "LC2 Raw"},
+         "properties": [{"id": "decimals", "value": 0}]},
+        {"matcher": {"id": "byName", "options": "LC2 Voltage"},
+         "properties": [{"id": "unit", "value": "suffix:V"}, {"id": "decimals", "value": 3}]},
+    ]}
+    panels[35]["options"]["reduceOptions"]["calcs"] = ["last"]
+    panels[5]["title"] = "Igniter command"
+    panels[5]["targets"][0]["rawSql"] = (
+        'SELECT ignition AS "Ignition Command" FROM telemetry_data WHERE unit_id = 0 ORDER BY time DESC LIMIT 1;')
+    panels[5]["fieldConfig"]["overrides"] = [
+        o for o in panels[5]["fieldConfig"].get("overrides", [])
+        if o.get("matcher", {}).get("options") == "Ignition Command"]
+    # This is current combined output intent, not an acknowledgement that a
+    # historical ignition command was sent or physically ignited anything.
+    for override in panels[5]["fieldConfig"]["overrides"]:
+        for prop in override.get("properties", []):
+            if prop.get("id") == "mappings":
+                for mapping in prop["value"]:
+                    for key, label in [("false", "INACTIVE"), ("true", "ACTIVE")]:
+                        if key in mapping.get("options", {}):
+                            mapping["options"][key]["text"] = label
+    configure_fill_session(dashboard, operating_profile=2)
+    panels[3]["description"] += " LC1 uses existing coefficients; engineering unit is unconfirmed."
+    panels[35]["description"] += " LC2 is raw/voltage only, not calibrated force."
+    panels[5]["description"] += " Combined igniter command, not proof of ignition. QD release state is available in Commanding, not the deprecated motor field."
+    dashboard["links"] = [{"title": "Standard FillOps", "type": "link", "url": "/grafana/d/adrc2lg/fillops", "targetBlank": False}]
+    return dashboard
 
 
 def build_assets(source, output, cameras=False):
@@ -250,8 +318,11 @@ def build_assets(source, output, cameras=False):
     }
     dashboard = json.loads((source / "grafana.json").read_text())
     dashboard["id"] = None
+    test_dashboard = hybrid_test_dashboard(dashboard)
     configure_fill_session(dashboard)
-    for panel in dashboard["panels"]:
+    dashboard.setdefault("links", []).append({"title": "Hybrid-test (local only)", "type": "link",
+        "url": "/grafana/d/fillops-hybrid-test/hybrid-test", "targetBlank": False})
+    for panel in dashboard["panels"] + test_dashboard["panels"]:
         if panel["id"] == 1:
             panel["options"]["mode"] = "html" if cameras else "markdown"
             panel["options"]["content"] = ('<iframe title="Fill cameras" src="/cameras/" allow="autoplay; fullscreen" style="width:100%;height:100%;border:0"></iframe>' if cameras else "Camera feeds are not configured for this deployment.")
@@ -266,6 +337,7 @@ def build_assets(source, output, cameras=False):
         "grafana/provisioning/datasources/telemetry.yaml": datasource,
         "grafana/provisioning/dashboards/telemetry.yaml": provider,
         "grafana/dashboards/dashboard.json": dashboard,
+        "grafana/dashboards/hybrid-test.json": test_dashboard,
     }
     for relative, document in documents.items():
         target = output / relative

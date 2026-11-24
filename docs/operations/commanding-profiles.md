@@ -3,7 +3,7 @@
 The React page now follows the connected board's reported operating profile.
 Existing buttons, confirmation dialogs, fonts and general layout remain. No fill
 automation is added. This is source/host/browser tested, not deployed or physically
-accepted. Grafana's profile-specific variants remain a separate block.
+accepted. A separate [Hybrid-test Grafana view](grafana-profiles.md) is now generated; other mode separation remains pending.
 
 ## Identity and compatibility
 

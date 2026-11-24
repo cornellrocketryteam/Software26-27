@@ -152,6 +152,10 @@ pub async fn start_mqtt_publisher(
                 return;
             }
         };
+        if source.sequence == 1 {
+            info!("MQTT publisher session {} (profile {:?}); match this ID when selecting a Grafana session",
+                source.session_id(), routing_mode);
+        }
         if source.time_generation != last_time_generation {
             info!("MQTT source clock generation {}: quality {:?}, UNIX valid {} (reference accuracy unverified)",
                   source.time_generation, source.quality, source.unix_valid);

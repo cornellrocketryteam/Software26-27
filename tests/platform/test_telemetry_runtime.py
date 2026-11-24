@@ -182,6 +182,21 @@ class RuntimeContracts(unittest.TestCase):
                 if file.is_file():
                     self.assertNotIn(value, file.read_text())
 
+    def test_test_dashboard_is_separate_and_uses_the_same_camera_placeholder(self):
+        output=self.root / "profile-assets"
+        runtime.build_assets(ROOT / "ground-station",output)
+        normal=json.loads((output / "grafana/dashboards/dashboard.json").read_text())
+        stand=json.loads((output / "grafana/dashboards/hybrid-test.json").read_text())
+        self.assertEqual(normal['uid'],'adrc2lg')
+        self.assertEqual(stand['uid'],'fillops-hybrid-test')
+        self.assertIsNone(stand['id'])
+        panels={p['id']:p for p in stand['panels']}
+        self.assertEqual(panels[1]['options']['mode'],'markdown')
+        self.assertNotIn('<iframe',panels[1]['options']['content'])
+        self.assertNotIn('legacy',stand['templating']['list'][0]['query'].lower())
+        self.assertIn('fillops-hybrid-test',normal['links'][-1]['url'])
+        self.assertEqual(stand['links'][0]['url'],'/grafana/d/adrc2lg/fillops')
+
     def test_camera_disabled_assets_keep_placeholder(self):
         output = self.root / "no-camera-assets"
         runtime.build_assets(ROOT / "ground-station", output)

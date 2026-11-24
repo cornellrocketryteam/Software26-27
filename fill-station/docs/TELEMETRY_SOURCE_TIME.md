@@ -125,3 +125,9 @@ raw/voltage/validity and operating-profile code2. Existing producers remain v1;
 session/time semantics are unchanged. Migration004 includes extensions in v2
 fingerprints without modifying v1 receipts. See
 [the v2 contract and acceptance](../../docs/operations/lc2-telemetry.md).
+
+
+The MQTT publisher logs its exact 32-hex-character session ID on its first frame
+for explicit dashboard selection. This identifies the publisher lifetime, not
+CSV rows, physical wiring or authenticated delivery. Reconnect retains the ID;
+task restart changes it. See [Grafana profile selection](../../docs/operations/grafana-profiles.md).

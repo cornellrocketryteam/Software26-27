@@ -271,3 +271,15 @@ Read-only Recovery map remains usable; forwarding is guarded. Host policy/build,
 firmware and three production-preview mock-browser suites pass. No deployment or
 physical output validation; old boards need the new report before this UI can
 command them. Grafana variants remain next. See [guide](commanding-profiles.md).
+
+
+## Hybrid-test Grafana — November 23
+
+Separate fillops-hybrid-test view generated from accepted fill layout, no FSW
+panels, profile2/v2-only explicit sessions, both local load cells and no guessed
+LC1 mass units/LC2 force units. Standard dashboard/default kiosk remain; links
+connect views. Latest LC1/LC2 use sequence and invalid LC2 stays unavailable.
+Publisher startup now logs the exact MQTT session ID for manual matching.
+Host JSON/SQL/runtime/Cargo checks pass; actual Grafana rendering, Timescale
+performance and combined deployment remain pending. Normal Hybrid/Liquid source
+profile separation is still pending. See [acceptance](grafana-profiles.md).
