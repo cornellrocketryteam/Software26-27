@@ -5,6 +5,7 @@ mod csv_logger;
 mod csv_storage;
 mod hardware;
 mod mqtt_publisher;
+mod telemetry_rate;
 use anyhow::Result;
 use async_tungstenite::{WebSocketStream, tungstenite};
 use smol::Async;

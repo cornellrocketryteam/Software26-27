@@ -22,8 +22,7 @@ const BROKER_HOST: &str = "192.168.1.206";
 /// MQTT broker port
 const BROKER_PORT: u16 = 1883;
 
-/// Publish rate in Hz
-const PUBLISH_RATE_HZ: u64 = 10;
+use crate::telemetry_rate::{self, Outcome, Stats};
 
 /// MQTT topic — unit_id 0 = Fill Station. Protobuf payloads use "rats/pb/",
 /// separate from the JSON "rats/raw/" topics (see ground-station/emqx_rule_fill_station.sql)
@@ -46,9 +45,18 @@ pub async fn start_mqtt_publisher(
     umbilical_readings: Arc<Mutex<UmbilicalReadings>>,
     actuator_state: Arc<ActuatorState>,
 ) {
+    let configured_rate = std::env::var("FILL_STATION_MQTT_HZ");
+    let publish_rate = match configured_rate {
+        Ok(ref value) => telemetry_rate::parse_rate(Some(value)),
+        Err(std::env::VarError::NotPresent) => telemetry_rate::parse_rate(None),
+        Err(_) => Err("non-Unicode MQTT rate"),
+    }.unwrap_or_else(|reason| {
+        warn!("Invalid MQTT rate configuration ({}); using 10 Hz", reason);
+        10
+    });
     info!(
         "Starting MQTT publisher task ({}:{}, topic: {}, rate: {} Hz)",
-        BROKER_HOST, BROKER_PORT, MQTT_TOPIC, PUBLISH_RATE_HZ
+        BROKER_HOST, BROKER_PORT, MQTT_TOPIC, publish_rate
     );
 
     let routing_mode = _hardware.lock().await.routing_mode;
@@ -86,7 +94,9 @@ pub async fn start_mqtt_publisher(
 
     let boot_time = Instant::now();
     let mut last_time_generation = 0;
-    let interval = Duration::from_millis(1000 / PUBLISH_RATE_HZ);
+    let interval = telemetry_rate::interval(publish_rate);
+    let mut stats = Stats::default();
+    let mut stats_start = Instant::now();
 
     loop {
         let start = Instant::now();
@@ -283,16 +293,19 @@ pub async fn start_mqtt_publisher(
         payload.fsw_receive_age_valid = fsw_age_valid;
 
         // 5. Serialize (nanopb protobuf) and publish
-        match telemetry_pb::encode(&payload) {
-            Some(bytes) => {
-                if let Err(e) = client.try_publish(MQTT_TOPIC, QoS::AtMostOnce, false, bytes) {
+        let outcome = match telemetry_pb::encode(&payload) {
+            Some(bytes) => match client.try_publish(MQTT_TOPIC, QoS::AtMostOnce, false, bytes) {
+                Ok(()) => Outcome::Queued,
+                Err(e) => {
                     warn!("MQTT publish failed (broker may be offline): {}", e);
+                    Outcome::Rejected
                 }
-            }
+            },
             None => {
                 error!("Failed to encode MQTT payload with nanopb");
+                Outcome::EncodingFailed
             }
-        }
+        };
 
         #[cfg(feature = "debug-json")]
         match serde_json::to_string(&payload) {
@@ -307,6 +320,17 @@ pub async fn start_mqtt_publisher(
         }
 
         // 6. Sleep for remainder of interval
+        let elapsed = start.elapsed();
+        stats.record(outcome, elapsed, interval);
+        let window = stats_start.elapsed();
+        if window >= Duration::from_secs(10) {
+            info!("MQTT publisher window: target_hz={} window_ms={} attempts={} queued={} rejected={} encoding_failed={} queued_hz={:.2} work_overruns={} max_work_us={} last_sequence={}; queued is local acceptance, not delivery",
+                publish_rate, window.as_millis(), stats.attempted, stats.queued,
+                stats.rejected, stats.encoding_failed, stats.queued as f64 / window.as_secs_f64(),
+                stats.overruns, stats.max_work.as_micros(), source.sequence);
+            stats = Stats::default();
+            stats_start = Instant::now();
+        }
         let elapsed = start.elapsed();
         if elapsed < interval {
             Timer::after(interval - elapsed).await;

@@ -94,3 +94,22 @@ latest cards remain sequence-based. Original/default FillOps remains arrival-bas
 Generated SQL host checks cover ordinary/time-partitioned PostgreSQL; Grafana
 rendering, hardware LAN clock and real Timescale query costs remain pending.
 See [source-time chart acceptance](source-time-charts.md).
+
+
+## Planned telemetry rate increase — November 24
+
+Target 50 Hz fill-station-to-ground-station telemetry, pending measurement and
+load/latency/commanding acceptance. No rate change or performance claim yet.
+The [return checklist](ground-station-return-testing.md#telemetry-throughput-target-50-hz--november-24)
+includes staged throughput, sample-age, backlog, storage and recovery checks.
+
+
+## Telemetry-rate test preparation — November 24
+
+Candidate adds `fillStation.telemetryRateHz` (1–50, default 10), explicit init
+environment and ten-second local publisher accounting. Summaries distinguish
+local queue acceptance, rejection, encoding failures and work overruns; no broker
+or delivery success is inferred. Existing QoS, queue size, ADC/CSV/UI behavior and
+10 Hz default remain. Host/Nix checks pass; native images and staged 10/20/25/50 Hz
+end-to-end load/latency/commanding/recovery acceptance remain pending. See
+[rate configuration and testing](telemetry-rate-testing.md).

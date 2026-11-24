@@ -373,3 +373,40 @@ latest cards remain sequence-based. Original/default FillOps remains arrival-bas
 Generated SQL host checks cover ordinary/time-partitioned PostgreSQL; Grafana
 rendering, hardware LAN clock and real Timescale query costs remain pending.
 See [source-time chart acceptance](source-time-charts.md).
+
+
+## Telemetry throughput target: 50 Hz — November 24
+
+- [ ] Measure the current fill-station-to-ground-station telemetry baseline, then
+  tune toward **50 Hz (one frame every 20 ms)**. This is a proposed target, not
+  a confirmed sustainable rate; firmware timing is unchanged by this checklist.
+- [ ] Distinguish publish attempts, broker receipt rate and database ingestion
+  rate from ADC acquisition rate and Grafana refresh. Repeated cached samples
+  are not new sensor measurements; inspect sample ages and validity.
+- [ ] Compare baseline with staged increases through 50 Hz using source session /
+  sequence counters: sustained delivered frames per second, gaps, duplicates,
+  out-of-order delivery, reconnects, queue growth and end-to-end latency/jitter.
+  Report latency only with qualified clock agreement, or use a clock-independent
+  measurement; LAN synchronization alone does not establish external UTC.
+- [ ] Check board CPU/RAM, GPIO/ADC read contention, network utilization, broker
+  and database CPU/RAM, storage growth and Grafana query/refresh performance.
+  Run long enough to detect accumulating backlog; receipt deduplication must hold.
+- [ ] Verify manual commanding response, reconnect/recovery, cameras, local
+  displays and CSV recording remain responsive under the higher rate. Use
+  approved test loads; increasing telemetry must not auto-actuate hardware.
+- [ ] Test the full Ethernet/wireless-bridge path and an interrupted/recovered
+  connection. Retain the known-good rate as a rollback setting. If 50 Hz causes
+  issues, diagnose the bottleneck and record the stable rate before making it
+  the default. Hardware acceptance and acceptable latency/load bounds remain
+  to be established with the actual equipment.
+
+
+## Telemetry-rate test preparation — November 24
+
+Candidate adds `fillStation.telemetryRateHz` (1–50, default 10), explicit init
+environment and ten-second local publisher accounting. Summaries distinguish
+local queue acceptance, rejection, encoding failures and work overruns; no broker
+or delivery success is inferred. Existing QoS, queue size, ADC/CSV/UI behavior and
+10 Hz default remain. Host/Nix checks pass; native images and staged 10/20/25/50 Hz
+end-to-end load/latency/commanding/recovery acceptance remain pending. See
+[rate configuration and testing](telemetry-rate-testing.md).

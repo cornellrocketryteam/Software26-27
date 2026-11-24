@@ -1,6 +1,11 @@
 { lib, ... }:
 {
   options.fillStation = {
+    telemetryRateHz = lib.mkOption {
+      type = lib.types.ints.between 1 50;
+      default = 10;
+      description = "MQTT frame assembly/publish target Hz; rates above 10 require hardware throughput acceptance.";
+    };
     operatingProfile = lib.mkOption {
       type = lib.types.nullOr (lib.types.enum [ "hybrid" "hybrid-test" ]);
       default = null;

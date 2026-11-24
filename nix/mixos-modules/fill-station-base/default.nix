@@ -75,7 +75,7 @@ in
 
     fill-station = {
       action = "respawn";
-      process = lib.getExe fill-station;
+      process = "${lib.getExe' pkgs.busybox "env"} FILL_STATION_MQTT_HZ=${toString config.fillStation.telemetryRateHz} ${lib.getExe fill-station}";
     };
 
     time-sync = {

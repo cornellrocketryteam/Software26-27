@@ -234,3 +234,12 @@ clock-generation series; latest cards remain sequence-based. Verify actual legen
 null handling, clock/range selection and delayed-packet fixtures using the
 [source-time chart checklist](source-time-charts.md). Default FillOps stays
 arrival-based; a blank source-time chart can mean an unqualified board clock.
+
+
+## Optional staged telemetry-rate acceptance
+
+The combined candidate keeps 10 Hz by default and includes publisher window
+measurements. Collect a baseline first, then use separate recorded configurations
+for 20/25/50 Hz only in approved test windows. Follow
+[telemetry-rate acceptance](telemetry-rate-testing.md); local queue acceptance
+is not delivered throughput, and actual 50 Hz remains unvalidated.
