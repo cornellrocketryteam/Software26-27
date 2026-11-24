@@ -2,6 +2,7 @@ mod command;
 mod operating_runtime;
 mod components;
 mod csv_logger;
+mod csv_storage;
 mod hardware;
 mod mqtt_publisher;
 use anyhow::Result;

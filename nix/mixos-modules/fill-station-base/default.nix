@@ -42,7 +42,7 @@ in
 
   state = {
     enable = true;
-    # MixOS uses this filesystem for OverlayFS upper/work directories in /etc.
+    # MixOS overlays /etc and bind-mounts /var, /root and /home from this filesystem.
     fsType = "ext4";
     options = [ "noatime" ];
     source = "/dev/fill-station-state";

@@ -1,5 +1,6 @@
 use crate::command::{ActuatorState, AdcReadings, UmbilicalReadings};
 use crate::hardware::Hardware;
+use crate::csv_storage::{self, Budget};
 use crate::operating_runtime::{OutputDiagnostic, RoutingMode, Sample, route_sensors};
 use fill_station::telemetry_clock::{
     FrameMetadata, PublisherClock, kernel_time_quality, sample_age,
@@ -263,6 +264,12 @@ pub async fn start_logging(
         error!("Cannot create CSV directory: {}", e);
         return;
     }
+    let mut budget = Budget::new();
+    let probe = smol::unblock(move || csv_storage::probe(std::path::Path::new(log_dir))).await;
+    if let Err(e) = probe.and_then(|(bytes, inodes)| budget.refresh(bytes, inodes)) {
+        error!("CSV storage check failed; logging disabled: {}", e);
+        return;
+    }
     let mut clock = match PublisherClock::new() {
         Ok(c) => c,
         Err(e) => {
@@ -282,7 +289,12 @@ pub async fn start_logging(
             return;
         }
     };
-    if let Err(e) = file.write_all(csv_header().as_bytes()).await {
+    let header = csv_header();
+    if let Err(e) = budget.consume(header.len()) {
+        error!("CSV header exceeds recording budget: {}", e);
+        return;
+    }
+    if let Err(e) = file.write_all(header.as_bytes()).await {
         error!("Cannot write CSV header: {}", e);
         return;
     }
@@ -324,6 +336,21 @@ pub async fn start_logging(
             }
         };
         let line = render_row(frame.sequence, &adc, &umb, &hw, frame, captured);
+        // Probe off the executor every 100 rows. Debit each write between probes
+        // so our own writes cannot consume the reserved bytes in that interval.
+        if frame.sequence % 100 == 0 {
+            let probe = smol::unblock(move || csv_storage::probe(std::path::Path::new(log_dir))).await;
+            if let Err(e) = probe.and_then(|(bytes, inodes)| budget.refresh(bytes, inodes)) {
+                if let Err(sync) = file.sync_all().await { error!("CSV final sync failed: {}", sync); }
+                error!("CSV storage check failed; logging stopped: {}", e);
+                return;
+            }
+        }
+        if let Err(e) = budget.consume(line.len()) {
+            if let Err(sync) = file.sync_all().await { error!("CSV final sync failed: {}", sync); }
+            error!("CSV logging stopped: {}", e);
+            return;
+        }
         if let Err(e) = file.write_all(line.as_bytes()).await {
             error!("CSV write failed: {}", e);
             return;

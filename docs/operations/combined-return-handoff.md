@@ -181,7 +181,12 @@ not erase DATA or copy a private key as a workaround.
   and one-monitor fallback. With WAN absent, test local operation and LAN time;
   LAN clock agreement is not externally verified UTC.
 - Verify the actual CSV mount/free space/retention before relying on recordings.
-  `/var/log` persistence is not established by the existing `/etc` DATA overlay.
+  The pinned MixOS init binds `/state/var` onto `/var`; the new logger checks that
+  mapping and stops rather than silently recording to tmpfs. Verify a short CSV
+  remains after reboot. DATA needs 32 MiB/128 inodes in reserve and each recording
+  stops at 128 MiB; there is no automatic pruning/rotation or UI recording alarm.
+  See [recording limits](../../fill-station/docs/CSV_LOGGING.md). Test low-space
+  behavior only on a disposable fixture, never by filling the production card.
 
 Keep this read-only signed-cache check for the newly built artifact, if desired:
 on the PC sign that exact output recursively with the existing root-owned key,

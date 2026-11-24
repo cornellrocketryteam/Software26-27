@@ -15,13 +15,38 @@ filename as proof of valid UTC. Existing files are never migrated or appended to
 
 The logger attempts a file sync every 1,000 rows, roughly ten seconds at its target
 rate. This reduces buffered-data exposure but does not guarantee survival of a
-power cut. Storage must actually be persistent, writable and have space. In the
-current MixOS setup `/etc` state persistence does not establish that `/var/log` is
-persistent; verify the deployed mount before relying on reboot retention. Log
-rotation/retention and a persistent board-log mount are not implemented by this
-change. Log growth must fit the field run and available storage. Failed directory,
-file, header or row writes stop this logger with a diagnostic; a sync failure is
-reported and logging continues. The logger does not command actuators.
+power cut. The pinned MixOS init bind-mounts `/state/var` onto `/var` before
+application startup, separately from the `/etc` overlay. The logger verifies a
+writable ext4 `/state` and same-device `/var` bind and checks its directory is on
+that filesystem. If verification fails, CSV logging stops without a volatile
+fallback; commanding and MQTT remain independent. Actual board reboot retention
+still needs acceptance.
+
+## Capacity and stopping
+
+The logger preserves every recording and never prunes automatically. It reserves
+32 MiB of available DATA space and 128 available inodes, and caps each recording
+at 128 MiB including its header. The shipped DATA-card image is 256 MiB; recordings
+are not unlimited. These are fixed firmware policy constants in `csv_storage.rs`,
+not runtime environment settings. Normal host/mock runs keep the file cap but do
+not claim DATA verification or real disk-reserve checks.
+
+Space/mount checks run at startup and every 100 rows (about one second at target
+rate), off the async executor. Every write debits the last measured headroom.
+Other processes can consume disk between checks, so this is a recording budget,
+not a filesystem quota or guarantee against unrelated writers. Low space/inodes,
+mount/probe failure or the file limit stop only the CSV task with an error in the
+application tracing log; no UI recording alarm is implemented. Capacity stops
+attempt a final sync. Existing periodic sync errors are reported, not proof of
+power-loss durability. Directory/file/header/row write errors also stop logging.
+
+There is no automatic file rotation, restart or deletion at the limit. Before a
+long run, measure actual bytes per second and ensure its recording fits both the
+per-file cap and available capacity. Export and verify logs, then remove only
+explicitly selected old recordings and restart the application during an approved
+maintenance window to resume. Restart affects commanding connections; never do
+this during active operation just to free log space. Resizing/reformatting DATA
+is not part of routine FIT deployment.
 
 ## Compatibility and schema 3
 
@@ -99,7 +124,7 @@ Parse it with a CSV reader, verify row/header counts and mode, compare the named
 channels with ADC and telemetry readings, then disconnect/reconnect FSW/ADC in an
 approved hardware setup. Confirm invalid values and sample ages. Verify the real
 log mount, free space and power/reboot retention separately before trusting field
-recordings. No new hardware test is needed before the remaining UI work lands.
+recordings. Test near-limit behavior only on a disposable fixture filesystem, never by filling production DATA.
 
 ## Output diagnostics
 

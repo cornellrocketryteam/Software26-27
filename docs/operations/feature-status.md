@@ -25,7 +25,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | Shelly plugs | Local RPC backend implemented/tested; two entries intentionally disabled | Addresses, identities/load mapping and real on/off/read-back acceptance |
 | Three operating-profile definitions | Definitions, opt-in compiler and runtime sensor/FSW policy implemented and host-tested | Native build and physical acceptance; Liquid mapping; saved base wiring retained |
 | MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication and explicit session query interface implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, operator selection/browser acceptance and source-time chart integration |
-| hybrid-test image with LC2 | Intended local/FSW/channel mapping defined; no image target yet | Standalone firmware, raw/voltage LC2, OSPI build and hardware acceptance |
+| hybrid-test image with LC2 | Paired image target, firmware routing, LC2 raw/voltage, CSV and profile-aware UI/Grafana implemented and host-tested | Native OSPI builds and combined hardware acceptance |
 | Hybrid/Liquid/test UI and Grafana variants | Commanding runtime-profile routing and views implemented/tested with original styling; legacy Liquid retained | Normal Hybrid and Hybrid-test Grafana implemented/SQL tested; Liquid mapping and real combined deployment remain |
 | Starlink health | Local integration path researched | Terminal identification, adapter, actual route/metrics and outage tests |
 | EcoFlow RIVER 2 Pro | Cloud integration path researched; physical electronics only | Account/device/API enrollment, AC/DC-bank adapter and read-back tests; individual socket control/metering unproven |
@@ -45,7 +45,7 @@ LC2 v2 MQTT/storage support is implemented and host-tested; native/image activat
 
 Paired Hybrid/Hybrid-test image selectors and CLI routing now exist and are graph/host tested; full images, consumer variants and physical acceptance remain pending. Liquid remains on its current wiring.
 
-Profile-aware CSV schema2 now records named sensors/validity, LC2 raw/voltage, owner-correct actuator state and independent CSV time identity. Host formatter/file checks pass; board mount/retention/performance and physical recordings remain pending.
+Profile-aware CSV schema3 now records named sensors/validity, LC2 raw/voltage, owner-correct actuator state and independent CSV time identity. Host formatter/file checks pass; board mount/retention/performance and physical recordings remain pending.
 
 
 ## Output diagnostics and combined handoff — November 23
@@ -59,3 +59,16 @@ See [diagnostics](output-diagnostics.md) and the ordered
 [combined build/deploy/test handoff](combined-return-handoff.md).
 Hardware, native image builds, offline input availability, actual SSH enrollment,
 and worker/publication admission remain acceptance gates, not assumed passes.
+
+
+## Persistent CSV capacity guard — November 23
+
+Pinned MixOS already binds DATA `/state/var` onto `/var` before application init;
+the earlier persistence uncertainty is resolved at source level. CSV now verifies
+that writable mapping and periodically checks space/inodes off the executor.
+It reserves 32 MiB/128 inodes, debits each write, and stops the CSV task at
+128 MiB per recording or capacity/probe failure. No automatic pruning, rotation,
+actuation, or UI recording alarm was added. Other processes can still use disk.
+Commanding/MQTT continue independently. Native Linux probes, actual reboot
+retention, sustained performance and disposable-fixture limit acceptance remain
+pending. See [CSV storage policy](../../fill-station/docs/CSV_LOGGING.md).

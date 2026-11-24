@@ -308,3 +308,16 @@ See [diagnostics](output-diagnostics.md) and the ordered
 [combined build/deploy/test handoff](combined-return-handoff.md).
 Hardware, native image builds, offline input availability, actual SSH enrollment,
 and worker/publication admission remain acceptance gates, not assumed passes.
+
+
+## Persistent CSV capacity guard — November 23
+
+Pinned MixOS already binds DATA `/state/var` onto `/var` before application init;
+the earlier persistence uncertainty is resolved at source level. CSV now verifies
+that writable mapping and periodically checks space/inodes off the executor.
+It reserves 32 MiB/128 inodes, debits each write, and stops the CSV task at
+128 MiB per recording or capacity/probe failure. No automatic pruning, rotation,
+actuation, or UI recording alarm was added. Other processes can still use disk.
+Commanding/MQTT continue independently. Native Linux probes, actual reboot
+retention, sustained performance and disposable-fixture limit acceptance remain
+pending. See [CSV storage policy](../../fill-station/docs/CSV_LOGGING.md).
