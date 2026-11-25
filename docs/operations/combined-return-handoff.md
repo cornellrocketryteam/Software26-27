@@ -79,7 +79,14 @@ replacing identities or disabling host checking.
 
 Keep compilation in an intentional maintenance window, separate from actuation.
 Normal worker admission may still be disabled: that is a separate acceptance gate.
-First evaluate the exact recipes without compilation:
+Before evaluation, run `./scripts/platform flake-inputs --lock-file flake.lock`.
+Retain the complete present locked-source set with `--pin` (preview with
+`--pin --dry-run`). Missing sources need explicit online preparation or an
+approved prepared-source transfer; no download happens in the check. Follow
+[locked source retention](locked-flake-sources.md) and retain the matching Git
+bundle/lock file. This complements, rather than replaces, recipe-input pins.
+
+Then evaluate the exact recipes without compilation:
 
 ```sh
 pc_drv=$(nix --extra-experimental-features 'nix-command flakes' eval --offline --raw '.#nixosConfigurations.ground-station-um560-cache.config.system.build.toplevel.drvPath')

@@ -3,7 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from . import build, cache, deploy, deploy_ssh, offline_audit, offline_pins, offline_prepare
+from . import build, cache, deploy, deploy_ssh, offline_audit, offline_pins, offline_prepare, flake_inputs
 from .builders import local_health, probe_station
 from .config import load_config, state_directory
 from .runtime import PlatformError
@@ -53,6 +53,10 @@ def parser():
     prepare.add_argument('--copy-timeout-seconds', type=int, default=600)
     prepare.add_argument('--dry-run', action='store_true', help='read-only audit and copy plan; no copy or pins')
     prepare.add_argument('--pin', action='store_true', help='retain static inputs only after final audit succeeds')
+    flake = commands.add_parser('flake-inputs', help='inspect existing locked GitHub source trees without fetching')
+    flake.add_argument('--lock-file', type=Path, default=Path('flake.lock'))
+    flake.add_argument('--pin', action='store_true', help='retain checked source trees with a metadata-only root')
+    flake.add_argument('--dry-run', action='store_true', help='inspect but do not create a pin')
     pin = commands.add_parser('offline-pin', help='retain freshly audited static inputs with a metadata-only GC root; never build')
     pin.add_argument('--drv', required=True)
     pin.add_argument('--dry-run', action='store_true', help='run read-only audit and report path count without creating roots/state')
@@ -71,7 +75,7 @@ def main(argv=None, *, repo=None):
     if args.command == 'build' and args.host == 'ground-station' and args.build_platform == 'aarch64-linux':
         cli.error('ground-station requires x86_64-linux')
     try:
-        config = load_config(args.config or state / 'config.json', explicit=args.config is not None)
+        config = {} if args.command == 'flake-inputs' else load_config(args.config or state / 'config.json', explicit=args.config is not None)
         if args.command == 'build':
             result = build.execute(repo, state, config, args)
         elif args.command == 'deploy':
@@ -90,6 +94,8 @@ def main(argv=None, *, repo=None):
         elif args.command == 'offline-prepare':
             result = offline_prepare.execute(state, args.drv, args.cache_url, args.public_key,
                 dry_run=args.dry_run, pin=args.pin, timeout_seconds=args.copy_timeout_seconds)
+        elif args.command == 'flake-inputs':
+            result = flake_inputs.execute(args.lock_file, state, pin=args.pin, dry_run=args.dry_run)
         elif args.command == 'offline-pin':
             result = offline_pins.execute(state, args.drv, dry_run=args.dry_run)
         elif args.command == 'offline-unpin':
@@ -120,6 +126,8 @@ def main(argv=None, *, repo=None):
         if args.command == 'offline-audit' and result['assessment'] != 'static_inputs_present':
             return 2
         if args.command == 'offline-prepare' and not args.dry_run and not result['prepared']:
+            return 2
+        if args.command == 'flake-inputs' and result['assessment'] != 'locked_sources_present':
             return 2
         return 0
     except (PlatformError, OSError, ValueError) as exc:

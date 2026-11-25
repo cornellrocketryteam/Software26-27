@@ -423,3 +423,12 @@ inspects missing local static inputs without contacting the cache. Remove dry-ru
 to copy from that explicit cache under Nix signature policy, and optionally add
 `--pin` after final static audit. No compilation, raw URL fetch or global trust
 change. See [workflow and partial-result limits](../../docs/operations/offline-cache-preparation.md).
+
+### Locked evaluation source trees
+
+`flake-inputs --lock-file flake.lock` computes/checks existing immutable GitHub
+source trees locally without fetching. Add `--pin --dry-run` to preview, then
+`--pin` to retain the present set with a metadata-only root. Exit 2 reports missing,
+unverified or unsupported sources. This complements recipe pins and does not
+validate a complete offline evaluation/build. See
+[source preparation and retention](../../docs/operations/locked-flake-sources.md).

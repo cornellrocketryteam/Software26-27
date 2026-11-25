@@ -177,3 +177,14 @@ or pin success. Host/injected checks pass; actual imports/signature rejection,
 interrupted transfers, full graphs and isolated builds remain pending. Full
 source fetching/evaluation input retention and portable prepared-set transfer
 are still separate work. See [cache preparation](offline-cache-preparation.md).
+
+
+## Locked flake evaluation sources — November 24
+
+Candidate `flake-inputs` computes/checks version7 immutable GitHub locked source
+paths without fetching/evaluating a flake, and optionally retains a complete
+present set through metadata-only pins with lock-digest evidence. Unknown types,
+missing sources and failed registration never claim coverage. Current Mac audit
+found seven of nine sources missing; a two-present-source pin/release fixture
+passed. Full mini-PC source preparation, reboot/offline evaluation and normal
+contained builds remain pending. See [locked sources](locked-flake-sources.md).
