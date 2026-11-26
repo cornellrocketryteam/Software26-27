@@ -14,7 +14,9 @@ with sync_playwright() as p:
   def route(r):
    request=r.request
    if not request.url.startswith(BASE):raise AssertionError('External request')
-   if request.url.endswith('/config.json'):r.fulfill(content_type='application/json',body=json.dumps(config));return
+   if request.url.endswith('/station-config.json'):r.fulfill(content_type='application/json',body=json.dumps(config));return
+   if request.url.endswith('/network-api/v1/wan'):
+    r.fulfill(content_type='application/json',body=json.dumps({'enabled':False,'state':'disabled','method':'tcp-connect','checkedUnixMs':None,'ageSeconds':None,'observedFailureSpanSeconds':None,'targets':[]}));return
    if '/network-api/' in request.url:
     if request.method=='POST':
      assert request.url.endswith('/plug/output');assert request.headers['authorization']=='Bearer '+TOKEN

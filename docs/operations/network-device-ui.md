@@ -48,3 +48,11 @@ Actual Omada adapters and port controls still need implementation.
 
 The running PC has not been updated by these source/host tests. See the
 [combined hardware checklist](ground-station-return-testing.md).
+
+
+## Optional WAN card — November 26
+
+A separate WAN card now polls cached TCP observations independently of device
+status and controls. Defaults are disabled/no public targets. WAN/probe API failures
+do not lock local Shelly controls; vendor-specific Starlink metrics remain pending.
+See [WAN observations](wan-probes.md). Existing device/card styles are preserved.

@@ -92,10 +92,10 @@ class NetworkTests(unittest.TestCase):
         value={'id':'duplicate','kind':'shelly','enabled':False,'address':None}
         with self.assertRaises(ValueError):self.module.DeviceRegistry({'schemaVersion':1,'devices':[value,value]})
 
-    def http_request(self, registry, *, token=None, supplied=None, body=None, method='GET', path='/v1/devices'):
+    def http_request(self, registry, *, token=None, supplied=None, body=None, method='GET', path='/v1/devices', monitor=None):
         import threading,urllib.request,urllib.error
         from http.server import ThreadingHTTPServer
-        server=ThreadingHTTPServer(('127.0.0.1',0),self.module.handler_for(registry,operator_token=token))
+        server=ThreadingHTTPServer(('127.0.0.1',0),self.module.handler_for(registry,operator_token=token,wan_monitor=monitor))
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             headers={'Content-Type':'application/json'}
@@ -106,6 +106,15 @@ class NetworkTests(unittest.TestCase):
             except urllib.error.HTTPError as error:response=error
             with response:return response.status,json.loads(response.read()),dict(response.headers)
         finally:server.shutdown();server.server_close();thread.join()
+
+    def test_wan_endpoint_is_cached_and_default_disabled(self):
+        registry=self.fixture()
+        status,body,_=self.http_request(registry,path='/v1/wan')
+        self.assertEqual(status,200);self.assertEqual(body['state'],'disabled')
+        class Monitor:
+            def snapshot(self):return {'enabled':True,'state':'pending'}
+        status,body,_=self.http_request(registry,path='/v1/wan',monitor=Monitor())
+        self.assertEqual(body['state'],'pending');self.assertEqual(self.calls,[])
 
     def test_http_get_exposes_no_credentials_and_is_not_cached(self):
         registry=self.fixture()

@@ -422,3 +422,14 @@ missing sources and failed registration never claim coverage. Current Mac audit
 found seven of nine sources missing; a two-present-source pin/release fixture
 passed. Full mini-PC source preparation, reboot/offline evaluation and normal
 contained builds remain pending. See [locked sources](locked-flake-sources.md).
+
+
+## Optional WAN TCP observations — November 26
+
+Candidate adds explicit-target background TCP monitoring and an independent cached
+WAN card on Network devices. No target/default public traffic, raw-socket privilege
+or online boot dependency. Recent failures and successful connection timing are
+not packet loss or Starlink terminal/radio health. Host/Nix/mock-browser checks
+pass; actual mini-PC routes, IP policy, WAN interruption/recovery and terminal
+integration remain pending. Local telemetry/control is not gated by WAN status.
+See [WAN probe scope and acceptance](wan-probes.md).

@@ -281,3 +281,10 @@ prepared approved cache contains them, use the explicit
 [cache-only preparation workflow](offline-cache-preparation.md), preview first.
 It cannot repair absent metadata/locked evaluation inputs or invent fetch results
 not in that cache. Do not treat an incomplete report as offline readiness.
+
+
+## Optional WAN observations
+
+Default WAN collection stays disabled. After selecting explicit approved targets,
+use [WAN probe acceptance](wan-probes.md) to check TCP observations and local
+operation with WAN absent. This does not add Starlink-specific metrics or controls.

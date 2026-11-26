@@ -23,6 +23,8 @@ with sync_playwright() as p:
    if not req.url.startswith(BASE+'/'):external.append(req.url);r.abort();return
    if req.url.endswith('/station-config.json'):
     r.fulfill(content_type='application/json',body=json.dumps(CONFIG));return
+   if req.url.endswith('/network-api/v1/wan'):
+    r.fulfill(content_type='application/json',body=json.dumps({'enabled':False,'state':'disabled','method':'tcp-connect','checkedUnixMs':None,'ageSeconds':None,'observedFailureSpanSeconds':None,'targets':[]}));return
    if '/network-api/' in req.url:
     requests.append((req.method,req.url))
     assert req.method=='GET','Network page attempted a write'

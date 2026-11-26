@@ -89,3 +89,12 @@ controls; both shipped entries remain disabled. See
 [operator flow and physical acceptance](../../docs/operations/shelly-controls.md).
 Busy-device writes return 409 without dispatch and are never queued for later
 actuation. Already-dispatched requests still require readback/unknown handling.
+
+## Optional WAN observations
+
+The service accepts optional public --wan-config for background TCP-connect
+observations. Default disabled/no targets. GET /network-api/v1/wan reads only
+cached state and is separate from device reads/writes. The Network page's new
+card fails independently; it does not gate local controls. These measurements
+are not ICMP packet loss or Starlink terminal metrics. See
+[configuration, interpretation and acceptance](../../docs/operations/wan-probes.md).

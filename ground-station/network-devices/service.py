@@ -9,6 +9,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 from shelly import ShellyDevice, UnknownOutcome
+from wan import WanMonitor, disabled_status
 
 ID=re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}\Z')
 
@@ -88,7 +89,7 @@ class DeviceRegistry:
         finally:self.locks[name].release()
 
 
-def handler_for(registry, *, operator_token=None):
+def handler_for(registry, *, operator_token=None, wan_monitor=None):
     class Handler(BaseHTTPRequestHandler):
         def setup(self):
             super().setup();self.connection.settimeout(5)
@@ -105,6 +106,7 @@ def handler_for(registry, *, operator_token=None):
         def do_GET(self):
             parts=urlsplit(self.path)
             if parts.query:return self.reply(400,{'error':'Queries are not supported'})
+            if parts.path=='/v1/wan':return self.reply(200,wan_monitor.snapshot() if wan_monitor else disabled_status())
             if parts.path=='/v1/devices':return self.reply(200,{**registry.snapshot(),'powerWritesConfigured':bool(operator_token),'operatorAuthorizationRequired':True})
             match=re.fullmatch(r'/v1/devices/([A-Za-z0-9_-]+)',parts.path)
             if match:
@@ -148,6 +150,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inventory',type=Path,default=Path(__file__).with_name('inventory.json'))
     parser.add_argument('--credentials-file',type=Path)
+    parser.add_argument('--wan-config',type=Path,help='optional public TCP-probe configuration; absent disables WAN probes')
     parser.add_argument('--port',type=int,default=8767)
     parser.add_argument('--check-config',action='store_true')
     args=parser.parse_args(argv)
@@ -157,14 +160,19 @@ def main(argv=None):
         token=credentials.get('operatorToken')
         if token is not None and (not isinstance(token,str) or not token.isascii() or len(token)<24):raise ValueError('Invalid operator token')
         registry=DeviceRegistry(json.loads(args.inventory.read_text()),credentials=credentials.get('devices',{}))
+        monitor=WanMonitor(json.loads(args.wan_config.read_text())) if args.wan_config else None
     except (ValueError,OSError):
         parser.exit(1,'Invalid network-device configuration; check inventory and runtime credential file\n')
     if args.check_config:
-        print(json.dumps({'valid':True,'deviceIds':list(registry.devices),'powerWritesEnabled':bool(token)}));return 0
-    server=ThreadingHTTPServer(('127.0.0.1',args.port),handler_for(registry,operator_token=token))
+        print(json.dumps({'valid':True,'deviceIds':list(registry.devices),'powerWritesEnabled':bool(token),'wanEnabled':monitor is not None}));return 0
+    server=ThreadingHTTPServer(('127.0.0.1',args.port),handler_for(registry,operator_token=token,wan_monitor=monitor))
     server.daemon_threads=True
-    try:server.serve_forever()
-    finally:server.server_close()
+    try:
+        if monitor:monitor.start()
+        server.serve_forever()
+    finally:
+        if monitor:monitor.stop()
+        server.server_close()
     return 0
 
 

@@ -1,4 +1,4 @@
-# Ground/fill-station feature status — November 24, 2026
+# Ground/fill-station feature status — November 26, 2026
 
 This separates earlier operator acceptance from current implementation. The latest
 combined source has not been deployed during the hardware-access gap. Earlier
@@ -27,7 +27,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | MQTT source timestamps, ordering and deduplication | Producer metadata plus SQL storage/deduplication and explicit session query interface implemented and host/PostgreSQL-tested; arrival partition retained | Timescale/EMQX acceptance, physical LAN clock validation, operator selection/browser acceptance and source-time chart integration |
 | hybrid-test image with LC2 | Paired image target, firmware routing, LC2 raw/voltage, CSV and profile-aware UI/Grafana implemented and host-tested | Native OSPI builds and combined hardware acceptance |
 | Hybrid/Liquid/test UI and Grafana variants | Commanding runtime-profile routing and views implemented/tested with original styling; legacy Liquid retained | Normal Hybrid and Hybrid-test Grafana implemented/SQL tested; Liquid mapping and real combined deployment remain |
-| Starlink health | Local integration path researched | Terminal identification, adapter, actual route/metrics and outage tests |
+| Starlink / WAN health | Optional generic TCP-probe backend/card implemented; terminal integration researched | Terminal identification and adapter; actual route/metrics/outage acceptance |
 | EcoFlow RIVER 2 Pro | Cloud integration path researched; physical electronics only | Account/device/API enrollment, AC/DC-bank adapter and read-back tests; individual socket control/metering unproven |
 
 The [implementation checkpoint](implementation-status.md) records check scope and
@@ -188,3 +188,14 @@ missing sources and failed registration never claim coverage. Current Mac audit
 found seven of nine sources missing; a two-present-source pin/release fixture
 passed. Full mini-PC source preparation, reboot/offline evaluation and normal
 contained builds remain pending. See [locked sources](locked-flake-sources.md).
+
+
+## Optional WAN TCP observations — November 26
+
+Candidate adds explicit-target background TCP monitoring and an independent cached
+WAN card on Network devices. No target/default public traffic, raw-socket privilege
+or online boot dependency. Recent failures and successful connection timing are
+not packet loss or Starlink terminal/radio health. Host/Nix/mock-browser checks
+pass; actual mini-PC routes, IP policy, WAN interruption/recovery and terminal
+integration remain pending. Local telemetry/control is not gated by WAN status.
+See [WAN probe scope and acceptance](wan-probes.md).
