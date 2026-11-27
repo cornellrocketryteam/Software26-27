@@ -489,3 +489,13 @@ not packet loss or Starlink terminal/radio health. Host/Nix/mock-browser checks
 pass; actual mini-PC routes, IP policy, WAN interruption/recovery and terminal
 integration remain pending. Local telemetry/control is not gated by WAN status.
 See [WAN probe scope and acceptance](wan-probes.md).
+
+### Optional EcoFlow enrollment probe
+
+A manual read-only developer-cloud probe is now packaged; no background collector,
+UI card or EcoFlow controls are enabled. Follow
+[EcoFlow enrollment](ecoflow-enrollment.md) when account keys and serial are ready.
+Compare SOC and aggregate input/output against the app; verify offline handling.
+Host tests cover signatures, unknown metrics, unenrolled/offline refusal, private
+credential files and redirect refusal. Live enrollment and model readings remain
+untested. This does not supersede the deferred bank-control/load-mapping checks.
