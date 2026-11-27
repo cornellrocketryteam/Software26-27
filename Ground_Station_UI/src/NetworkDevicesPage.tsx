@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import crtLogo from './assets/CRT_LOGO.png';
 import WanStatusPanel from './WanStatusPanel';
+import EcoflowStatusPanel from './EcoflowStatusPanel';
 import {canControlPower, parseNetworkSnapshot, parsePowerReply} from './networkDevices';
 import type {NetworkSnapshot} from './networkDevices';
 
@@ -102,6 +103,7 @@ export default function NetworkDevicesPage() {
     <main className="p-4 sm:p-8">
       <p className="mb-4">Device status and recorded wiring. Shelly power requests require configured loads, fresh status and operator authorization.</p>
       <WanStatusPanel />
+      <EcoflowStatusPanel />
       {error && <p role="alert" className="mb-4 font-semibold">{error} {snapshot ? 'Previous readings are not current.' : ''}</p>}
       {!snapshot && !error && <p role="status">Loading device inventory…</p>}
       <div className="mb-4 bg-[#D9D9D9] border-[4px] border-black rounded-2xl p-4">

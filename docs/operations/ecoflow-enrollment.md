@@ -1,8 +1,8 @@
 # EcoFlow read-only enrollment check
 
 The optional RIVER 2 Pro integration starts with a manual developer-cloud probe.
-It is packaged as `crt-probe-ecoflow`; it is not a background service or dashboard
-card yet. Local commanding does not depend on it. No output-control requests are
+It is packaged as `crt-probe-ecoflow`. An optional isolated background collector
+and Network page card are also implemented, disabled by default. Local commanding does not depend on them. No output-control requests are
 implemented. EcoFlow powers physical electronics only, never either computer or
 network equipment.
 
@@ -52,9 +52,46 @@ matching an enrolled serial alone does not identify its product.
 
 If it fails, check file ownership/mode, enrollment, account region, WAN and system
 clock. Do not paste keys into error reports. If this model/account cannot enroll,
-leave this integration disabled. Later work: isolated background collection,
-explicit stale/unknown states, dashboard card, then separately validated bank
-controls with load mapping and read-back.
+leave this integration disabled. Bank controls still require separately validated
+load mapping and read-back.
+
+## Optional background monitoring after enrollment
+
+After the manual read succeeds, install the private JSON at a persistent runtime
+path, owned by root with mode 0600. Set these NixOS options in the deployment
+configuration (never embed key values):
+
+```nix
+groundStation.ecoflow = {
+  enable = true;
+  region = "us"; # Explicitly select the account's US or EU API region.
+  serial = "YOUR_SERIAL";
+  credentialsFile = "/var/lib/ground-station/ecoflow.json";
+  intervalSeconds = 30;
+};
+```
+
+Deploy with the normal ground-station procedure. The separate `ground-ecoflow`
+service receives keys through systemd LoadCredential; the Nix store and browser
+never receive them. It needs DNS and outbound HTTPS; its service does not restrict
+egress by vendor IP because those addresses vary. The existing LAN device
+service's IP policy is unchanged. No `network-online.target` boot wait is added.
+The collector has a 20-second subprocess deadline and resource limits. Reads at
+`/ecoflow-api/v1/ecoflow` return only cached selected metrics, with no serial or
+credentials. It is a public read-only endpoint on the existing dashboard LAN.
+
+The card distinguishes pending, cloud-reported offline, unavailable and stale
+reads. Failed reads clear metrics immediately. Cached results older than the
+configured interval plus 25 seconds become stale; browser/API failures also hide
+metrics. Even successful reads explicitly say device sample time is unknown.
+When disabled, nginx returns a disabled JSON status without starting a collector
+or making any EcoFlow requests.
+
+Later hardware checks: compare the card with the app, disconnect WAN and confirm
+metrics become unavailable, restore WAN and confirm recovery, then reboot and
+verify the credential file and service persist. Confirm local telemetry,
+commanding and Shelly eligibility remain independent throughout. Do not actuate
+any EcoFlow output during this read-only check.
 
 Protocol and field references (community implementation, not a vendor support guarantee):
 [public API client](https://github.com/tolwi/hassio-ecoflow-cloud/blob/main/custom_components/ecoflow_cloud/api/public_api.py),

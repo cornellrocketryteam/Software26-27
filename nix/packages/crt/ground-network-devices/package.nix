@@ -5,7 +5,7 @@ stdenvNoCC.mkDerivation {
   src = lib.fileset.toSource {
     root = ../../../../ground-station/network-devices;
     fileset = lib.fileset.unions (map (name: ../../../../ground-station/network-devices + "/${name}") [
-      "service.py" "shelly.py" "wan.py" "inspect_omada.py" "ecoflow_probe.py" "inventory.json"
+      "service.py" "shelly.py" "wan.py" "inspect_omada.py" "ecoflow_probe.py" "ecoflow_monitor.py" "inventory.json"
     ]);
   };
   nativeBuildInputs = [ python3 makeWrapper ];
@@ -23,6 +23,8 @@ stdenvNoCC.mkDerivation {
     cp ${../../../../tests/platform/test_wan_monitor.py} "$testRoot/tests/platform/"
     cp ${../../../../tests/platform/test_ecoflow_probe.py} "$testRoot/tests/platform/"
     python -m unittest discover -s "$testRoot/tests/platform" -p test_ecoflow_probe.py
+    cp ${../../../../tests/platform/test_ecoflow_monitor.py} "$testRoot/tests/platform/"
+    python -m unittest discover -s "$testRoot/tests/platform" -p test_ecoflow_monitor.py
     python -m unittest discover -s "$testRoot/tests/platform" -p test_wan_monitor.py
     cp ${../../../../tests/platform/test_omada_inspection.py} "$testRoot/tests/platform/"
     python -m unittest discover -s "$testRoot/tests/platform" -p test_omada_inspection.py
@@ -39,6 +41,8 @@ stdenvNoCC.mkDerivation {
       --add-flags "$out/libexec/ground-network-devices/inspect_omada.py"
     makeWrapper ${python3}/bin/python3 "$out/bin/crt-probe-ecoflow" \
       --add-flags "$out/libexec/ground-network-devices/ecoflow_probe.py"
+    makeWrapper ${python3}/bin/python3 "$out/bin/crt-monitor-ecoflow" \
+      --add-flags "$out/libexec/ground-network-devices/ecoflow_monitor.py"
   '';
   meta = {
     description = "Local network-device status and explicit authenticated Shelly power API";

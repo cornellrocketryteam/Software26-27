@@ -288,3 +288,12 @@ not in that cache. Do not treat an incomplete report as offline readiness.
 Default WAN collection stays disabled. After selecting explicit approved targets,
 use [WAN probe acceptance](wan-probes.md) to check TCP observations and local
 operation with WAN absent. This does not add Starlink-specific metrics or controls.
+
+## Optional EcoFlow read-only monitoring
+
+Leave `groundStation.ecoflow.enable` at its false default until developer-account
+and serial enrollment succeed. The Network card will show monitoring not
+configured. Later follow [EcoFlow enrollment](ecoflow-enrollment.md) for the
+private runtime credential file, explicit US/EU region and enablement. No EcoFlow
+output controls are present. Test WAN loss/recovery and reboot separately from
+commanding; cloud receipt is not proof of device sample freshness.

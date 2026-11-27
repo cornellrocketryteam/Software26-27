@@ -1,6 +1,6 @@
 { config, lib, ... }:
 {
-  imports = [ ./network.nix ./time.nix ./operator.nix ./storage.nix ./builder.nix ./cache.nix ./cache-ingestion.nix ./ui.nix ./kiosk.nix ./cameras.nix ./commanding.nix ./telemetry.nix ./network-devices.nix ];
+  imports = [ ./network.nix ./time.nix ./operator.nix ./storage.nix ./builder.nix ./cache.nix ./cache-ingestion.nix ./ui.nix ./kiosk.nix ./cameras.nix ./commanding.nix ./telemetry.nix ./network-devices.nix ./ecoflow.nix ];
 
   options.groundStation = {
     virtualMachine = lib.mkOption {

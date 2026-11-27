@@ -492,10 +492,12 @@ See [WAN probe scope and acceptance](wan-probes.md).
 
 ### Optional EcoFlow enrollment probe
 
-A manual read-only developer-cloud probe is now packaged; no background collector,
-UI card or EcoFlow controls are enabled. Follow
+A manual read-only developer-cloud probe and optional isolated collector/Network
+card are now packaged; monitoring defaults disabled and EcoFlow controls are not implemented. Follow
 [EcoFlow enrollment](ecoflow-enrollment.md) when account keys and serial are ready.
 Compare SOC and aggregate input/output against the app; verify offline handling.
 Host tests cover signatures, unknown metrics, unenrolled/offline refusal, private
 credential files and redirect refusal. Live enrollment and model readings remain
-untested. This does not supersede the deferred bank-control/load-mapping checks.
+untested. After enrollment, check optional collector startup, WAN loss/recovery,
+hidden unavailable metrics and reboot persistence as described in that guide.
+This does not supersede the deferred bank-control/load-mapping checks.

@@ -1,4 +1,4 @@
-# Ground/fill-station feature status — November 26, 2026
+# Ground/fill-station feature status — November 27, 2026
 
 This separates earlier operator acceptance from current implementation. The latest
 combined source has not been deployed during the hardware-access gap. Earlier
@@ -28,7 +28,7 @@ successful tests do not prove every newly committed change is running on the PC.
 | hybrid-test image with LC2 | Paired image target, firmware routing, LC2 raw/voltage, CSV and profile-aware UI/Grafana implemented and host-tested | Native OSPI builds and combined hardware acceptance |
 | Hybrid/Liquid/test UI and Grafana variants | Commanding runtime-profile routing and views implemented/tested with original styling; legacy Liquid retained | Normal Hybrid and Hybrid-test Grafana implemented/SQL tested; Liquid mapping and real combined deployment remain |
 | Starlink / WAN health | Optional generic TCP-probe backend/card implemented; terminal integration researched | Terminal identification and adapter; actual route/metrics/outage acceptance |
-| EcoFlow RIVER 2 Pro | Cloud integration path researched; physical electronics only | Account/device/API enrollment, AC/DC-bank adapter and read-back tests; individual socket control/metering unproven |
+| EcoFlow RIVER 2 Pro | Manual enrollment probe, optional isolated read-only collector and Network card implemented; disabled by default; physical electronics only | Live account/device enrollment, model readings, WAN recovery/persistence; AC/DC-bank controls and individual socket control/metering unproven |
 
 The [implementation checkpoint](implementation-status.md) records check scope and
 remaining native/VM/hardware validation. The [combined return checklist](ground-station-return-testing.md)

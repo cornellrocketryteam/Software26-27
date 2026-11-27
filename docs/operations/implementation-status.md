@@ -433,3 +433,12 @@ not packet loss or Starlink terminal/radio health. Host/Nix/mock-browser checks
 pass; actual mini-PC routes, IP policy, WAN interruption/recovery and terminal
 integration remain pending. Local telemetry/control is not gated by WAN status.
 See [WAN probe scope and acceptance](wan-probes.md).
+
+## Follow-up: optional read-only EcoFlow cloud monitoring
+
+The prior planned-only EcoFlow status is superseded by a manual enrollment probe,
+disabled-by-default isolated collector and Network card. Selected cloud SOC and
+aggregate power readings are explicitly not verified live device samples.
+No output controls are implemented. See [enrollment and enablement](ecoflow-enrollment.md).
+Host and mocked-browser checks do not establish actual account/model support,
+WAN recovery, persistence or deployment. Secrets remain runtime credentials.
